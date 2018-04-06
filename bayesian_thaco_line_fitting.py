@@ -27,6 +27,8 @@ import emcee
 
 from collections import namedtuple
 
+
+#this is a test
 # %%
 class LineModel:
     """
