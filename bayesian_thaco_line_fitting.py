@@ -9,26 +9,16 @@ function fitting on the lines
 
 import numpy as np
 import matplotlib.pyplot as plt
-#import matplotlib as mpl
+plt.ion()
 
 from numpy.polynomial.hermite_e import hermeval, hermemulx
-
-#import readline
 import MDSplus
-
-#import eqtools
-
-#from scipy import stats
 import scipy.optimize as op
-
 import emcee
-
-#import scipy
-
 from collections import namedtuple
+import bsfc_helper
+import cPickle as pkl
 
-
-#this is a test
 # %%
 class LineModel:
     """
@@ -119,7 +109,6 @@ class LineModel:
             cind = cind + self.hermFuncs[i]
 
         return constraints
-
 
     """
     Functions for actually producing the predictions from the model.
@@ -333,8 +322,6 @@ class BinFit:
         self.lineModel = LineModel(lam, self.lamNorm, specBr, sig, lineData, linesFit, hermFuncs)
 
 
-
-
     def optimizeFit(self, theta0):
         nll = lambda *args: -self.lineModel.lnlike(*args)
 
@@ -350,15 +337,16 @@ class BinFit:
 
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lineModel.lnprob)
         sampler.run_mcmc(pos, 1024)
-
+        
         samples = sampler.chain[:, 512:, :].reshape((-1, ndim))
 
         return samples, sampler
 
+
     def fit(self, mcmc=True):
         theta0 = self.lineModel.guessFit()
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
-        if herm[0][0] < noise[0]*0.1:
+        if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05? 
             # not worth fitting in this case; i.e. the primary line is under the median noise level
             self.m0_ml = 0.0
             self.good = False
@@ -378,7 +366,6 @@ class BinFit:
             self.m_avg = np.average(self.m_samples, axis=0)
             self.m_std = np.std(self.m_samples, axis=0, ddof=len(theta0))
 
-
             self.good = True
             return True
 
@@ -392,6 +379,7 @@ class MomentFitter:
         self.lines = LineInfo(None, None, None, None, None, None)
         self.lam_bounds = lam_bounds
         self.primary_line = primary_line
+        self.tht=tht
 
         amuToKeV = 931494.095 # amu in keV
         #speedOfLight = 2.998e+5 # speed of light in km/s
@@ -459,7 +447,14 @@ class MomentFitter:
         self.maxChan = np.max(self.branchNode.getNode('BINNING:CHMAP').data())
         self.maxTime = np.max(self.branchNode.getNode('BINNING:TMAP').data())
 
-        self.fits = [[None]*self.maxChan]*self.maxTime
+        # get time basis
+        tmp=self.branchNode.getNode('SPEC:SIG').dim_of(1)
+        mask = [tmp[0]>-1][0]
+        self.time = np.asarray(tmp[0][mask])
+        # sanity check:
+        assert self.time.shape[0] == self.maxTime + 1
+
+        self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
     def fitSingleBin(self, tbin, chbin):
         w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
@@ -468,14 +463,17 @@ class MomentFitter:
         sig = self.sig_all[w0:w1,tbin,chbin]
 
         bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
+        # import pdb
+        # pdb.set_trace()
+        # self.fits[tbin, chbin] = bf
         self.fits[tbin][chbin] = bf
 
-        print "Now fitting", tbin, chbin,
+        print "Now fitting tbin=", tbin, ', chbin=', chbin,
         good = bf.fit()
         if not good:
             print "not worth fitting"
         else:
-            print "done"
+            print "--> done"
 
     def fitTimeBin(self, tbin):
         for chbin in range(self.maxChan):
@@ -483,12 +481,21 @@ class MomentFitter:
             #plt.close('all')
             #self.plotSingleBinFit(tbin, chbin)
 
+    def fitChBin(self, chbin):
+        for tbin in range(self.maxTime):
+            self.fitSingleBin(tbin, chbin)
+
+    def fitTimeWindow(self, tidx_min, tidx_max):
+        for chbin in range(self.maxChan):
+            for tbin in range(tidx_min, tidx_max):
+                self.fitSingleBin(tbin, chbin)
+
     def plotSingleBinFit(self, tbin, chbin):
+        # bf = self.fits[tbin,chbin]
         bf = self.fits[tbin][chbin]
 
         if bf == None:
             return
-
 
         f0, (a0, a1) = plt.subplots(2, 1, sharex=True, gridspec_kw = {'height_ratios': [4,1]})
         a0.errorbar(bf.lam, bf.specBr, yerr=bf.sig, c='m', fmt='.')
@@ -501,13 +508,11 @@ class MomentFitter:
             for samp in range(25):
                 theta = bf.samples[np.random.randint(len(bf.samples))]
                 noise = bf.lineModel.modelNoise(theta)
-                a0.plot(bf.lam, noise, c='g', alpha=0.04)
+                a0.plot(bf.lam, noise, c='g', alpha=0.08)
 
                 for i in range(len(self.lines.names)):
                     line = bf.lineModel.modelLine(theta, i)
-                    a0.plot(bf.lam, line+noise, c='c', alpha=0.04)
-
-
+                    a0.plot(bf.lam, line+noise, c='c', alpha=0.08)
 
             noise = bf.lineModel.modelNoise(bf.theta_avg)
             a0.plot(bf.lam, noise, c='g')
@@ -527,40 +532,170 @@ class MomentFitter:
         plt.show()
 
 
-# %% Test code
+def plotOverChannels(mf, tbin=126, plot=True): 
+    '''
+    Function to fit signals for a specified time bin, across all channels. 
+    Optionally, plots 0th, 1st and 2nd moment across channels.
+    '''
 
-#mf = MomentFitter((3.725, 3.747), 'lya1', 1120914036, 1)
-#mf = MomentFitter((3.725, 3.742), 'lya1', 1121002022, 0)
-mf = MomentFitter((3.172, 3.188), 'w', 1101014030, 0, False)
+    mf.fitTimeBin(tbin)
 
-tbin = 83
-mf.fitTimeBin(tbin)
+    # mf.fitSingleBin(tbin, 29)
+    #mf.plotSingleBinFit(tbin, 29)
 
-#mf.fitSingleBin(tbin, 29)
-#mf.plotSingleBinFit(tbin, 29)
+    # %% Plot stuff
+    moments = [None] * mf.maxChan
+    moments_std = [None] * mf.maxChan
+
+    for chbin in range(mf.maxChan):
+        if mf.fits[tbin][chbin].good:
+            moments[chbin] = mf.fits[tbin][chbin].m_avg
+            moments_std[chbin] = mf.fits[tbin][chbin].m_std
+        else:
+            moments[chbin] = np.zeros(3)
+            moments_std[chbin] = np.zeros(3)
+        
+    moments = np.array(moments)
+    moments_std = np.array(moments_std)
+
+    if plot:
+        f, a = plt.subplots(3, 1, sharex=True)
+
+        a[0].errorbar(range(mf.maxChan), moments[:,0], yerr=moments_std[:,0], fmt='.')
+        a[0].set_ylabel('0th moment')
+        a[1].errorbar(range(mf.maxChan), moments[:,1], yerr=moments_std[:,1], fmt='.')
+        a[1].set_ylabel('1st moment')
+        a[2].errorbar(range(mf.maxChan), moments[:,2], yerr=moments_std[:,2], fmt='.')
+        a[2].set_ylabel('2nd moment')
+        a[2].set_xlabel(r'channel')
 
 
-# %% Plot stuff
-moments = [None] * mf.maxChan
-moments_std = [None] * mf.maxChan
 
-for chbin in range(mf.maxChan):
-    if mf.fits[tbin][chbin].good:
-        moments[chbin] = mf.fits[tbin][chbin].m_avg
-        moments_std[chbin] = mf.fits[tbin][chbin].m_std
-    else:
-        moments[chbin] = np.zeros(3)
-        moments_std[chbin] = np.zeros(3)
-    
-moments = np.array(moments)
-moments_std = np.array(moments_std)
+# #%% =======================
+def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=True):
+    '''
+    Function to obtain time series of Hirex-Sr signals in all channels. 
+    This saves files containing the signals needed for MITIM analysis. 
+    If data has already been fitted for a shot, one may set refit=False.
 
-f, a = plt.subplots(3, 1, sharex=True)
+    Optionally, set compare=True to plot fits against those obtained for shot
+    1101014019 using THACO's fitting routines. 
+    '''
 
-a[0].errorbar(range(mf.maxChan), moments[:,0], yerr=moments_std[:,0], fmt='.')
-a[1].errorbar(range(mf.maxChan), moments[:,1], yerr=moments_std[:,1], fmt='.')
-a[2].errorbar(range(mf.maxChan), moments[:,2], yerr=moments_std[:,2], fmt='.')
+    # # select times of interest
+    # t_min = 1.2 #1.17 #injection at 1.2 for 1101014030
+    # t_max = 1.4 #1.3
+    tidx_min = np.argmin(np.abs(mf.time - t_min))
+    tidx_max = np.argmin(np.abs(mf.time - t_max))
+    time_sel= mf.time[tidx_min: tidx_max]
+
+    # if fitting has been previously done, avoid doing it all again 
+    if refit:
+        mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max)
+
+    # collect moments and respective standard deviations
+    moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
+    moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))#[None] * (tidx_max - tidx_min)
+
+    for chbin in range(mf.maxChan):
+        t=0
+        for tbin in range(tidx_min, tidx_max):
+            if mf.fits[tbin][chbin].good:
+                moments[t,chbin,:] = mf.fits[tbin][chbin].m_avg
+                moments_std[t,chbin,:] = mf.fits[tbin][chbin].m_std
+            else:
+                moments[t,chbin,:] = np.zeros(3)
+                moments_std[t,chbin,:] = np.zeros(3)
+            t+=1
+
+    moments = np.array(moments)
+    moments_std = np.array(moments_std)
+
+    # chsel=3
+    # mom = moments[:,chsel,:]
+    # mom_std = moments_std[:,chsel,:]
+    # mask = np.logical_and(mom[:,0]<10.0,mom[:,1]<10.0,mom[:,2]<10.0)#[0]
+    # f, a = plt.subplots(3, 1, sharex=True)
+
+    # a[0].errorbar(time_sel[mask], mom[mask,0], yerr=mom_std[mask,0], fmt='.')
+    # a[0].set_ylabel('0th moment')
+    # a[1].errorbar(time_sel[mask], mom[mask,1], yerr=mom_std[mask,1], fmt='.')
+    # a[1].set_ylabel('1st moment')
+    # a[2].errorbar(time_sel[mask], mom[mask,2], yerr=mom_std[mask,2], fmt='.')
+    # a[2].set_ylabel('2nd moment')
+    # a[2].set_xlabel(r'$\lambda$ [nm]')
+
+    # load previous fit of 1101014019 from THACO's routines
+    with open('/home/sciortino/shot_1101014019/signals_1101014019.pkl','rb') as f:
+        signals=pkl.load(f)
+
+    # TEMPORARILY get Hirex-Sr position structure from previous runs
+    pos=signals[0].pos[0:31,:] # ask Norman how to adjust this
+
+    # Get fitted results for brightness
+    hirex_signal = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    hirex_uncertainty = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    for chbin in range(mf.maxChan):
+        t=0
+        for tbin in range(tidx_min, tidx_max):
+            if mf.fits[tbin][chbin].good:
+                hirex_signal[t,chbin] = mf.fits[tbin][chbin].m_avg[0]
+                hirex_uncertainty[t,chbin] = mf.fits[tbin][chbin].m_std[0]
+            else:
+                hirex_signal[t,chbin] = np.nan
+                hirex_uncertainty[t,chbin] = np.nan
+            t+=1
+
+    # adapt this mask based on experience
+    mask=np.logical_and(hirex_signal>0.2, hirex_uncertainty>0.05)
+    hirex_signal[mask]=np.nan
+    hirex_uncertainty[mask]=np.nan
+
+    # plot time series of Hirex-Sr signals for all channels
+    plt.figure()
+    for i in range(hirex_signal.shape[1]):
+        plt.errorbar(time_sel, hirex_signal[:,i], hirex_uncertainty[:,i], fmt='-.', label='ch. %d'%i)
+    leg=plt.legend(fontsize=8)
+    leg.draggable()
+
+    # store signals in format for MITIM analysis
+    inj = bsfc_helper.Injection(t_min, t_min-0.02, t_max)
+    sig=bsfc_helper.HirexData(shot=shot,
+        sig=hirex_signal, 
+        unc=hirex_uncertainty, 
+        pos=pos,
+        time=time_sel,
+        tht=mf.tht,
+        injection=inj, 
+        debug_plots=True)
+
+    # optionally, save signal to current directory in pkl format
+    if save:
+        with open('hirex_sig_%d.pkl'%shot,'wb') as f:
+            pkl.dump(sig.signal, f, protocol=pkl.HIGHEST_PROTOCOL)
+
+    # optionally, compare obtained normalized fits with those from THACO fits of 1101014019
+    if compare:
+        plt.figure()
+        plt.subplot(211)
+        for i in range(sig.signal.y.shape[1]):
+            plt.errorbar(sig.signal.t, sig.signal.y_norm[:,i], sig.signal.std_y_norm[:,i])#, '.-')
+        plt.title('new fits')
+
+        plt.subplot(212)
+        for i in range(sig.signal.y.shape[1]):
+            plt.errorbar(signals[0].t, signals[0].y_norm[:,i], signals[0].std_y_norm[:,i])
+        plt.title('saved fits from 1101014019')
+
+    return sig.signal
 
 # %%
+#mf = MomentFitter(lam_bounds=(3.725, 3.747), primary_line=lya1', shot=1120914036, tht=1, brancha=False)
+#mf = MomentFitter(lam_bounds=(3.725, 3.742), primary_line='lya1', shot=1121002022, tht=0, brancha=False)
+shot=1101014019 #1101014030
+print "Analyzing shot ", shot
+mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
-mf.plotSingleBinFit(tbin, 10)
+# mf.plotSingleBinFit(tbin, 10)
+
+signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True)
