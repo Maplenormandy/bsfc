@@ -18,7 +18,9 @@ import emcee
 from collections import namedtuple
 import bsfc_helper
 import cPickle as pkl
-
+import bsfc_autocorr
+import pdb
+import corner
 # %%
 class LineModel:
     """
@@ -78,6 +80,28 @@ class LineModel:
             cind = cind + self.hermFuncs[i]
 
         return noise, center, scale, herm
+
+    def thetaLabels(self):
+        labels=[]
+        # noise labels
+        if self.noiseFuncs>=1:
+            labels.append('$c_n$')
+        elif self.noiseFuncs>=2:
+            labels.append('$m_n$')
+        elif self.noiseFuncs == 3:
+            labels.append('$q_n$')
+
+        # labels for center shift and scale
+        labels.append('$\lambda_c$')
+        labels.append('$s$')
+
+        # labels for Hermite function coefficients
+        coeffs_labels=['a','b','c']
+        for line in range(self.nfit):
+            for h in range(self.hermFuncs[0]):
+                labels.append('$%s_%d$'%(coeffs_labels[line],h))
+      
+        return labels
         
     
     def hermiteConstraints(self):
@@ -292,7 +316,6 @@ class LineModel:
 
 
     
-
 class BinFit:
     """
     Performs a nonlinear fit and MCMC error estimate of given binned data
@@ -331,19 +354,19 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml):
+    def mcmcSample(self, theta_ml, nsteps):
         ndim, nwalkers = len(theta_ml), len(theta_ml)*4
         pos = [theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
 
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lineModel.lnprob)
-        sampler.run_mcmc(pos, 1024)
+        sampler.run_mcmc(pos, nsteps)
         
-        samples = sampler.chain[:, 512:, :].reshape((-1, ndim))
+        samples = sampler.chain[:, nsteps/2.0:, :].reshape((-1, ndim))
 
         return samples, sampler
 
 
-    def fit(self, mcmc=True):
+    def fit(self, mcmc=True, nsteps=10000):
         theta0 = self.lineModel.guessFit()
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
         if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05? 
@@ -355,10 +378,11 @@ class BinFit:
             self.result_ml = self.optimizeFit(theta0)
             self.theta_ml = self.result_ml['x']
             if mcmc:
-                self.samples, self.sampler = self.mcmcSample(self.theta_ml)
+                self.samples, self.sampler = self.mcmcSample(self.theta_ml, nsteps)
             else:
                 self.samples = np.array([self.theta_ml]*50)
 
+            bsfc_autocorr.plot_convergence(self.sampler)
             self.m_samples = np.apply_along_axis(self.lineModel.modelMoments, axis=1, arr=self.samples)
             self.m_ml = self.lineModel.modelMoments(self.theta_ml)
 
@@ -444,8 +468,8 @@ class MomentFitter:
         self.lam_all = self.branchNode.getNode('SPEC:LAM').data()
 
         # Maximum number of channels, time bins
-        self.maxChan = np.max(self.branchNode.getNode('BINNING:CHMAP').data())
-        self.maxTime = np.max(self.branchNode.getNode('BINNING:TMAP').data())
+        self.maxChan = np.max(self.branchNode.getNode('BINNING:CHMAP').data())+1
+        self.maxTime = np.max(self.branchNode.getNode('BINNING:TMAP').data())+1
 
         # get time basis
         tmp=self.branchNode.getNode('SPEC:SIG').dim_of(1)
@@ -456,7 +480,7 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-    def fitSingleBin(self, tbin, chbin):
+    def fitSingleBin(self, tbin, chbin, nsteps=1024):
         w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
         lam = self.lam_all[w0:w1,tbin,chbin]
         specBr = self.specBr_all[w0:w1,tbin,chbin]
@@ -468,8 +492,8 @@ class MomentFitter:
         # self.fits[tbin, chbin] = bf
         self.fits[tbin][chbin] = bf
 
-        print "Now fitting tbin=", tbin, ', chbin=', chbin,
-        good = bf.fit()
+        print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
+        good = bf.fit(nsteps=nsteps)
         if not good:
             print "not worth fitting"
         else:
@@ -628,9 +652,8 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
     # load previous fit of 1101014019 from THACO's routines
     with open('/home/sciortino/shot_1101014019/signals_1101014019.pkl','rb') as f:
         signals=pkl.load(f)
-
     # TEMPORARILY get Hirex-Sr position structure from previous runs
-    pos=signals[0].pos[0:31,:] # ask Norman how to adjust this
+    pos=signals[0].pos
 
     # Get fitted results for brightness
     hirex_signal = np.zeros((tidx_max-tidx_min, mf.maxChan))
@@ -696,6 +719,10 @@ shot=1101014019 #1101014030
 print "Analyzing shot ", shot
 mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
-# mf.plotSingleBinFit(tbin, 10)
+# tbin=126; chbin=18
+# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1500)
+# corner.corner(mf.fits[tbin][chbin].sampler.chain[10,:,:], labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
+# mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
-signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True)
+# plotOverChannels(mf, tbin=126, plot=True)
+#signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=True)
