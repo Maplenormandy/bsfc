@@ -301,8 +301,12 @@ class LineModel:
     def lnprior(self, theta):
         noise, center, scale, herm = self.unpackTheta(theta)
         herm0 = np.array([h[0] for h in herm])
+        # pdb.set_trace()
+        herm1= np.array([h[1] for h in herm])
+        herm2 = np.array([h[2] for h in herm])
 
-        if np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0):
+        if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and 
+            np.all(herm0-10*np.abs(herm1)>0) and np.all(herm0-10*np.abs(herm2)>0)):
             return 0.0
         else:
             return -np.inf
@@ -361,7 +365,7 @@ class BinFit:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lineModel.lnprob)
         sampler.run_mcmc(pos, nsteps)
         
-        samples = sampler.chain[:, nsteps/2.0:, :].reshape((-1, ndim))
+        samples = sampler.chain[:, int(nsteps/2.0):, :].reshape((-1, ndim))
 
         return samples, sampler
 
@@ -382,7 +386,7 @@ class BinFit:
             else:
                 self.samples = np.array([self.theta_ml]*50)
 
-            bsfc_autocorr.plot_convergence(self.sampler)
+            # bsfc_autocorr.plot_convergence(self.sampler)
             self.m_samples = np.apply_along_axis(self.lineModel.modelMoments, axis=1, arr=self.samples)
             self.m_ml = self.lineModel.modelMoments(self.theta_ml)
 
@@ -462,11 +466,12 @@ class MomentFitter:
 
         self.branchNode = self.specTree.getNode(branchPath)
 
+        # pdb.set_trace()
         # Indices are [lambda, time, channel]
         self.specBr_all = self.branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = self.branchNode.getNode('SPEC:SIG').data()
         self.lam_all = self.branchNode.getNode('SPEC:LAM').data()
-
+        
         # Maximum number of channels, time bins
         self.maxChan = np.max(self.branchNode.getNode('BINNING:CHMAP').data())+1
         self.maxTime = np.max(self.branchNode.getNode('BINNING:TMAP').data())+1
@@ -475,8 +480,6 @@ class MomentFitter:
         tmp=self.branchNode.getNode('SPEC:SIG').dim_of(1)
         mask = [tmp[0]>-1][0]
         self.time = np.asarray(tmp[0][mask])
-        # sanity check:
-        assert self.time.shape[0] == self.maxTime + 1
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
@@ -527,7 +530,6 @@ class MomentFitter:
         if bf.good:
             pred = bf.lineModel.modelPredict(bf.theta_ml)
             a0.plot(bf.lam, pred, c='r')
-
 
             for samp in range(25):
                 theta = bf.samples[np.random.randint(len(bf.samples))]
@@ -605,7 +607,6 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
     Optionally, set compare=True to plot fits against those obtained for shot
     1101014019 using THACO's fitting routines. 
     '''
-
     # # select times of interest
     # t_min = 1.2 #1.17 #injection at 1.2 for 1101014030
     # t_max = 1.4 #1.3
@@ -715,14 +716,16 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
 # %%
 #mf = MomentFitter(lam_bounds=(3.725, 3.747), primary_line=lya1', shot=1120914036, tht=1, brancha=False)
 #mf = MomentFitter(lam_bounds=(3.725, 3.742), primary_line='lya1', shot=1121002022, tht=0, brancha=False)
-shot=1101014019 #1101014030
+shot=1101014030 #1101014030 #1101014019
 print "Analyzing shot ", shot
 mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
-# tbin=126; chbin=18
-# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1500)
-# corner.corner(mf.fits[tbin][chbin].sampler.chain[10,:,:], labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
+# tbin=136; chbin=28
+# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1024)
+# # # corner.corner(mf.fits[tbin][chbin].sampler.chain[10,:,:], labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
 # mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
 # plotOverChannels(mf, tbin=126, plot=True)
-#signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=True)
+# signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=True, compare=True)
+
+signal=inj_brightness(mf, t_min=1.17, t_max=1.3, save=True, refit=True, compare=True)

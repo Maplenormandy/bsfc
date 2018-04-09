@@ -63,7 +63,7 @@ def autocorr_new(y, c=5.0):
 
 def plot_convergence(sampler, dim=1):
 	# look at flattened chains in the dim dimension
-	pdb.set_trace()
+	# pdb.set_trace()
 	if sampler.chain.shape[2]>dim:
 		chain = sampler.chain[:, :, dim].T
 	else:
