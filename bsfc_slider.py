@@ -5,6 +5,24 @@ Functions to visualize multidimensional data using a slider plot.
 @author: sciortino
 """
 
+import numpy as np
+import matplotlib.pyplot as plt
+plt.ion()
+
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import Axes3D
+
+import matplotlib.gridspec as mplgs
+import matplotlib.widgets as mplw
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.colors import LogNorm
+import itertools
+import pdb
+
 def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False, **kwargs):
     """Make a plot to explore multidimensional data.
     
@@ -44,7 +62,7 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
     ls_cycle = itertools.cycle(ls_vals)
     
     l = []
-    
+    # pdb.set_trace()
     for v, l_ in zip(z, labels):
         tmp, = a_plot.plot(x, v[:, 0], ls_cycle.next(), label=l_, **kwargs)
         l.append(tmp)
