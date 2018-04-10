@@ -61,17 +61,19 @@ def autocorr_new(y, c=5.0):
     window = auto_window(taus, c)
     return taus[window]
 
-def plot_convergence(sampler, dim=1):
+def plot_convergence(sampler, dim=1, nsteps=1024):
 	# look at flattened chains in the dim dimension
 	# pdb.set_trace()
 	if sampler.chain.shape[2]>dim:
-		chain = sampler.chain[:, :, dim].T
+		chain = sampler.chain[:, :, dim]
 	else:
 		print "chosen chain dimension is too large! Using dim=1 instead"
-		chain = sampler.chain[:, :, 0].T
+		chain = sampler.chain[:, :, 0]
 
 	plt.figure()
-	plt.hist(chain.flatten(), 100)
+	
+	print chain.shape
+	plt.hist(chain[:,int(nsteps/2.0):].flatten(), 100)
 	plt.title('chains histogram long dim=%d'%dim)
 	plt.gca().set_yticks([])
 	plt.xlabel(r"$\theta$")
@@ -82,16 +84,18 @@ def plot_convergence(sampler, dim=1):
 	gw2010 = np.empty(len(N))
 	new = np.empty(len(N))
 	for i, n in enumerate(N):
-	    gw2010[i] = autocorr_gw2010(chain[:, :n])
-	    new[i] = autocorr_new(chain[:, :n])
+	    gw2010[i] = autocorr_gw2010(chain[:,:n])
+	    new[i] = autocorr_new(chain[:,:n])
 
 	# Plot the comparisons
 	plt.figure()
 	plt.loglog(N, gw2010, "o-", label="G\&W 2010")
 	plt.loglog(N, new, "o-", label="new")
 	ylim = plt.gca().get_ylim()
-	plt.plot(N, N / 50.0, "--k", label=r"$\tau = N/50$")
+	# plt.plot(N, N / 50.0, "--k", label=r"$\tau = N/50$")
 	plt.ylim(ylim)
 	plt.xlabel("number of samples, $N$")
 	plt.ylabel(r"$\tau$ estimates")
-	plt.legend(fontsize=14);
+	leg=plt.legend(fontsize=14)
+	leg.draggable()
+	# pdb.set_trace()

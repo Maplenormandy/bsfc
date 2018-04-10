@@ -306,7 +306,7 @@ class LineModel:
         herm2 = np.array([h[2] for h in herm])
 
         if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and 
-            np.all(herm0-10*np.abs(herm1)>0) and np.all(herm0-10*np.abs(herm2)>0)):
+            np.all(herm0-8*np.abs(herm1)>0) and np.all(herm0-8*np.abs(herm2)>0)):
             return 0.0
         else:
             return -np.inf
@@ -386,7 +386,7 @@ class BinFit:
             else:
                 self.samples = np.array([self.theta_ml]*50)
 
-            # bsfc_autocorr.plot_convergence(self.sampler)
+            bsfc_autocorr.plot_convergence(self.sampler, dim=1, nsteps=nsteps)
             self.m_samples = np.apply_along_axis(self.lineModel.modelMoments, axis=1, arr=self.samples)
             self.m_ml = self.lineModel.modelMoments(self.theta_ml)
 
@@ -720,12 +720,17 @@ shot=1101014030 #1101014030 #1101014019
 print "Analyzing shot ", shot
 mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
-# tbin=136; chbin=28
-# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1024)
-# # # corner.corner(mf.fits[tbin][chbin].sampler.chain[10,:,:], labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
-# mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
+tbin=126; chbin=10 #136
+nsteps=50000
+mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps)
+
+chain = mf.fits[tbin][chbin].sampler.chain[:,int(nsteps/2):,:]
+chain=chain.reshape((-1, chain.shape[-1]))
+
+# corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
+mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
 # plotOverChannels(mf, tbin=126, plot=True)
 # signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=True, compare=True)
 
-signal=inj_brightness(mf, t_min=1.17, t_max=1.3, save=True, refit=True, compare=True)
+# signal=inj_brightness(mf, t_min=1.17, t_max=1.3, save=True, refit=True, compare=True)
