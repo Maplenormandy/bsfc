@@ -17,10 +17,13 @@ import scipy.optimize as op
 import emcee
 from collections import namedtuple
 import bsfc_helper
-import cPickle as pkl
+# import cPickle as pkl
 import bsfc_autocorr
 import pdb
 import corner
+import multiprocessing
+import dill as pkl
+import itertools
 # %%
 class LineModel:
     """
@@ -319,7 +322,26 @@ class LineModel:
             return lp+self.lnlike(theta)
 
 
-    
+
+
+# =====================================================
+
+
+class _LnProbWrapper(object):
+    """wrapper for log-posterior evaluation in parallel emcee.
+    This is needed since instance methods are not pickeable. 
+    """
+    def __init__(self, bf):
+        self.bf = bf
+       
+    def __call__(self, theta):
+        out = self.bf.lineModel.lnprob(theta)
+
+        return out
+
+
+# =====================================================
+
 class BinFit:
     """
     Performs a nonlinear fit and MCMC error estimate of given binned data
@@ -338,7 +360,8 @@ class BinFit:
         self.result_ml = None
         self.theta_ml = None
 
-        self.sampler = None
+        # self.chain = None
+        # self.sampler = None
         self.samples = None
 
         self.good = False
@@ -362,7 +385,7 @@ class BinFit:
         ndim, nwalkers = len(theta_ml), len(theta_ml)*4
         pos = [theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
 
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lineModel.lnprob)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, _LnProbWrapper(self))#, threads=4) # self.lineModel.lnprob
         sampler.run_mcmc(pos, nsteps)
         
         samples = sampler.chain[:, int(nsteps/2.0):, :].reshape((-1, ndim))
@@ -370,7 +393,7 @@ class BinFit:
         return samples, sampler
 
 
-    def fit(self, mcmc=True, nsteps=10000):
+    def fit(self, mcmc=True, nsteps=10000, plot_convergence=False):
         theta0 = self.lineModel.guessFit()
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
         if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05? 
@@ -382,11 +405,14 @@ class BinFit:
             self.result_ml = self.optimizeFit(theta0)
             self.theta_ml = self.result_ml['x']
             if mcmc:
-                self.samples, self.sampler = self.mcmcSample(self.theta_ml, nsteps)
+                self.samples, sampler = self.mcmcSample(self.theta_ml, nsteps)
             else:
                 self.samples = np.array([self.theta_ml]*50)
 
-            bsfc_autocorr.plot_convergence(self.sampler, dim=1, nsteps=nsteps)
+            if plot_convergence:
+                bsfc_autocorr.plot_convergence(sampler, dim=1, nsteps=nsteps)
+            
+
             self.m_samples = np.apply_along_axis(self.lineModel.modelMoments, axis=1, arr=self.samples)
             self.m_ml = self.lineModel.modelMoments(self.theta_ml)
 
@@ -396,6 +422,99 @@ class BinFit:
 
             self.good = True
             return True
+
+
+# %%
+# =====================================================
+
+
+class _TimeBinFitWrapper(object):
+    """ Wrapper to support parallelization of different channels in a 
+    specific time bin. This is needed since instance methods are not pickeable. 
+
+    """
+    def __init__(self, mf, nsteps, tbin):
+        self.mf = mf
+        self.nsteps = nsteps
+        self.tbin = tbin
+
+    def __call__(self, chbin):
+
+        w0, w1 = np.searchsorted(self.mf.lam_all[:,self.tbin,chbin], self.mf.lam_bounds)
+        lam = self.mf.lam_all[w0:w1,self.tbin,chbin]
+        specBr = self.mf.specBr_all[w0:w1,self.tbin,chbin]
+        sig = self.mf.sig_all[w0:w1,self.tbin,chbin]
+
+        # 
+        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
+        # pdb.set_trace()
+
+        print "Now fitting tbin=", self.tbin, ',chbin=', chbin, "with nsteps=", self.nsteps
+        good = bf.fit(nsteps=self.nsteps)
+        if not good:
+            print "not worth fitting"
+
+        return bf
+
+
+
+class _ChBinFitWrapper(object):
+    """ Wrapper to support parallelization of different time bins in a 
+    specific channel bin. This is needed since instance methods are not pickeable. 
+
+    """
+    def __init__(self, mf, nsteps, chbin):
+        self.mf = mf
+        self.nsteps = nsteps
+        self.chbin = chbin
+
+    def __call__(self, tbin):
+
+        w0, w1 = np.searchsorted(self.mf.lam_all[:,tbin,self.chbin], self.mf.lam_bounds)
+        lam = self.mf.lam_all[w0:w1,tbin,self.chbin]
+        specBr = self.mf.specBr_all[w0:w1,tbin,self.chbin]
+        sig = self.mf.sig_all[w0:w1,tbin,self.chbin]
+
+        # create bin-fit
+        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
+
+        print "Now fitting tbin=", tbin, ',chbin=', self.chbin, "with nsteps=", self.nsteps
+        good = bf.fit(nsteps=self.nsteps)
+        if not good:
+            print "not worth fitting"
+
+        return bf
+
+
+class _fitTimeWindowWrapper(object):
+    """ Wrapper to support parallelization of different time bins in a 
+    specific channel bin. This is needed since instance methods are not pickeable. 
+
+    """
+    def __init__(self, mf, nsteps):
+        self.mf = mf
+        self.nsteps = nsteps
+
+    def __call__(self, bins):
+        tbin, chbin = bins
+
+        w0, w1 = np.searchsorted(self.mf.lam_all[:,tbin,chbin], mf.lam_bounds)
+        lam = self.mf.lam_all[w0:w1,tbin,chbin]
+        specBr = self.mf.specBr_all[w0:w1,tbin,chbin]
+        sig = self.mf.sig_all[w0:w1,tbin,chbin]
+
+        # create bin-fit
+        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
+
+        print "Now fitting tbin=", tbin, ',chbin=', chbin, "with nsteps=", self.nsteps
+        good = bf.fit(nsteps=self.nsteps)
+        if not good:
+            print "not worth fitting"
+
+        return bf
+
+
+# =====================================================
 
 
 # %%
@@ -452,7 +571,7 @@ class MomentFitter:
 
         self.shot = shot
 
-        self.specTree = MDSplus.Tree('spectroscopy', shot)
+        specTree = MDSplus.Tree('spectroscopy', shot)
 
         ana = '.ANALYSIS'
         if tht > 0:
@@ -464,21 +583,21 @@ class MomentFitter:
 
         branchPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana+br
 
-        self.branchNode = self.specTree.getNode(branchPath)
+        branchNode = specTree.getNode(branchPath)
 
         # pdb.set_trace()
         # Indices are [lambda, time, channel]
-        self.specBr_all = self.branchNode.getNode('SPEC:SPECBR').data()
-        self.sig_all = self.branchNode.getNode('SPEC:SIG').data()
-        self.lam_all = self.branchNode.getNode('SPEC:LAM').data()
+        self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
+        self.sig_all = branchNode.getNode('SPEC:SIG').data()
+        self.lam_all = branchNode.getNode('SPEC:LAM').data()
         
         # Maximum number of channels, time bins
-        self.maxChan = np.max(self.branchNode.getNode('BINNING:CHMAP').data())+1
-        self.maxTime = np.max(self.branchNode.getNode('BINNING:TMAP').data())+1
+        self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
+        self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
 
         # get time basis
-        tmp=self.branchNode.getNode('SPEC:SIG').dim_of(1)
-        mask = [tmp[0]>-1][0]
+        tmp=branchNode.getNode('SPEC:SIG').dim_of(1)
+        mask = [tmp[0]>-1][0 ]
         self.time = np.asarray(tmp[0][mask])
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
@@ -490,33 +609,129 @@ class MomentFitter:
         sig = self.sig_all[w0:w1,tbin,chbin]
 
         bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
-        # import pdb
-        # pdb.set_trace()
-        # self.fits[tbin, chbin] = bf
+
         self.fits[tbin][chbin] = bf
 
         print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
         good = bf.fit(nsteps=nsteps)
+
+        # print self.fits[tbin][chbin].good
         if not good:
             print "not worth fitting"
         else:
             print "--> done"
 
-    def fitTimeBin(self, tbin):
-        for chbin in range(self.maxChan):
-            self.fitSingleBin(tbin, chbin)
-            #plt.close('all')
-            #self.plotSingleBinFit(tbin, chbin)
+    def fitSingleBin_par(self, tbin, chbin, nsteps=1024):
+        w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
+        lam = self.lam_all[w0:w1,tbin,chbin]
+        specBr = self.specBr_all[w0:w1,tbin,chbin]
+        sig = self.sig_all[w0:w1,tbin,chbin]
 
-    def fitChBin(self, chbin):
-        for tbin in range(self.maxTime):
-            self.fitSingleBin(tbin, chbin)
+        bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
 
-    def fitTimeWindow(self, tidx_min, tidx_max):
-        for chbin in range(self.maxChan):
-            for tbin in range(tidx_min, tidx_max):
+        print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
+        good = bf.fit(nsteps=nsteps)
+        if not good:
+            print "not worth fitting"
+        # else:
+        #     print "--> done"
+
+        return bf
+
+    def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024):
+        '''
+        Fit signals from all channels in a specific time bin. 
+        Functional parallelization.
+
+        '''
+        if parallel:
+            if nproc==None:
+                nproc = multiprocessing.cpu_count()
+            print "running fitTimeBin in parallel with nproc=", nproc
+            pool = multiprocessing.Pool(processes=nproc)
+            
+            # requires a wrapper for multiprocessing to pickle the function
+            ff = _TimeBinFitWrapper(self,nsteps=nsteps, tbin=tbin)
+            
+            # map range of channels and compute each
+            self.fits[tbin][:] = pool.map(ff, range(self.maxChan))
+        else: 
+            # fit channel bins sequentially
+            for chbin in range(self.maxChan):
                 self.fitSingleBin(tbin, chbin)
 
+    def fitChBin(self, chbin, parallel=True, nproc=None, nsteps=1024):
+        '''
+        Fit signals from all times in a specific channel. 
+        Functional parallelization.
+
+        '''
+        if parallel:
+            if nproc==None:
+                nproc = multiprocessing.cpu_count()
+            print "running fitChBin in parallel with nproc=", nproc
+            pool = multiprocessing.Pool(processes=nproc)
+
+            # requires a wrapper for multiprocessing to pickle the function
+            ff = _ChBinFitWrapper(self, nsteps=nsteps, chbin=chbin)
+            
+            # map range of channels and compute each
+            self.fits[:][chbin] = pool.map(ff, range(self.maxTime))
+
+        else: 
+            # fit time bins sequentially
+            for tbin in range(self.maxTime):
+                self.fitSingleBin(tbin, chbin)
+
+
+    def fitTimeWindow(self, tidx_min=None, tidx_max=None, parallel=True, 
+        nproc=None, nsteps=1000):
+        '''
+        Fit all signals within a time window, across all channels. 
+        Optional parallelization.
+
+        If tidx_min and tidx_max are not specified (i.e. left as "None"),
+        then the routine defaults to compute results across the entire time window of 
+        Hirex-Sr's measurements. 
+        '''
+        if tidx_min==None:
+            tidx_min=0
+        if tidx_max==None:
+            tidx_max=self.MaxTime
+
+        if parallel:
+            if nproc==None:
+                nproc = multiprocessing.cpu_count()
+            print "running fitTimeWindow in parallel with nproc=", nproc
+            pool = multiprocessing.Pool(processes=nproc)
+
+            # requires a wrapper for multiprocessing to pickle the function
+            ff = _fitTimeWindowWrapper(self,nsteps=nsteps)
+            
+            # map range of channels and compute each
+            map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(self.maxChan)))
+            map_args = [list(a) for a in map_args_tpm]
+
+            # initialize empty array to hold fits from parallel process
+            # fits = np.empty((tidx_max-tidx_min, self.maxChan))
+
+            # parallel run
+            fits_tmp = pool.map(ff, np.asarray(map_args))
+            fits = np.asarray(fits_tmp).reshape((tidx_max-tidx_min,self.maxChan))
+            pdb.set_trace()
+            # recollect results into default fits structure
+            t=0
+            for tbin in range(tidx_min, tidx_max):
+                self.fits[tbin][:] = fits[t,:]
+                t+=1
+            pdb.set_trace()
+
+        else:
+            for chbin in range(self.maxChan):
+                for tbin in range(tidx_min, tidx_max):
+                    self.fitSingleBin(tbin, chbin)
+
+    #####
     def plotSingleBinFit(self, tbin, chbin):
         # bf = self.fits[tbin,chbin]
         bf = self.fits[tbin][chbin]
@@ -558,13 +773,20 @@ class MomentFitter:
         plt.show()
 
 
-def plotOverChannels(mf, tbin=126, plot=True): 
+
+
+
+# %% =======================================================
+
+
+def plotOverChannels(mf, tbin=126, plot=True, parallel=True, nproc=None, nsteps=1000): 
     '''
     Function to fit signals for a specified time bin, across all channels. 
     Optionally, plots 0th, 1st and 2nd moment across channels.
     '''
 
-    mf.fitTimeBin(tbin)
+    mf.fitTimeBin(tbin, parallel=parallel, nproc=None, nsteps=nsteps)
+    # mf = fitTimeBin(mf, tbin, parallel=True, nproc=None)
 
     # mf.fitSingleBin(tbin, 29)
     #mf.plotSingleBinFit(tbin, 29)
@@ -597,8 +819,10 @@ def plotOverChannels(mf, tbin=126, plot=True):
 
 
 
-# #%% =======================
-def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=True):
+# %% =====================================
+
+def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=True, 
+    parallel=True, nsteps=1000):
     '''
     Function to obtain time series of Hirex-Sr signals in all channels. 
     This saves files containing the signals needed for MITIM analysis. 
@@ -614,13 +838,18 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
     tidx_max = np.argmin(np.abs(mf.time - t_max))
     time_sel= mf.time[tidx_min: tidx_max]
 
+    print "fitting time bins between ", tidx_min, " and ", tidx_max
     # if fitting has been previously done, avoid doing it all again 
     if refit:
-        mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max)
+        mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps)
+
+    pdb.set_trace()
 
     # collect moments and respective standard deviations
     moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
     moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))#[None] * (tidx_max - tidx_min)
+
+    pdb.set_trace()
 
     for chbin in range(mf.maxChan):
         t=0
@@ -656,6 +885,9 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
     # TEMPORARILY get Hirex-Sr position structure from previous runs
     pos=signals[0].pos
 
+    # 
+    # 
+    pdb.set_trace()
     # Get fitted results for brightness
     hirex_signal = np.zeros((tidx_max-tidx_min, mf.maxChan))
     hirex_uncertainty = np.zeros((tidx_max-tidx_min, mf.maxChan))
@@ -670,6 +902,7 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
                 hirex_uncertainty[t,chbin] = np.nan
             t+=1
 
+    pdb.set_trace()
     # adapt this mask based on experience
     mask=np.logical_and(hirex_signal>0.2, hirex_uncertainty>0.05)
     hirex_signal[mask]=np.nan
@@ -713,6 +946,13 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
 
     return sig.signal
 
+
+
+
+
+
+
+
 # %%
 #mf = MomentFitter(lam_bounds=(3.725, 3.747), primary_line=lya1', shot=1120914036, tht=1, brancha=False)
 #mf = MomentFitter(lam_bounds=(3.725, 3.742), primary_line='lya1', shot=1121002022, tht=0, brancha=False)
@@ -721,16 +961,23 @@ print "Analyzing shot ", shot
 mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
 tbin=126; chbin=10 #136
-nsteps=50000
-mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps)
+nsteps=100
 
-chain = mf.fits[tbin][chbin].sampler.chain[:,int(nsteps/2):,:]
-chain=chain.reshape((-1, chain.shape[-1]))
+# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps)
+
+# with open('mf_%d_%d.pkl'%(shot,nsteps),'wb') as f:
+#     pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
+
+# chain = mf.fits[tbin][chbin].sampler.chain[:,int(nsteps/2):,:]
+# chain=chain.reshape((-1, chain.shape[-1]))
+
+# chain = mf.fits[tbin][chbin].samples
+# corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
 
 # corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
-mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
+# mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
-# plotOverChannels(mf, tbin=126, plot=True)
-# signal=inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=True, compare=True)
+# plotOverChannels(mf, tbin=126, plot=True, parallel=True)
+signal=inj_brightness(mf, t_min=1.2, t_max=1.210, save=False, refit=True, compare=True, nsteps=nsteps)
 
 # signal=inj_brightness(mf, t_min=1.17, t_max=1.3, save=True, refit=True, compare=True)
