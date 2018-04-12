@@ -1,0 +1,105 @@
+\documentclass{beamer}
+
+\usetheme{Boadilla}
+\usecolortheme{beaver}
+
+\usepackage{physics}
+\usepackage{units}
+
+\begin{document}
+
+
+\title[BSFC]{Optimal Bayesian Spectral Fitting of Near-Gaussian Lines with Gauss-Hermite Functions}
+
+\author[N.M. Cao and F. Sciortino]{Norman M. Cao, Francesco Sciortino}
+\date{April xxth, 2018}
+
+\begin{frame}
+	\titlepage
+\end{frame}
+
+\section{Math}
+
+\begin{frame}
+	\frametitle{Background and Motivation}
+	HIREX and such
+\end{frame}
+
+\begin{frame}
+	\frametitle{Gauss-Hermite Functions}
+	The (Probabilist's) Hermite polynomials are an orthogonal set of polynomials under a Gaussian weight function, e.g. satisfying
+	\begin{equation}
+	\int_{-\infty}^{\infty} He_m(x) He_n(x) e^{-x^2/2} \dd{x} \equiv \left< He_m, He_n \right> = \sqrt{2 \pi} n! \delta_{nm}
+	\end{equation}
+	The first few and their plots of the Hermite function \(He_n(x) e^{-x^2/2}\) are shown below
+	\begin{equation}
+	\begin{gathered}
+	He_0(x) = 1 \\
+	He_1(x) = x \\
+	He_2(x) = x^2-1
+	\end{gathered}
+	\end{equation}
+	Note that for example, the 0th Hermite function is simply a Gaussian.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Gauss-Hermite Functions and Moments}
+	Given a function \(h(x) \exp(-x^2/2) = \left[\sum_j a_j He_j(x)\right] \exp(-x^2/2)\), the first few (unnormalized) moments are very easy to calculate:
+	
+	\begin{equation}
+	\begin{gathered}
+	M_0 = \int_{-\infty}^{\infty} 1 \cdot \sum_j a_j He_j(x) \exp(-x^2/2) = \left< 1, h \right> = \sqrt{2\pi} a_0 \\
+	M_1 = \left< x, h \right> = \sqrt{2 \pi}a_1 \\
+	M_2 = \left< x^2, h \right> = A a_0 + B a_2
+	\end{gathered}
+	\end{equation}
+	
+	Note that the higher order Hermite functions are not involved with the moment calculations at all
+\end{frame}
+
+\begin{frame}
+	\frametitle{Chi-Squared Minimization of Near-Gaussian Lines}
+	Fitting of spectral lines typically involves minimizing \(\chi^2\), which from the Bayesian perspective, is finding the maximum a posteriori (MAP) estimate of a given set of photon counts
+	\begin{equation}
+	\hat{\theta} = \underset{\theta}{\operatorname{argmin}} \left[\sum_{i} \frac{(f_i(\theta) - N_i)^2}{N_i}\right] \equiv \underset{\theta}{\operatorname{argmin}} \left[\chi^2(\theta, \{N_i\})\right]
+	\end{equation}
+	If \(\mu(N_i) = C + (A_0+A(x_i))e^(-x_i^2/2) \), \(f_i = \hat{C} + h(\theta, x_i) e^(-x_i^2/2)\), where \(x_i \equiv (\lambda_i - \lambda_c)/s\) and \(A_0\gg C, A\), then
+	\begin{align}
+	E[\chi^2] &\approx \sum_{i} \frac{(h(\theta, x_i) - (A_0 + A(x_i))^2 e^{-x^2}}{A_0 e^{-x^2/2}} \\
+	&\approx \sum_{i} D \left[(h(\theta, x_i) - (A_0 + A(x_i)))^2 e^{-x^2/2}\right] \\
+	&\approx \left<h(\theta) - (A_0 + A), h(\theta)-(A_0 + A) \right>
+	\end{align}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Orthogonal Projection onto Hermite Basis}
+	\begin{equation}
+	E[\chi^2] \approx \left<h(\theta) - (A_0 + A), h(\theta)-(A_0 + A) \right>
+	\end{equation}
+	\begin{itemize}
+		\item This is a least squares minimization with a generalized inner product. The Hermite polynomials form an orthogonal basis for this inner product.
+		\item If \(h(\theta)\) is a sum of Hermite polynomials, then the solution is given by an orthogonal projection of \(A_0 + A\) onto its component Hermite polynomials.
+		\item For calculating moments, it doesn't even matter if convergence is bad! The polynomials are orthogonal!
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Fitting Actual Data}
+	\begin{itemize}
+		\item To extend to multiple lines, approximate the sum over multiple regions - multiple approximately orthogonal Hermite basis sets
+		\item Need to find \(x_i = (\lambda_i - \lambda_0)/s\) - assume the lowest order center and scale parameters are the same for all lines
+		\item Perform nonlinear optimization
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Propagation of Error}
+	Approximating the output error as Gaussian (see the corner plots), can perform propagation of error:
+	\begin{equation}
+	\Sigma^\theta = J \Sigma^N J^T
+	\end{equation}
+	How to calculate this though, it's a nonlinear optimization? Key is that for fixed \(\lambda_0, s\) then the Hermite polynomial coefficients are the result of an orthogonal projection of the vector \(N\) (i.e. a linear operation), so that part is easy. To calculate \(\pdv{s}{N}\), note that \(\theta(\lambda_0,s, \{a_j\})\) calculate the pullback of \(ds\) onto \(V\) and then project \(N\) onto the resulting vector space.
+\end{frame}
+
+
+\end{document}
