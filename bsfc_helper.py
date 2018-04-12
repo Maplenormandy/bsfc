@@ -73,10 +73,9 @@ class HirexData(object):
             (self.hirex_signal > 1.5)
         )
         
-        # Flag bad points:
-        # this won't work unless we can access a valid pos array 
-        root = HirexWindow(self)
-        root.mainloop()
+        # Flag bad points: this won't work well unless we can access a valid pos array 
+        # root = HirexWindow(self)
+        # root.mainloop()
         
         if debug_plots:
             f = self.plot_data()

@@ -17,7 +17,9 @@ import corner
 import bsfc_main
 import bsfc_slider
 import scipy
+import sys
 
+NTASKS = int(sys.argv[1])
 # %%
 
 # %%
@@ -44,7 +46,8 @@ if load:
 	with open('hirex_sig_%d.pkl'%shot,'rb') as f:
 		signal=pkl.load(f)
 else:
-	sig=inj_brightness(mf, t_min=t_min, t_max=t_max, save=True, refit=True, compare=True)
+	sig=bsfc_main.inj_brightness(mf, t_min=t_min, t_max=t_max, save=True, refit=True, compare=True, 
+        nsteps=nsteps, nproc = NTASKS)
 	signal=sig.signal
 
 

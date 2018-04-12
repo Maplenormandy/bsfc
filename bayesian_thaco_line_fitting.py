@@ -24,6 +24,8 @@ import corner
 import multiprocessing
 import dill as pkl
 import itertools
+import time as time_
+
 # %%
 class LineModel:
     """
@@ -304,7 +306,6 @@ class LineModel:
     def lnprior(self, theta):
         noise, center, scale, herm = self.unpackTheta(theta)
         herm0 = np.array([h[0] for h in herm])
-        # pdb.set_trace()
         herm1= np.array([h[1] for h in herm])
         herm2 = np.array([h[2] for h in herm])
 
@@ -447,9 +448,8 @@ class _TimeBinFitWrapper(object):
 
         # 
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
-        # pdb.set_trace()
 
-        print "Now fitting tbin=", self.tbin, ',chbin=', chbin, "with nsteps=", self.nsteps
+        print "Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps
         good = bf.fit(nsteps=self.nsteps)
         if not good:
             print "not worth fitting"
@@ -532,14 +532,14 @@ class MomentFitter:
         #speedOfLight = 2.998e+5 # speed of light in km/s
 
         # Load all wavelength data
-        with open('/home/normandy/idl/HIREXSR/hirexsr_wavelengths.csv', 'r') as f:
+        with open('hirexsr_wavelengths.csv', 'r') as f:
             lineData = [s.strip().split(',') for s in f.readlines()]
             lineLam = np.array([float(ld[1]) for ld in lineData[2:]])
             lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
             lineName = np.array([ld[3] for ld in lineData[2:]])
 
         # Load atomic data, for calculating line widths, etc...
-        with open('/home/normandy/git/psfc-misc/ReallyMiscScripts/atomic_data.csv', 'r') as f:
+        with open('atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
             atomSymbol = np.array([ad[1] for ad in atomData[1:84]])
             atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
@@ -585,7 +585,6 @@ class MomentFitter:
 
         branchNode = specTree.getNode(branchPath)
 
-        # pdb.set_trace()
         # Indices are [lambda, time, channel]
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
@@ -596,9 +595,9 @@ class MomentFitter:
         self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
 
         # get time basis
-        tmp=branchNode.getNode('SPEC:SIG').dim_of(1)
-        mask = [tmp[0]>-1][0 ]
-        self.time = np.asarray(tmp[0][mask])
+        tmp=np.asarray(branchNode.getNode('SPEC:SIG').dim_of(1))
+        mask = [tmp>-1]
+        self.time = tmp[mask]
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
@@ -718,13 +717,12 @@ class MomentFitter:
             # parallel run
             fits_tmp = pool.map(ff, np.asarray(map_args))
             fits = np.asarray(fits_tmp).reshape((tidx_max-tidx_min,self.maxChan))
-            pdb.set_trace()
+
             # recollect results into default fits structure
             t=0
             for tbin in range(tidx_min, tidx_max):
                 self.fits[tbin][:] = fits[t,:]
                 t+=1
-            pdb.set_trace()
 
         else:
             for chbin in range(self.maxChan):
@@ -822,7 +820,7 @@ def plotOverChannels(mf, tbin=126, plot=True, parallel=True, nproc=None, nsteps=
 # %% =====================================
 
 def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=True, 
-    parallel=True, nsteps=1000):
+    parallel=True, nsteps=1000, nproc=None):
     '''
     Function to obtain time series of Hirex-Sr signals in all channels. 
     This saves files containing the signals needed for MITIM analysis. 
@@ -841,15 +839,11 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
     print "fitting time bins between ", tidx_min, " and ", tidx_max
     # if fitting has been previously done, avoid doing it all again 
     if refit:
-        mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps)
-
-    pdb.set_trace()
+        mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=nproc)
 
     # collect moments and respective standard deviations
     moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
     moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))#[None] * (tidx_max - tidx_min)
-
-    pdb.set_trace()
 
     for chbin in range(mf.maxChan):
         t=0
@@ -880,14 +874,11 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
     # a[2].set_xlabel(r'$\lambda$ [nm]')
 
     # load previous fit of 1101014019 from THACO's routines
-    with open('/home/sciortino/shot_1101014019/signals_1101014019.pkl','rb') as f:
+    with open('signals_1101014019.pkl','rb') as f:
         signals=pkl.load(f)
     # TEMPORARILY get Hirex-Sr position structure from previous runs
     pos=signals[0].pos
 
-    # 
-    # 
-    pdb.set_trace()
     # Get fitted results for brightness
     hirex_signal = np.zeros((tidx_max-tidx_min, mf.maxChan))
     hirex_uncertainty = np.zeros((tidx_max-tidx_min, mf.maxChan))
@@ -902,7 +893,6 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
                 hirex_uncertainty[t,chbin] = np.nan
             t+=1
 
-    pdb.set_trace()
     # adapt this mask based on experience
     mask=np.logical_and(hirex_signal>0.2, hirex_uncertainty>0.05)
     hirex_signal[mask]=np.nan
@@ -951,7 +941,8 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
 
 
 
-
+# Start counting again for multinest:
+start_time=time_.time()
 
 # %%
 #mf = MomentFitter(lam_bounds=(3.725, 3.747), primary_line=lya1', shot=1120914036, tht=1, brancha=False)
@@ -961,7 +952,7 @@ print "Analyzing shot ", shot
 mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
 tbin=126; chbin=10 #136
-nsteps=100
+nsteps=1000
 
 # mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps)
 
@@ -978,6 +969,12 @@ nsteps=100
 # mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
 # plotOverChannels(mf, tbin=126, plot=True, parallel=True)
-signal=inj_brightness(mf, t_min=1.2, t_max=1.210, save=False, refit=True, compare=True, nsteps=nsteps)
+signal=inj_brightness(mf, t_min=1.2, t_max=1.210, save=False, refit=True, compare=False, 
+        nsteps=nsteps, nproc = 32)
 
 # signal=inj_brightness(mf, t_min=1.17, t_max=1.3, save=True, refit=True, compare=True)
+
+
+# end time count
+elapsed_time=time_.time()-start_time
+print 'Time to run: ' + str(elapsed_time) + " s"
