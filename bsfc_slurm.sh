@@ -1,11 +1,11 @@
 #!/bin/bash 
 
-#SBATCH -J bsfc_test
-#SBATCH -N 2
-#SBATCH -n 64
+#SBATCH -J bsfc_run
+#SBATCH -N 1
+#SBATCH -n 32
 #SBATCH --mem-per-cpu=4000
 #SBATCH --exclusive
-#SBATCH --time=11:59:00
+#SBATCH --time=1:59:00
 #SBATCH --partition sched_mit_psfc
 #SBATCH --output %j.out
 #SBATCH --mail-type=END 
@@ -35,19 +35,10 @@ echo "SLURM_JOB_NAME: " $SLURM_JOB_NAME
 echo "SLURM_NTASKS: " $SLURM_NTASKS
 
 # ===========================
+shot=1101014030
+option=3
+nsteps=10000
 
-python bsfc_main.py $SLURM_NTASKS
+python bsfc_run.py $shot $SLURM_NTASKS $option $nsteps
 
-# Run with MPI:
-# mpirun python /tmp/bayesimp_dir/mitim_settings.py $SLURM_JOB_NAME $shot $n_live_points $sampling_efficiency $SLURM_ARRAY_TASK_ID
-
-# Rename output file with job name
-# mv $SLURM_JOB_ID.out $SLURM_JOB_NAME.out
-#rm -r cenv_$SLURM_JOB_ID
-#rm $SLURM_JOB_ID.out
-
-# Output the loaded environment
-# echo ""
-# echo ""
-# echo ""
-# env
+# run python command twice to plot after running this script

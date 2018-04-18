@@ -61,14 +61,14 @@ def autocorr_new(y, c=5.0):
     window = auto_window(taus, c)
     return taus[window]
 
-def plot_convergence(sampler, dim=1, nsteps=1024):
+def plot_convergence(chain, dim=1, nsteps=1024):
 	# look at flattened chains in the dim dimension
 	# pdb.set_trace()
-	if sampler.chain.shape[2]>dim:
-		chain = sampler.chain[:, :, dim]
+	if chain.shape[2]>dim:
+		chain = chain[:, :, dim]
 	else:
 		print "chosen chain dimension is too large! Using dim=1 instead"
-		chain = sampler.chain[:, :, 0]
+		chain = chain[:, :, 0]
 
 	plt.figure()
 	

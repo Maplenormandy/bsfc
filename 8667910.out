@@ -1,0 +1,357 @@
+Tue Apr 17 10:17:58 EDT 2018
+********** Activated Virtual Environment **********
+SLURM_JOB_ID:  8667910
+SLURM_JOB_CPUS_PER_NODE:  32(x2)
+SLURM_CLUSTER_NAME:  eofe7
+SLURM_MEM_PER_CPU:  4000
+SLURM_TASKS_PER_NODE:  32(x2)
+SLURM_JOB_NAME:  bsfc_run
+SLURM_NTASKS:  64
+Analyzing shot  1101014030
+Fitting: ['w' 'wn4' 'wn3']
+----> Loaded pos vector from shot 1101014019
+fitting time bins between  111  and  133
+mf is  <bsfc_main.MomentFitter instance at 0x2aaad54a8320>
+running fitTimeWindow in parallel with nproc= 64
+Now fitting tbin= 111 ,chbin= 0 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 3 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 6 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 9 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 111 ,chbin= 12 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 111 ,chbin= 15 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 18 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 111 ,chbin= 21 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 111 ,chbin= 24 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 27 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 111 ,chbin= 30 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 1 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 4 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 7 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 10 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 13 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 16 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 19 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 22 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 25 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 28 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 112 ,chbin= 31 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 113 ,chbin= 2 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 113 ,chbin= 5 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 113 ,chbin= 8 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin=/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+ /home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+113 ,chbin= 11 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 14 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 17 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 20 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 113 ,chbin= 23 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 113 ,chbin= 26 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 113 ,chbin= 29 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 0 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 3 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 6 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 9 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 12 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 15 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 18 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 21 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 24 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 114 ,chbin= 27 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 30 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 1 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 115 ,chbin= 4 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 115 ,chbin= 7 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 115 ,chbin= 10 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 13 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 16 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 115 ,chbin= 19 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 22 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 25 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 115 ,chbin= 28 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 115 ,chbin= 31 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 116 ,chbin= 2 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+Now fitting tbin= 116 ,chbin= 5 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 8 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 11 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 14 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 17 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 20 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 23 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 26 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 29 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 20 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 5 with nsteps= 10000
+Now fitting tbin= 115 ,chbin= 14 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 22 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 13 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 4 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 3 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 7 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 16 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 29 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 12 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 0 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 20 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 23 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 17 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 26 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 4 with nsteps= 10000
+Now fitting tbin= 112 ,chbin= 2 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 22 with nsteps= 10000
+Now fitting tbin= 111 ,chbin= 13 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 30 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 27 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 24 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 18 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 21 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 15 with nsteps= 10000
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:231: RuntimeWarning: overflow encountered in double_scalars
+  return np.array([m0, m1*1e3, m2*1e6])
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:229: RuntimeWarning: overflow encountered in double_scalars
+  m2 = normFactor*hermxx[0]*scale[line]**2
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:228: RuntimeWarning: overflow encountered in double_scalars
+  m1 = (center[line] - self.linesLam[line])*m0 + normFactor*hermx[0]*scale[line]
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:228: RuntimeWarning: invalid value encountered in double_scalars
+  m1 = (center[line] - self.linesLam[line])*m0 + normFactor*hermx[0]*scale[line]
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:227: RuntimeWarning: overflow encountered in double_scalars
+  m0 = normFactor*herm[line][0]
+Now fitting tbin= 114 ,chbin= 23 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 9 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 12 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 6 with nsteps= 10000
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:231: RuntimeWarning: overflow encountered in double_scalars
+  return np.array([m0, m1*1e3, m2*1e6])
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:229: RuntimeWarning: overflow encountered in double_scalars
+  m2 = normFactor*hermxx[0]*scale[line]**2
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:228: RuntimeWarning: overflow encountered in double_scalars
+  m1 = (center[line] - self.linesLam[line])*m0 + normFactor*hermx[0]*scale[line]
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:228: RuntimeWarning: invalid value encountered in double_scalars
+  m1 = (center[line] - self.linesLam[line])*m0 + normFactor*hermx[0]*scale[line]
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:227: RuntimeWarning: overflow encountered in double_scalars
+  m0 = normFactor*herm[line][0]
+/home/software/psfc/local/lib/py27/numpy/core/_methods.py:116: RuntimeWarning: overflow encountered in multiply
+  x = um.multiply(x, x, out=x)
+Now fitting tbin= 115 ,chbin= 23 with nsteps= 10000
+Now fitting tbin= 113 ,chbin= 4 with nsteps= 10000
+Now fitting tbin= 114 ,chbin= 8 with nsteps= 10000
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:295: RuntimeWarning: overflow encountered in square
+  return -np.sum((self.specBr-pred)**2/self.sig**2)
+Now fitting tbin= 115 ,chbin= 26 with nsteps= 10000
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:335: RuntimeWarning: invalid value encountered in subtract
+  lnpdiff = (self.dim - 1.) * np.log(zz) + newlnprob - lnprob0
+/home/sciortino/cenv/lib/python2.7/site-packages/emcee/ensemble.py:336: RuntimeWarning: invalid value encountered in greater
+  accept = (lnpdiff > np.log(self._random.rand(len(lnpdiff))))
+/home/software/psfc/local/lib/py27/numpy/polynomial/hermite_e.py:943: RuntimeWarning: overflow encountered in multiply
+  return c0 + c1*x
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:156: RuntimeWarning: invalid value encountered in multiply
+  hn[:,i] = hermeval(lamEv[:,i], herm[i]) * gauss[:,i]
+/nobackup1b/users/sciortino/bsfc/bsfc_main.py:157: RuntimeWarning: invalid value encountered in multiply
+  hnEdge[:,i] = hermeval(lamEdgeEv[:,i], herm[i]) * gaussEdge[:,i]
+NaN value of lnprob for parameters: 
+[  2.26203700e+001  -6.01286808e+305   5.86548499e+303   8.61190360e+304
+   6.54339633e+303  -1.35318159e+303   2.43277301e+305   2.97324196e+304
+  -1.28753907e+304   1.64171010e+305   1.35741961e+304  -1.81689575e+304]
+Traceback (most recent call last):
+  File "bsfc_run.py", line 148, in <module>
+    
+  File "/nobackup1b/users/sciortino/bsfc/bsfc_main.py", line 835, in inj_brightness
+    mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=nproc)
+  File "/nobackup1b/users/sciortino/bsfc/bsfc_main.py", line 719, in fitTimeWindow
+    fits_tmp = pool.map(ff, np.asarray(map_args))
+  File "/cm/shared/engaging/python/2.7.12/lib/python2.7/multiprocessing/pool.py", line 251, in map
+    return self.map_async(func, iterable, chunksize).get()
+  File "/cm/shared/engaging/python/2.7.12/lib/python2.7/multiprocessing/pool.py", line 567, in get
+    raise self._value
+ValueError: lnprob returned NaN.
+Now fitting tbin= 117 ,chbin= 0 with nsteps= 10000
+Now fitting tbin= 116 ,chbin= 3 with nsteps= 10000

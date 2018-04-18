@@ -6,6 +6,7 @@ Functions to visualize multidimensional data using a slider plot.
 """
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.ion()
 
@@ -23,7 +24,9 @@ from matplotlib.colors import LogNorm
 import itertools
 import pdb
 
-def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False, **kwargs):
+mpl.rcParams['errorbar.capsize'] = 3
+
+def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False, **kwargs):
     """Make a plot to explore multidimensional data.
     
     x : array of float, (`M`,)
@@ -32,6 +35,8 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
         The variable to slide over.
     z : array of float, (`P`, `M`, `N`)
         The variables to plot.
+    z_unc : array of float, (`P`, `M`, `N`)
+        Uncertainties in the variables to plot.
     xlabel : str, optional
         The label for the abscissa.
     ylabel : str, optional
@@ -61,12 +66,16 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
             ls_vals.append(c + s)
     ls_cycle = itertools.cycle(ls_vals)
     
-    l = []
+    err_list = []
     # pdb.set_trace()
-    for v, l_ in zip(z, labels):
-        tmp, = a_plot.plot(x, v[:, 0], ls_cycle.next(), label=l_, **kwargs)
-        l.append(tmp)
-    
+    for v, v_unc, l_ in zip(z, z_unc, labels):
+        # import pdb
+        # pdb.set_trace()
+        # a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], label=l_)
+        x_error = np.zeros_like(x)
+        h_err = a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], xerr = x_error, fmt=ls_cycle.next(), label=l_, **kwargs)
+        err_list.append(h_err)
+
     if plot_sum:
         l_sum, = a_plot.plot(x, z[:, :, 0].sum(axis=0), ls_cycle.next(), label='total', **kwargs)
     
@@ -74,18 +83,44 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
     leg.draggable(True)
     title = f.suptitle('')
     
+    def adjustErrbarxy(errobj, x, y, x_error, y_error):
+        ln, (errx_top, errx_bot, erry_top, erry_bot), (barsx, barsy) = errobj
+
+        # pdb.set_trace()
+        ln.set_data(x,y)
+        x_base = x
+        y_base = y
+
+        xerr_top = x_base + x_error
+        xerr_bot = x_base - x_error
+        yerr_top = y_base + y_error
+        yerr_bot = y_base - y_error
+
+        errx_top.set_xdata(xerr_top)
+        errx_bot.set_xdata(xerr_bot)
+        errx_top.set_ydata(y_base)
+        errx_bot.set_ydata(y_base)
+
+        erry_top.set_xdata(x_base)
+        erry_bot.set_xdata(x_base)
+        erry_top.set_ydata(yerr_top)
+        erry_bot.set_ydata(yerr_bot)
+
+        new_segments_x = [np.array([[xt, y], [xb,y]]) for xt, xb, y in zip(xerr_top, xerr_bot, y_base)]
+        new_segments_y = [np.array([[x, yt], [x,yb]]) for x, yt, yb in zip(x_base, yerr_top, yerr_bot)]
+        barsx.set_segments(new_segments_x)
+        barsy.set_segments(new_segments_y)
+
+
     def update(dum):
-        # ls_cycle = itertools.cycle(ls_vals)
-        # remove_all(l)
-        # while l:
-        #     l.pop()
-        
         i = int(slider.val)
         
-        for v, l_ in zip(z, l):
-            l_.set_ydata(v[:, i])
-            # l.append(a_plot.plot(x, v[:, i], ls_cycle.next(), label=l_, **kwargs))
-        
+        for j,(v, v_unc) in enumerate(zip(z, z_unc)):
+            # pdb.set_trace()
+            
+            x_error = np.zeros_like(x)
+            adjustErrbarxy(err_list[j], x, v[:,i], x_error, v_unc[:,i])
+
         if plot_sum:
             l_sum.set_ydata(z[:, :, i].sum(axis=0))
             # l.append(a_plot.plot(x, z[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
@@ -96,6 +131,55 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
         title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
         
         f.canvas.draw()
+
+    # def update(dum):
+    #     # ls_cycle = itertools.cycle(ls_vals)
+    #     # remove_all(l)
+    #     # while l:
+    #     #     l.pop()
+        
+    #     i = int(slider.val)
+        
+    #     for v, l_ in zip(z, l):
+    #         l_.set_ydata(v[:, i])
+    #         # l.append(a_plot.plot(x, v[:, i], ls_cycle.next(), label=l_, **kwargs))
+        
+    #     if plot_sum:
+    #         l_sum.set_ydata(z[:, :, i].sum(axis=0))
+    #         # l.append(a_plot.plot(x, z[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
+        
+    #     a_plot.relim()
+    #     a_plot.autoscale()
+        
+    #     title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
+        
+    #     f.canvas.draw()
+
+    # def update(dum):
+    #     # ls_cycle = itertools.cycle(ls_vals)
+    #     # remove_all(l)
+    #     # while l:
+    #     #     l.pop()
+        
+    #     i = int(slider.val)
+        
+    #     for v, v_unc in zip(z, z_unc):
+
+    #         # adjust_yerr(l_[i], z_unc[:,i])
+
+    #         l[i].set_ydata(v[:, i])
+    #         # l.append(a_plot.plot(x, v[:, i], ls_cycle.next(), label=l_, **kwargs))
+        
+    #     if plot_sum:
+    #         l_sum.set_ydata(z[:, :, i].sum(axis=0))
+    #         # l.append(a_plot.plot(x, z[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
+        
+    #     a_plot.relim()
+    #     a_plot.autoscale()
+        
+    #     title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
+        
+    #     f.canvas.draw()
     
     def arrow_respond(slider, event):
         if event.key == 'right':
@@ -117,3 +201,5 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
         'key_press_event',
         lambda evt: arrow_respond(slider, evt)
     )
+
+ 

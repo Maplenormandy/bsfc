@@ -295,7 +295,6 @@ class LineModel:
         return np.concatenate((thetafirst, hermflat))
 
 
-
     """
     Likelihood functions
     """
@@ -321,7 +320,6 @@ class LineModel:
             return -np.inf
         else:
             return lp+self.lnlike(theta)
-
 
 
 
@@ -382,11 +380,11 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml, nsteps):
+    def mcmcSample(self, theta_ml, nsteps=1000, emcee_threads=1):
         ndim, nwalkers = len(theta_ml), len(theta_ml)*4
         pos = [theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
 
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, _LnProbWrapper(self))#, threads=4) # self.lineModel.lnprob
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, _LnProbWrapper(self), threads=emcee_threads) # self.lineModel.lnprob
         sampler.run_mcmc(pos, nsteps)
         
         samples = sampler.chain[:, int(nsteps/2.0):, :].reshape((-1, ndim))
@@ -394,7 +392,7 @@ class BinFit:
         return samples, sampler
 
 
-    def fit(self, mcmc=True, nsteps=10000, plot_convergence=False):
+    def fit(self, mcmc=True, nsteps=10000, plot_convergence=False, emcee_threads=1):
         theta0 = self.lineModel.guessFit()
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
         if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05? 
@@ -406,7 +404,7 @@ class BinFit:
             self.result_ml = self.optimizeFit(theta0)
             self.theta_ml = self.result_ml['x']
             if mcmc:
-                self.samples, sampler = self.mcmcSample(self.theta_ml, nsteps)
+                self.samples, sampler = self.mcmcSample(self.theta_ml, nsteps=nsteps, emcee_threads=emcee_threads)
             else:
                 self.samples = np.array([self.theta_ml]*50)
 
@@ -498,7 +496,7 @@ class _fitTimeWindowWrapper(object):
     def __call__(self, bins):
         tbin, chbin = bins
 
-        w0, w1 = np.searchsorted(self.mf.lam_all[:,tbin,chbin], mf.lam_bounds)
+        w0, w1 = np.searchsorted(self.mf.lam_all[:,tbin,chbin], self.mf.lam_bounds)
         lam = self.mf.lam_all[w0:w1,tbin,chbin]
         specBr = self.mf.specBr_all[w0:w1,tbin,chbin]
         sig = self.mf.sig_all[w0:w1,tbin,chbin]
@@ -601,7 +599,7 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-    def fitSingleBin(self, tbin, chbin, nsteps=1024):
+    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1):
         w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
         lam = self.lam_all[w0:w1,tbin,chbin]
         specBr = self.specBr_all[w0:w1,tbin,chbin]
@@ -612,7 +610,7 @@ class MomentFitter:
         self.fits[tbin][chbin] = bf
 
         print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
-        good = bf.fit(nsteps=nsteps)
+        good = bf.fit(nsteps=nsteps, emcee_threads=emcee_threads)
 
         # print self.fits[tbin][chbin].good
         if not good:
@@ -620,24 +618,24 @@ class MomentFitter:
         else:
             print "--> done"
 
-    def fitSingleBin_par(self, tbin, chbin, nsteps=1024):
-        w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
-        lam = self.lam_all[w0:w1,tbin,chbin]
-        specBr = self.specBr_all[w0:w1,tbin,chbin]
-        sig = self.sig_all[w0:w1,tbin,chbin]
+    # def fitSingleBin_par(self, tbin, chbin, nsteps=1024):
+    #     w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
+    #     lam = self.lam_all[w0:w1,tbin,chbin]
+    #     specBr = self.specBr_all[w0:w1,tbin,chbin]
+    #     sig = self.sig_all[w0:w1,tbin,chbin]
 
-        bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
+    #     bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
 
-        print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
-        good = bf.fit(nsteps=nsteps)
-        if not good:
-            print "not worth fitting"
-        # else:
-        #     print "--> done"
+    #     print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
+    #     good = bf.fit(nsteps=nsteps)
+    #     if not good:
+    #         print "not worth fitting"
+    #     # else:
+    #     #     print "--> done"
 
-        return bf
+    #     return bf
 
-    def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024):
+    def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
         '''
         Fit signals from all channels in a specific time bin. 
         Functional parallelization.
@@ -657,7 +655,8 @@ class MomentFitter:
         else: 
             # fit channel bins sequentially
             for chbin in range(self.maxChan):
-                self.fitSingleBin(tbin, chbin)
+                # note that emcee multithreads cannot be used with inter-bin fitting multiprocessing
+                self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
     def fitChBin(self, chbin, parallel=True, nproc=None, nsteps=1024):
         '''
@@ -680,7 +679,7 @@ class MomentFitter:
         else: 
             # fit time bins sequentially
             for tbin in range(self.maxTime):
-                self.fitSingleBin(tbin, chbin)
+                self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
 
     def fitTimeWindow(self, tidx_min=None, tidx_max=None, parallel=True, 
@@ -727,7 +726,7 @@ class MomentFitter:
         else:
             for chbin in range(self.maxChan):
                 for tbin in range(tidx_min, tidx_max):
-                    self.fitSingleBin(tbin, chbin)
+                    self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
     #####
     def plotSingleBinFit(self, tbin, chbin):
@@ -945,16 +944,19 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, save=True, refit=False, compare=Tru
 start_time=time_.time()
 
 # %%
+# shot=1121002022 #1101014030 #1101014030 #1101014019
+shot=1101014019
 #mf = MomentFitter(lam_bounds=(3.725, 3.747), primary_line=lya1', shot=1120914036, tht=1, brancha=False)
-#mf = MomentFitter(lam_bounds=(3.725, 3.742), primary_line='lya1', shot=1121002022, tht=0, brancha=False)
-shot=1101014030 #1101014030 #1101014019
+# mf = MomentFitter(lam_bounds=(3.725, 3.742), primary_line='lya1', shot=shot, tht=0, brancha=False)
+
 print "Analyzing shot ", shot
 mf = MomentFitter(lam_bounds=(3.172, 3.188), primary_line='w', shot=shot, tht=0, brancha=False)
 
-tbin=126; chbin=10 #136
-nsteps=1000
+# tbin=126; chbin=11 #136
+tbin=126; chbin=11
+nsteps=100
 
-# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps)
+# mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps, emcee_threads=4)
 
 # with open('mf_%d_%d.pkl'%(shot,nsteps),'wb') as f:
 #     pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
@@ -965,15 +967,12 @@ nsteps=1000
 # chain = mf.fits[tbin][chbin].samples
 # corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
 
-# corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
+# # corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels())
 # mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
 # plotOverChannels(mf, tbin=126, plot=True, parallel=True)
 signal=inj_brightness(mf, t_min=1.2, t_max=1.210, save=False, refit=True, compare=False, 
-        nsteps=nsteps, nproc = 32)
-
-# signal=inj_brightness(mf, t_min=1.17, t_max=1.3, save=True, refit=True, compare=True)
-
+        parallel=True, nsteps=nsteps, nproc = 32)
 
 # end time count
 elapsed_time=time_.time()-start_time
