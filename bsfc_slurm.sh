@@ -1,11 +1,11 @@
 #!/bin/bash 
 
-#SBATCH -J bsfc_run
+#SBATCH -J bsfc_run_1101014029
 #SBATCH -N 1
 #SBATCH -n 32
 #SBATCH --mem-per-cpu=4000
 #SBATCH --exclusive
-#SBATCH --time=1:59:00
+#SBATCH --time=5:00:00
 #SBATCH --partition sched_mit_psfc
 #SBATCH --output %j.out
 #SBATCH --mail-type=END 
@@ -35,9 +35,9 @@ echo "SLURM_JOB_NAME: " $SLURM_JOB_NAME
 echo "SLURM_NTASKS: " $SLURM_NTASKS
 
 # ===========================
-shot=1101014030
+shot=1101014029
 option=3
-nsteps=10000
+nsteps=50000
 
 python bsfc_run.py $shot $SLURM_NTASKS $option $nsteps
 
