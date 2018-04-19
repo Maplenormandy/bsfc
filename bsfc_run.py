@@ -60,6 +60,7 @@ elif shot==1120914036:
     primary_impurity = 'Ca'
     primary_line = 'lya1'
     tbin=104; chbin=11
+    t_min=1.05; t_max=1.27
 elif shot==1101014019:
     primary_impurity = 'Ca'
     primary_line = 'w'
@@ -140,9 +141,11 @@ elif option==2:
 
 # ==================================
 elif option==3:
-    signal=bsfc_main.inj_brightness(mf, t_min=t_min, t_max=t_max, refit=~loaded,
+
+    signal=bsfc_main.inj_brightness(mf, t_min=t_min, t_max=t_max, nofit=loaded,
         parallel=True, nsteps=nsteps, nproc=NTASKS, plot=False)
     print "*********** Completed fits *************"
+    
     if loaded:
         # create slider plot for sequential visualization of results
         bsfc_slider.slider_plot(

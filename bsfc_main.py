@@ -843,7 +843,7 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
 
 # %% =====================================
 
-def inj_brightness(mf, t_min=1.2, t_max=1.4, refit=False, parallel=True,
+def inj_brightness(mf, t_min=1.2, t_max=1.4, nofit=False, parallel=True,
     nsteps=1000, nproc=None, plot=False):
     '''
     Function to obtain time series of Hirex-Sr signals in all channels.
@@ -864,7 +864,7 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, refit=False, parallel=True,
     # if fitting has been previously done, avoid doing it all again
 
     print "mf is ", mf
-    if refit:
+    if not nofit:
         mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=nproc)
 
     # collect moments and respective standard deviations

@@ -35,7 +35,7 @@ echo "SLURM_JOB_NAME: " $SLURM_JOB_NAME
 echo "SLURM_NTASKS: " $SLURM_NTASKS
 
 # ===========================
-shot=1101014029
+shot=1101014029  #1120914036
 option=3
 nsteps=50000
 
