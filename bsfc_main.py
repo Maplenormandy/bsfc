@@ -45,7 +45,7 @@ class LineModel:
         lamEdge[-1] = 2 * lamEdge[-2] - lamEdge[-3]
         lamEdge[0] = 2 * lamEdge[1] - lamEdge[2]
         self.lamEdge = lamEdge
-        
+
         self.noiseFuncs = 1
 
         self.nfit = len(linesFit)
@@ -97,10 +97,10 @@ class LineModel:
         for line in range(self.nfit):
             for h in range(self.hermFuncs[line]):
                 labels.append('$%s_%d$'%(self.linesnames[line],h))
-      
+
         return labels
-        
-    
+
+
     def hermiteConstraints(self):
         """
         Constraint function helper
@@ -230,6 +230,24 @@ class LineModel:
 
         return np.array([m0, m1*1e3, m2*1e6])
 
+    def modelMeasurements(self, theta, line=0, order=-1):
+        """
+        Calculate the M0, v, Ti predicted by the model
+        M0 in counts, v in km/s, Ti in keV
+        """
+        c = 2.998e+5 # speed of light in km/s
+
+        moments = self.modelMoments(theta, line, order)
+        m0 = moments[0]
+        # velocity is normalized M1 divided by rest wavelength times c
+        # Note that this needs to be projected onto the toroidal component
+        v = moments[1]*1e-3/moments[0] / self.linesLam[line] * c
+        # width of a 1 kev line = rest wavelength ** 2 / mass in kev
+        w = self.linesLam[line]**2 / self.lineData.m_kev[self.linesFit][line]
+        ti = moments[2]*1e-6/moments[0] / w
+
+        return np.array([m0, v, ti])
+
 
 
     """
@@ -300,7 +318,7 @@ class LineModel:
         herm1= np.array([h[1] for h in herm])
         herm2 = np.array([h[2] for h in herm])
 
-        if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and 
+        if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and
             np.all(herm0-8*np.abs(herm1)>0) and np.all(herm0-8*np.abs(herm2)>0)):
             return 0.0
         else:
@@ -320,11 +338,11 @@ class LineModel:
 
 class _LnProbWrapper(object):
     """wrapper for log-posterior evaluation in parallel emcee.
-    This is needed since instance methods are not pickeable. 
+    This is needed since instance methods are not pickeable.
     """
     def __init__(self, bf):
         self.bf = bf
-       
+
     def __call__(self, theta):
         out = self.bf.lineModel.lnprob(theta)
 
@@ -389,7 +407,7 @@ class BinFit:
     def fit(self, mcmc=True, nsteps=10000, plot_convergence=False, emcee_threads=1):
         theta0 = self.lineModel.guessFit()
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
-        if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05? 
+        if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05?
             # not worth fitting in this case; i.e. the primary line is under the median noise level
             self.m0_ml = 0.0
             self.good = False
@@ -404,7 +422,7 @@ class BinFit:
 
             if plot_convergence:
                 bsfc_autocorr.plot_convergence(sampler.chain, dim=1, nsteps=nsteps)
-            
+
             self.m_samples = np.apply_along_axis(self.lineModel.modelMoments, axis=1, arr=self.samples)
             self.m_ml = self.lineModel.modelMoments(self.theta_ml)
 
@@ -421,8 +439,8 @@ class BinFit:
 
 
 class _TimeBinFitWrapper(object):
-    """ Wrapper to support parallelization of different channels in a 
-    specific time bin. This is needed since instance methods are not pickeable. 
+    """ Wrapper to support parallelization of different channels in a
+    specific time bin. This is needed since instance methods are not pickeable.
 
     """
     def __init__(self, mf, nsteps, tbin):
@@ -437,7 +455,7 @@ class _TimeBinFitWrapper(object):
         specBr = self.mf.specBr_all[w0:w1,self.tbin,chbin]
         sig = self.mf.sig_all[w0:w1,self.tbin,chbin]
 
-        # 
+        #
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
 
         print "Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps
@@ -450,8 +468,8 @@ class _TimeBinFitWrapper(object):
 
 
 class _ChBinFitWrapper(object):
-    """ Wrapper to support parallelization of different time bins in a 
-    specific channel bin. This is needed since instance methods are not pickeable. 
+    """ Wrapper to support parallelization of different time bins in a
+    specific channel bin. This is needed since instance methods are not pickeable.
 
     """
     def __init__(self, mf, nsteps, chbin):
@@ -478,8 +496,8 @@ class _ChBinFitWrapper(object):
 
 
 class _fitTimeWindowWrapper(object):
-    """ Wrapper to support parallelization of different time bins in a 
-    specific channel bin. This is needed since instance methods are not pickeable. 
+    """ Wrapper to support parallelization of different time bins in a
+    specific channel bin. This is needed since instance methods are not pickeable.
 
     """
     def __init__(self, mf, nsteps):
@@ -513,13 +531,12 @@ class _fitTimeWindowWrapper(object):
 LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split())
 
 class MomentFitter:
-    def __init__(self, lam_bounds, primary_line, shot, tht, brancha=True):
+    def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None):
         self.lines = LineInfo(None, None, None, None, None, None)
-        self.lam_bounds = lam_bounds
         self.primary_line = primary_line
         self.tht=tht
         self.shot = shot
-        
+
         amuToKeV = 931494.095 # amu in keV
         #speedOfLight = 2.998e+5 # speed of light in km/s
 
@@ -533,8 +550,29 @@ class MomentFitter:
         # Load atomic data, for calculating line widths, etc...
         with open('atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
-            atomSymbol = np.array([ad[1] for ad in atomData[1:84]])
+            atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
             atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
+
+        if lam_bounds == None:
+            if primary_impurity == 'Ca':
+                if primary_line == 'w':
+                    lam_bounds = (3.172, 3.188)
+                elif primary_line == 'lya1':
+                    lam_bounds = (3.010, 3.027)
+                else:
+                    raise NotImplementedError("Line is not yet implemented")
+            elif primary_impurity == 'Ar':
+                if primary_line == 'w':
+                    lam_bounds = (3.945, 3.960)
+                elif primary_line == 'z':
+                    raise NotImplementedError("Not implemented yet (needs line tying)")
+                elif primary_line == 'lya1':
+                    lam_bounds = (3.725, 3.742)
+                else:
+                    raise NotImplementedError("Line is not yet implemented")
+
+        self.lam_bounds = lam_bounds
+
 
 
         # Populate the line data
@@ -559,31 +597,49 @@ class MomentFitter:
         for data in self.lines:
             data = data[pl_sorted]
 
-        print 'Fitting:', self.lines.names
+        print 'Fitting:', [self.lines.symbol[i] +
+                ' ' + self.lines.names[i] + ' @ ' +
+                str(self.lines.lam[i]) for i in range(len(self.lines.names))]
 
-        
+
 
         specTree = MDSplus.Tree('spectroscopy', shot)
 
         ana = '.ANALYSIS'
         if tht > 0:
             ana += str(tht)
-        if brancha:
-            br = '.HELIKE'
-        else:
-            br = '.HLIKE'
 
-        branchPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana+br
-        # branchPath = r'HIREXSR'+ana+br # this should work
+        # Determine which, if any, detector has the desired lam_bounds
+        rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
+        lamInRange = False
+        try:
+            branchNode = specTree.getNode(rootPath+'.HELIKE')
+            self.lam_all = branchNode.getNode('SPEC:LAM').data()
+            if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
+                print "Fitting on Branch A"
+                lamInRange = True
+        except:
+            pass
 
-        branchNode = specTree.getNode(branchPath)
+        if not lamInRange:
+            try:
+                branchNode = specTree.getNode(rootPath+'.HLIKE')
+                self.lam_all = branchNode.getNode('SPEC:LAM').data()
+                if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
+                    print "Fitting on Branch B"
+                    lamInRange = True
+            except:
+                pass
+
+        if not lamInRange:
+            raise ValueError("Fit range does not appear to be on detector")
+
 
         # Indices are [lambda, time, channel]
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
-        self.lam_all = branchNode.getNode('SPEC:LAM').data()
-            
-        pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data() 
+
+        pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data()
         self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:]).T
 
         # Maximum number of channels, time bins
@@ -635,7 +691,7 @@ class MomentFitter:
 
     def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
         '''
-        Fit signals from all channels in a specific time bin. 
+        Fit signals from all channels in a specific time bin.
         Functional parallelization.
 
         '''
@@ -644,21 +700,21 @@ class MomentFitter:
                 nproc = multiprocessing.cpu_count()
             print "running fitTimeBin in parallel with nproc=", nproc
             pool = multiprocessing.Pool(processes=nproc)
-            
+
             # requires a wrapper for multiprocessing to pickle the function
             ff = _TimeBinFitWrapper(self,nsteps=nsteps, tbin=tbin)
-            
+
             # map range of channels and compute each
             self.fits[tbin][:] = pool.map(ff, range(self.maxChan))
-        else: 
+        else:
             # fit channel bins sequentially
             for chbin in range(self.maxChan):
                 # note that emcee multithreads cannot be used with inter-bin fitting multiprocessing
                 self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
-    def fitChBin(self, chbin, parallel=True, nproc=None, nsteps=1024):
+    def fitChBin(self, chbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
         '''
-        Fit signals from all times in a specific channel. 
+        Fit signals from all times in a specific channel.
         Functional parallelization.
 
         '''
@@ -670,25 +726,25 @@ class MomentFitter:
 
             # requires a wrapper for multiprocessing to pickle the function
             ff = _ChBinFitWrapper(self, nsteps=nsteps, chbin=chbin)
-            
+
             # map range of channels and compute each
             self.fits[:][chbin] = pool.map(ff, range(self.maxTime))
 
-        else: 
+        else:
             # fit time bins sequentially
             for tbin in range(self.maxTime):
                 self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
 
-    def fitTimeWindow(self, tidx_min=None, tidx_max=None, parallel=True, 
-        nproc=None, nsteps=1000):
+    def fitTimeWindow(self, tidx_min=None, tidx_max=None, parallel=True,
+        nproc=None, nsteps=1000, emcee_threads=1):
         '''
-        Fit all signals within a time window, across all channels. 
+        Fit all signals within a time window, across all channels.
         Optional parallelization.
 
         If tidx_min and tidx_max are not specified (i.e. left as "None"),
-        then the routine defaults to compute results across the entire time window of 
-        Hirex-Sr's measurements. 
+        then the routine defaults to compute results across the entire time window of
+        Hirex-Sr's measurements.
         '''
         if tidx_min==None:
             tidx_min=0
@@ -703,7 +759,7 @@ class MomentFitter:
 
             # requires a wrapper for multiprocessing to pickle the function
             ff = _fitTimeWindowWrapper(self,nsteps=nsteps)
-            
+
             # map range of channels and compute each
             map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(self.maxChan)))
             map_args = [list(a) for a in map_args_tpm]
@@ -769,9 +825,9 @@ class MomentFitter:
 
 
 # %% =======================================================
-def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000): 
+def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
     '''
-    Function to fit signals for a specified time bin, across all channels. 
+    Function to fit signals for a specified time bin, across all channels.
     Optionally, plots 0th, 1st and 2nd moment across channels.
     '''
 
@@ -785,7 +841,7 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
         else:
             moments[chbin] = np.zeros(3)
             moments_std[chbin] = np.zeros(3)
-        
+
     moments = np.array(moments)
     moments_std = np.array(moments_std)
 
@@ -806,12 +862,12 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
 def inj_brightness(mf, t_min=1.2, t_max=1.4, refit=False, parallel=True,
     nsteps=1000, nproc=None, plot=False):
     '''
-    Function to obtain time series of Hirex-Sr signals in all channels. 
-    This saves files containing the signals needed for MITIM analysis. 
+    Function to obtain time series of Hirex-Sr signals in all channels.
+    This saves files containing the signals needed for MITIM analysis.
     If data has already been fitted for a shot, one may set refit=False.
 
     Optionally, set compare=True to plot fits against those obtained for shot
-    1101014019 using THACO's fitting routines. 
+    1101014019 using THACO's fitting routines.
     '''
     # # select times of interest
     # t_min = 1.2 #1.17 #injection at 1.2 for 1101014030
@@ -821,7 +877,7 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, refit=False, parallel=True,
     time_sel= mf.time[tidx_min: tidx_max]
 
     print "fitting time bins between ", tidx_min, " and ", tidx_max
-    # if fitting has been previously done, avoid doing it all again 
+    # if fitting has been previously done, avoid doing it all again
 
     print "mf is ", mf
     if refit:
@@ -891,12 +947,12 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, refit=False, parallel=True,
     # store signals in format for MITIM analysis
     inj = bsfc_helper.Injection(t_min, t_min-0.02, t_max)
     sig=bsfc_helper.HirexData(shot=mf.shot,
-        sig=hirex_signal, 
-        unc=hirex_uncertainty, 
+        sig=hirex_signal,
+        unc=hirex_uncertainty,
         pos=pos,
         time=time_sel,
         tht=mf.tht,
-        injection=inj, 
+        injection=inj,
         debug_plots=plot)
 
     if plot:
