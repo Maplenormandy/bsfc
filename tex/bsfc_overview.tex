@@ -21,7 +21,7 @@
 \section{Math}
 
 \begin{frame}
-	\frametitle{Background and Motivation}
+	\frametitle{Background and Overview}
 	HIREX and such
 \end{frame}
 
@@ -63,7 +63,7 @@
 	\begin{equation}
 	\hat{\theta} = \underset{\theta}{\operatorname{argmin}} \left[\sum_{i} \frac{(f_i(\theta) - N_i)^2}{N_i}\right] \equiv \underset{\theta}{\operatorname{argmin}} \left[\chi^2(\theta, \{N_i\})\right]
 	\end{equation}
-	If \(\mu(N_i) = C + (A_0+A(x_i))e^(-x_i^2/2) \), \(f_i = \hat{C} + h(\theta, x_i) e^(-x_i^2/2)\), where \(x_i \equiv (\lambda_i - \lambda_c)/s\) and \(A_0\gg C, A\), then
+	If \(\mu(N_i) = C + (A_0+A(x_i))e^{-x_i^2/2} \), \(f_i = \hat{C} + h(\theta, x_i) e^{-x_i^2/2}\), where \(x_i \equiv (\lambda_i - \lambda_c)/s\) and \(A_0\gg C, A\), then
 	\begin{align}
 	E[\chi^2] &\approx \sum_{i} \frac{(h(\theta, x_i) - (A_0 + A(x_i))^2 e^{-x^2}}{A_0 e^{-x^2/2}} \\
 	&\approx \sum_{i} D \left[(h(\theta, x_i) - (A_0 + A(x_i)))^2 e^{-x^2/2}\right] \\
@@ -93,7 +93,7 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Propagation of Error}
+	\frametitle{Analytic Calculation of Error -- TODO}
 	Approximating the output error as Gaussian (see the corner plots), can perform propagation of error:
 	\begin{equation}
 	\Sigma^\theta = J \Sigma^N J^T
