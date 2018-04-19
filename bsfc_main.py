@@ -516,9 +516,13 @@ class _fitTimeWindowWrapper(object):
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
 
         print "Now fitting tbin=", tbin, ',chbin=', chbin, "with nsteps=", self.nsteps
-        good = bf.fit(nsteps=self.nsteps)
+        try:
+            good = bf.fit(nsteps=self.nsteps)
+        except ValueError:
+            print "BinFit.fit() failed."
+            good = False
         if not good:
-            print "not worth fitting"
+            print "Fitting not available. Result will be None."
 
         return bf
 
@@ -573,8 +577,6 @@ class MomentFitter:
 
         self.lam_bounds = lam_bounds
 
-
-
         # Populate the line data
         lineInd = np.logical_and(lineLam>lam_bounds[0], lineLam<lam_bounds[1])
         #satelliteLines = np.array(['s' not in l for l in lineName])
@@ -600,8 +602,6 @@ class MomentFitter:
         print 'Fitting:', [self.lines.symbol[i] +
                 ' ' + self.lines.names[i] + ' @ ' +
                 str(self.lines.lam[i]) for i in range(len(self.lines.names))]
-
-
 
         specTree = MDSplus.Tree('spectroscopy', shot)
 
@@ -640,7 +640,7 @@ class MomentFitter:
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
 
         pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data()
-        self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:]).T
+        self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
 
         # Maximum number of channels, time bins
         self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
@@ -672,22 +672,6 @@ class MomentFitter:
         else:
             print "--> done"
 
-    # def fitSingleBin_par(self, tbin, chbin, nsteps=1024):
-    #     w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
-    #     lam = self.lam_all[w0:w1,tbin,chbin]
-    #     specBr = self.specBr_all[w0:w1,tbin,chbin]
-    #     sig = self.sig_all[w0:w1,tbin,chbin]
-
-    #     bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
-
-    #     print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
-    #     good = bf.fit(nsteps=nsteps)
-    #     if not good:
-    #         print "not worth fitting"
-    #     # else:
-    #     #     print "--> done"
-
-    #     return bf
 
     def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
         '''
