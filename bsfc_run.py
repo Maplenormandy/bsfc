@@ -54,7 +54,7 @@ print "Analyzing shot ", shot
 if shot==1121002022:
     primary_impurity = 'Ar'
     primary_line = 'lya1'
-    tbin=10; chbin=20
+    tbin=5; chbin=40
     t_min=0.7; t_max=0.8
 elif shot==1120914036:
     primary_impurity = 'Ca'
@@ -80,7 +80,7 @@ elif shot==1101014030:
 
 # try loading result
 try:
-    with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,option%10,tbin,chbin),'rb') as f:
+    with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'rb') as f:
             mf=pkl.load(f)
     loaded = True
     print "Loaded previous result"
@@ -140,26 +140,166 @@ elif option==2:
 
 
 # ==================================
-elif option==3:
+elif option==3: # get brightness
+	tidx_min = np.argmin(np.abs(mf.time - t_min))
+	tidx_max = np.argmin(np.abs(mf.time - t_max))
+	time_sel= mf.time[tidx_min: tidx_max]
 
-    signal=bsfc_main.inj_brightness(mf, t_min=t_min, t_max=t_max, nofit=loaded,
-        parallel=True, nsteps=nsteps, nproc=NTASKS, plot=False)
-    print "*********** Completed fits *************"
+	if not loaded:
+		print "*********** Fitting now *************"
+		mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=NTASKS)
+		print "*********** Completed fits *************"
+
+	else:
+		br, br_unc, time_sel = bsfc_main.get_brightness(mf, t_min=t_min, t_max=t_max)
+		# signal=bsfc_main.get_brightness(mf, t_min=t_min, t_max=t_max)
+
+		# # create slider plot for sequential visualization of results
+		# bsfc_slider.slider_plot(
+		#     np.asarray(range(signal.y_norm.shape[1])),
+		#     signal.t,
+		#     np.expand_dims(signal.y_norm.T,axis=0),
+		#     np.expand_dims(signal.std_y_norm.T,axis=0),
+		#     xlabel=r'channel #',
+		#     ylabel=r'$t$ [s]',
+		#     zlabel=r'$B$ [A.U.]',
+		#     labels=['Brightness'],
+		#     plot_sum=False
+		# )
+
+		bsfc_slider.slider_plot(
+		    np.asarray(range(br.shape[1])),
+		    time_sel,
+		    np.expand_dims(br.T,axis=0),
+		    np.expand_dims(br_unc.T,axis=0),
+		    xlabel=r'channel #',
+		    ylabel=r'$t$ [s]',
+		    zlabel=r'$B$ [eV]',
+		    labels=['Brightness'],
+		    plot_sum=False
+		)
+
+		bsfc_slider.slider_plot(
+			time_sel,
+		    np.asarray(range(br.shape[1])),
+		    np.expand_dims(br,axis=0),
+		    np.expand_dims(br_unc,axis=0),
+		    xlabel=r'$t$ [s]',
+		    ylabel=r'channel #',
+		    zlabel=r'$B$ [eV]',
+		    labels=['Brightness'],
+		    plot_sum=False
+		)
+
+# ==================================
+elif option==33: # get rotation
+	tidx_min = np.argmin(np.abs(mf.time - t_min))
+	tidx_max = np.argmin(np.abs(mf.time - t_max))
+	time_sel= mf.time[tidx_min: tidx_max]
+
+	if not loaded:
+		print "*********** Fitting now *************"
+		mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=NTASKS)
+		print "*********** Completed fits *************"
+
+	else:
+		rot, rot_unc, time_sel=bsfc_main.get_rotation(mf, t_min=t_min, t_max=t_max)
     
-    if loaded:
         # create slider plot for sequential visualization of results
         bsfc_slider.slider_plot(
-            np.asarray(range(signal.y_norm.shape[1])),
-            signal.t,
-            np.expand_dims(signal.y_norm.T,axis=0),
-            np.expand_dims(signal.std_y_norm.T,axis=0),
+            np.asarray(range(rot.shape[1])),
+            time_sel,
+            np.expand_dims(rot.T,axis=0),
+            np.expand_dims(rot_unc.T,axis=0),
             xlabel=r'channel #',
             ylabel=r'$t$ [s]',
-            zlabel=r'$n$ [A.U.]',
-            labels=['Signal'],
+            zlabel=r'$v$ [km/s]',
+            labels=['rotation velocity'],
             plot_sum=False
         )
 
+# ==================================
+elif option==333: # get temperature
+	tidx_min = np.argmin(np.abs(mf.time - t_min))
+	tidx_max = np.argmin(np.abs(mf.time - t_max))
+	time_sel = mf.time[tidx_min: tidx_max]
+
+	if not loaded:
+		print "*********** Fitting now *************"
+		mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=NTASKS)
+		print "*********** Completed fits *************"
+
+	else:
+		Temp, Temp_unc, time_sel=bsfc_main.get_temperature(mf, t_min=t_min, t_max=t_max)
+    
+        # create slider plot for sequential visualization of results
+        bsfc_slider.slider_plot(
+            np.asarray(range(Temp.shape[1])),
+            time_sel,
+            np.expand_dims(Temp.T,axis=0),
+            np.expand_dims(Temp_unc.T,axis=0),
+            xlabel=r'channel #',
+            ylabel=r'$t$ [s]',
+            zlabel=r'$T_i$ [eV]',
+            labels=['Ion temperature'],
+            plot_sum=False
+        )
+
+
+# ==================================
+elif option==3333: # get temperature
+	tidx_min = np.argmin(np.abs(mf.time - t_min))
+	tidx_max = np.argmin(np.abs(mf.time - t_max))
+	time_sel= mf.time[tidx_min: tidx_max]
+
+	if not loaded:
+		print "*********** Fitting now *************"
+		mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=NTASKS)
+		print "*********** Completed fits *************"
+
+	else:
+		moments, moments_std, time_sel=bsfc_main.get_meas(mf, t_min=t_min, t_max=t_max)
+    	
+    	br = moments[:,:,0]; br_std = moments_std[:,:,0]
+    	rot = moments[:,:,1]; rot_std = moments_std[:,:,1]
+    	Temp = moments[:,:,2]; Temp_std = moments_std[:,:,2]
+
+	# create slider plot for sequential visualization of results
+	bsfc_slider.slider_plot(
+	    np.asarray(range(br.shape[1])),
+	    time_sel,
+	    np.expand_dims(br.T,axis=0),
+	    np.expand_dims(br_std.T,axis=0),
+	    xlabel=r'channel #',
+	    ylabel=r'$t$ [s]',
+	    zlabel=r'$B$ [eV]',
+	    labels=['Brightness'],
+	    plot_sum=False
+	)
+
+	bsfc_slider.slider_plot(
+	    np.asarray(range(rot.shape[1])),
+	    time_sel,
+	    np.expand_dims(rot.T,axis=0),
+	    np.expand_dims(rot_std.T,axis=0),
+	    xlabel=r'channel #',
+	    ylabel=r'$t$ [s]',
+	    zlabel=r'$v$ [eV]',
+	    labels=['Rotation'],
+	    plot_sum=False
+	)
+
+	bsfc_slider.slider_plot(
+	    np.asarray(range(Temp.shape[1])),
+	    time_sel,
+	    np.expand_dims(Temp.T,axis=0),
+	    np.expand_dims(Temp_std.T,axis=0),
+	    xlabel=r'channel #',
+	    ylabel=r'$t$ [s]',
+	    zlabel=r'$T_i$ [eV]',
+	    labels=['Ion temperature'],
+	    plot_sum=False
+	)
 
 # === Show measurements for a single time/channel bin ===
 elif option==11:
@@ -170,7 +310,7 @@ elif option==11:
         a[0].hist(moments[:,0], bins=64)
         a[1].hist(moments[:,1], bins=64)
         a[2].hist(moments[:,2], bins=64)
-        a[0].set_xlabel('M0 [counts]')
+        a[0].set_xlabel('B [counts]')
         a[1].set_xlabel('v_ll [km/s]')
         a[2].set_xlabel('Ti [keV]')
 
@@ -178,7 +318,7 @@ elif option==11:
 
 
 # save fits for future use
-with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,option%10,tbin,chbin),'wb') as f:
+with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'wb') as f:
     pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
 
 # end time count

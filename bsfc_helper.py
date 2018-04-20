@@ -25,6 +25,7 @@ import profiletools
 import Tkinter as tk
 import gptools
 import re
+import pdb
 
 # Threshold for size of HiReX-SR errorbar to reject:
 HIREX_THRESH = 0.03
@@ -73,6 +74,7 @@ class HirexData(object):
             (self.hirex_signal > 1.5)
         )
         
+        pdb.set_trace()
         # Flag bad points: this won't work well unless we can access a valid pos array 
         # root = HirexWindow(self)
         # root.mainloop()

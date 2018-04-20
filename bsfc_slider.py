@@ -67,11 +67,7 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     ls_cycle = itertools.cycle(ls_vals)
     
     err_list = []
-    # pdb.set_trace()
     for v, v_unc, l_ in zip(z, z_unc, labels):
-        # import pdb
-        # pdb.set_trace()
-        # a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], label=l_)
         x_error = np.zeros_like(x)
         h_err = a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], xerr = x_error, fmt=ls_cycle.next(), label=l_, **kwargs)
         err_list.append(h_err)
@@ -86,7 +82,6 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     def adjustErrbarxy(errobj, x, y, x_error, y_error):
         ln, (errx_top, errx_bot, erry_top, erry_bot), (barsx, barsy) = errobj
 
-        # pdb.set_trace()
         ln.set_data(x,y)
         x_base = x
         y_base = y
@@ -116,70 +111,21 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
         i = int(slider.val)
         
         for j,(v, v_unc) in enumerate(zip(z, z_unc)):
-            # pdb.set_trace()
-            
             x_error = np.zeros_like(x)
             adjustErrbarxy(err_list[j], x, v[:,i], x_error, v_unc[:,i])
 
         if plot_sum:
             l_sum.set_ydata(z[:, :, i].sum(axis=0))
-            # l.append(a_plot.plot(x, z[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
-        
+                    
         a_plot.relim()
         a_plot.autoscale()
         
-        title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
+        if isinstance(y[i], int):
+            title.set_text('%s %d' % (ylabel, y[i]) if ylabel else '%d' % (y[i],))
+        else:
+            title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
         
         f.canvas.draw()
-
-    # def update(dum):
-    #     # ls_cycle = itertools.cycle(ls_vals)
-    #     # remove_all(l)
-    #     # while l:
-    #     #     l.pop()
-        
-    #     i = int(slider.val)
-        
-    #     for v, l_ in zip(z, l):
-    #         l_.set_ydata(v[:, i])
-    #         # l.append(a_plot.plot(x, v[:, i], ls_cycle.next(), label=l_, **kwargs))
-        
-    #     if plot_sum:
-    #         l_sum.set_ydata(z[:, :, i].sum(axis=0))
-    #         # l.append(a_plot.plot(x, z[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
-        
-    #     a_plot.relim()
-    #     a_plot.autoscale()
-        
-    #     title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
-        
-    #     f.canvas.draw()
-
-    # def update(dum):
-    #     # ls_cycle = itertools.cycle(ls_vals)
-    #     # remove_all(l)
-    #     # while l:
-    #     #     l.pop()
-        
-    #     i = int(slider.val)
-        
-    #     for v, v_unc in zip(z, z_unc):
-
-    #         # adjust_yerr(l_[i], z_unc[:,i])
-
-    #         l[i].set_ydata(v[:, i])
-    #         # l.append(a_plot.plot(x, v[:, i], ls_cycle.next(), label=l_, **kwargs))
-        
-    #     if plot_sum:
-    #         l_sum.set_ydata(z[:, :, i].sum(axis=0))
-    #         # l.append(a_plot.plot(x, z[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
-        
-    #     a_plot.relim()
-    #     a_plot.autoscale()
-        
-    #     title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
-        
-    #     f.canvas.draw()
     
     def arrow_respond(slider, event):
         if event.key == 'right':

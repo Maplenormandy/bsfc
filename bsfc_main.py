@@ -248,7 +248,24 @@ class LineModel:
 
         return np.array([m0, v, ti])
 
+    def modelMeasurements_unc(self, theta, line=0, order=-1):
+        """
+        Calculate the M0, v, Ti predicted by the model
+        M0 in counts, v in km/s, Ti in keV
+        """
+        c = 2.998e+5 # speed of light in km/s
+        moments = self.modelMeasurements(theta, line, order)
+        
+        moments = self.modelMoments(theta, line, order)
+        m0 = moments[0]
+        # velocity is normalized M1 divided by rest wavelength times c
+        # Note that this needs to be projected onto the toroidal component
+        v = moments[1]*1e-3/moments[0] / self.linesLam[line] * c
+        # width of a 1 kev line = rest wavelength ** 2 / mass in kev
+        w = self.linesLam[line]**2 / self.lineData.m_kev[self.linesFit][line]
+        ti = moments[2]*1e-6/moments[0] / w
 
+        return np.array([m0, v, ti])
 
     """
     Helper functions for initializing fits
@@ -428,7 +445,7 @@ class BinFit:
 
             self.theta_avg = np.average(self.samples, axis=0)
             self.m_avg = np.average(self.m_samples, axis=0)
-            self.m_std = np.std(self.m_samples, axis=0, ddof=len(theta0))
+            self.m_std = np.std(self.m_samples, axis=0) #, ddof=len(theta0))
 
             self.good = True
             return True
@@ -515,7 +532,7 @@ class _fitTimeWindowWrapper(object):
         # create bin-fit
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
 
-        print "Now fitting tbin=", tbin, ',chbin=', chbin, "with nsteps=", self.nsteps
+        print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps
         try:
             good = bf.fit(nsteps=self.nsteps)
         except ValueError:
@@ -842,31 +859,7 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
 
 
 # %% =====================================
-
-def inj_brightness(mf, t_min=1.2, t_max=1.4, nofit=False, parallel=True,
-    nsteps=1000, nproc=None, plot=False):
-    '''
-    Function to obtain time series of Hirex-Sr signals in all channels.
-    This saves files containing the signals needed for MITIM analysis.
-    If data has already been fitted for a shot, one may set refit=False.
-
-    Optionally, set compare=True to plot fits against those obtained for shot
-    1101014019 using THACO's fitting routines.
-    '''
-    # # select times of interest
-    # t_min = 1.2 #1.17 #injection at 1.2 for 1101014030
-    # t_max = 1.4 #1.3
-    tidx_min = np.argmin(np.abs(mf.time - t_min))
-    tidx_max = np.argmin(np.abs(mf.time - t_max))
-    time_sel= mf.time[tidx_min: tidx_max]
-
-    print "fitting time bins between ", tidx_min, " and ", tidx_max
-    # if fitting has been previously done, avoid doing it all again
-
-    print "mf is ", mf
-    if not nofit:
-        mf.fitTimeWindow(tidx_min=tidx_min, tidx_max=tidx_max, parallel=True, nsteps=nsteps, nproc=nproc)
-
+def unpack_moments(mf, tidx_min, tidx_max):
     # collect moments and respective standard deviations
     moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
     moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))#[None] * (tidx_max - tidx_min)
@@ -884,60 +877,56 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, nofit=False, parallel=True,
 
     moments = np.array(moments)
     moments_std = np.array(moments_std)
+    
+    return moments, moments_std
 
-    # chsel=3
-    # mom = moments[:,chsel,:]
-    # mom_std = moments_std[:,chsel,:]
-    # mask = np.logical_and(mom[:,0]<10.0,mom[:,1]<10.0,mom[:,2]<10.0)#[0]
-    # f, a = plt.subplots(3, 1, sharex=True)
 
-    # a[0].errorbar(time_sel[mask], mom[mask,0], yerr=mom_std[mask,0], fmt='.')
-    # a[0].set_ylabel('0th moment')
-    # a[1].errorbar(time_sel[mask], mom[mask,1], yerr=mom_std[mask,1], fmt='.')
-    # a[1].set_ylabel('1st moment')
-    # a[2].errorbar(time_sel[mask], mom[mask,2], yerr=mom_std[mask,2], fmt='.')
-    # a[2].set_ylabel('2nd moment')
-    # a[2].set_xlabel(r'$\lambda$ [nm]')
+def get_brightness(mf, t_min=1.2, t_max=1.4, plot=False, save=False):
+    '''
+    Function to obtain time series of Hirex-Sr brightnesses in all channels.
+    If data has already been fitted for a shot, one may set nofit=True.
+    '''
+    # # select times of interest
+    tidx_min = np.argmin(np.abs(mf.time - t_min))
+    tidx_max = np.argmin(np.abs(mf.time - t_max))
+    time_sel= mf.time[tidx_min: tidx_max]
 
-    try:
-        # attempt loading pos vector, which still seems to give some problems
-        pos = mf.pos
-    except:
-        # load previous fit of 1101014019 from THACO's routines
-        with open('signals_1101014019.pkl','rb') as f:
-            signals=pkl.load(f)
-        # TEMPORARILY get Hirex-Sr position structure from previous runs
-        pos=signals[0].pos
+    # collect moments and respective standard deviations
+    moments, moments_std = unpack_moments(mf, tidx_min, tidx_max)
 
+    # load Hirex-Sr position vector
+    pos = mf.pos
+    
     # Get fitted results for brightness
-    hirex_signal = np.zeros((tidx_max-tidx_min, mf.maxChan))
-    hirex_uncertainty = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    br = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    br_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
     for chbin in range(mf.maxChan):
         t=0
         for tbin in range(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
-                hirex_signal[t,chbin] = mf.fits[tbin][chbin].m_avg[0]
-                hirex_uncertainty[t,chbin] = mf.fits[tbin][chbin].m_std[0]
+                br[t,chbin] = mf.fits[tbin][chbin].m_avg[0]
+                br_unc[t,chbin] = mf.fits[tbin][chbin].m_std[0]
             else:
-                hirex_signal[t,chbin] = np.nan
-                hirex_uncertainty[t,chbin] = np.nan
+                br[t,chbin] = np.nan
+                br_unc[t,chbin] = np.nan
             t+=1
 
     # adapt this mask based on experience
-    mask=np.logical_and(hirex_signal>0.2, hirex_uncertainty>0.05)
-    hirex_signal[mask]=np.nan
-    hirex_uncertainty[mask]=np.nan
+    # mask=np.logical_and(br>0.2, br>0.05)
+    # br[mask]=np.nan
+    # br_unc[mask]=np.nan
 
-    # store signals in format for MITIM analysis
-    inj = bsfc_helper.Injection(t_min, t_min-0.02, t_max)
-    sig=bsfc_helper.HirexData(shot=mf.shot,
-        sig=hirex_signal,
-        unc=hirex_uncertainty,
-        pos=pos,
-        time=time_sel,
-        tht=mf.tht,
-        injection=inj,
-        debug_plots=plot)
+    if save: 
+        # store signals in format for MITIM analysis
+        inj = bsfc_helper.Injection(t_min, t_min-0.02, t_max)
+        sig=bsfc_helper.HirexData(shot=mf.shot,
+            sig=br,
+            unc=br_unc,
+            pos=pos,
+            time=time_sel,
+            tht=mf.tht,
+            injection=inj,
+            debug_plots=plot)
 
     if plot:
         # plot time series of Hirex-Sr signals for all channels
@@ -947,16 +936,155 @@ def inj_brightness(mf, t_min=1.2, t_max=1.4, nofit=False, parallel=True,
         leg=plt.legend(fontsize=8)
         leg.draggable()
 
-        # compare obtained normalized fits with those from THACO fits of 1101014019
+        # # compare obtained normalized fits with those from THACO fits of 1101014019
+        # with open('signals_1101014019.pkl','rb') as f:
+        #     signals=pkl.load(f)
+
+        # plt.figure()
+        # plt.subplot(211)
+        # for i in range(sig.signal.y.shape[1]):
+        #     plt.errorbar(sig.signal.t, sig.signal.y_norm[:,i], sig.signal.std_y_norm[:,i])#, '.-')
+        # plt.title('new fits')
+
+        # plt.subplot(212)
+        # for i in range(sig.signal.y.shape[1]):
+        #     plt.errorbar(signals[0].t, signals[0].y_norm[:,i], signals[0].std_y_norm[:,i])
+        # plt.title('saved fits from 1101014019')
+    if save:
+        return sig.signal
+    else:
+        return br, br_unc, time_sel
+
+
+def get_rotation(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
+    '''
+    Function to obtain time series of Hirex-Sr rotation in all channels.
+    If data has already been fitted for a shot, one may set nofit=True.
+    '''
+    # # select times of interest
+    tidx_min = np.argmin(np.abs(mf.time - t_min))
+    tidx_max = np.argmin(np.abs(mf.time - t_max))
+    time_sel= mf.time[tidx_min: tidx_max]
+
+    # collect moments and respective standard deviations
+    moments, moments_std = unpack_moments(mf, tidx_min, tidx_max)
+
+    # load Hirex-Sr position vector
+    pos = mf.pos
+    
+    c = 2.998e+5 # speed of light in km/s
+
+    rot = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    rot_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    for chbin in range(mf.maxChan):
+        t=0
+        for tbin in range(tidx_min, tidx_max):
+            if mf.fits[tbin][chbin].good:
+                m0 = mf.fits[tbin][chbin].m_avg[0]
+                m1 = mf.fits[tbin][chbin].m_avg[1]
+                m0_std = mf.fits[tbin][chbin].m_std[0]
+                m1_std = mf.fits[tbin][chbin].m_std[1]
+                linesLam = mf.fits[tbin][chbin].lineModel.linesLam[line]
+
+                rot[t,chbin] = (m1 / (m0 * linesLam)) *1e-3 * c
+                rot_unc[t,chbin] = (1e-3 * c/ linesLam) * np.sqrt((m1_std**2/m0**2)+(m1**2*m0_std**2/m0**4)) 
+
+            else:
+                rot[t,chbin] = np.nan
+                rot_unc[t,chbin] = np.nan
+            t+=1
+
+    if plot:
+        # plot time series of Hirex-Sr signals for all channels
         plt.figure()
-        plt.subplot(211)
-        for i in range(sig.signal.y.shape[1]):
-            plt.errorbar(sig.signal.t, sig.signal.y_norm[:,i], sig.signal.std_y_norm[:,i])#, '.-')
-        plt.title('new fits')
+        for i in range(rot.shape[1]):
+            plt.errorbar(time_sel, rot[:,i], rot_unc[:,i], fmt='-.', label='ch. %d'%i)
+        leg=plt.legend(fontsize=8)
+        leg.draggable()
 
-        plt.subplot(212)
-        for i in range(sig.signal.y.shape[1]):
-            plt.errorbar(signals[0].t, signals[0].y_norm[:,i], signals[0].std_y_norm[:,i])
-        plt.title('saved fits from 1101014019')
+    return rot, rot_unc, time_sel
 
-    return sig.signal
+
+
+def get_meas(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
+    print "Computing brightness, rotation and ion temperature"
+    # # select times of interest
+    tidx_min = np.argmin(np.abs(mf.time - t_min))
+    tidx_max = np.argmin(np.abs(mf.time - t_max))
+    time_sel= mf.time[tidx_min: tidx_max]
+
+    # collect moments and respective standard deviations
+    moments = np.empty((tidx_max-tidx_min,mf.maxChan,3)); 
+    moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))
+    moments[:] = None
+    moments_std[:] = None
+
+    for chbin in range(mf.maxChan):
+        t=0
+        for tbin in range(tidx_min, tidx_max):
+            if mf.fits[tbin][chbin].good:
+                chain = mf.fits[tbin][chbin].samples
+                moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
+                # pdb.set_trace()
+                moments[t, chbin,:] = np.mean(moments_vals, axis=0)
+                moments_std[t, chbin,:] = np.std(moments_vals, axis=0)
+        t+=1
+
+    return moments, moments_std, time_sel
+
+
+
+def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
+    '''
+    Function to obtain time series of Hirex-Sr rotation in all channels.
+    If data has already been fitted for a shot, one may set nofit=True.
+    '''
+    # # select times of interest
+    tidx_min = np.argmin(np.abs(mf.time - t_min))
+    tidx_max = np.argmin(np.abs(mf.time - t_max))
+    time_sel= mf.time[tidx_min: tidx_max]
+
+    # collect moments and respective standard deviations
+    moments, moments_std = unpack_moments(mf, tidx_min, tidx_max)
+
+    # load Hirex-Sr position vector
+    pos = mf.pos
+    
+    c = 2.998e+5 # speed of light in km/s
+
+    Temp = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    Temp_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
+    
+    for chbin in range(mf.maxChan):
+        t=0
+        for tbin in range(tidx_min, tidx_max):
+            linesLam = mf.fits[tbin][chbin].lineModel.linesLam[line]
+            linesFit = mf.fits[tbin][chbin].lineModel.linesFit
+            m_kev = mf.fits[tbin][chbin].lineModel.lineData.m_kev[linesFit][line]
+            w = linesLam**2 / m_kev
+
+            if mf.fits[tbin][chbin].good:
+                m0 = mf.fits[tbin][chbin].m_avg[0]
+                m1 = mf.fits[tbin][chbin].m_avg[1]
+                m2 = mf.fits[tbin][chbin].m_avg[2]
+                m0_std = mf.fits[tbin][chbin].m_std[0]
+                m1_std = mf.fits[tbin][chbin].m_std[1]
+                m2_std = mf.fits[tbin][chbin].m_std[2]
+
+                Temp[t,chbin] = m2*1e-6/m0 / w #(m2/(linesLam**2 *m0)) * m_kev *1e-6
+                Temp_unc[t,chbin] = (1e-6/ w) * np.sqrt((m2_std**2/m0**2)+((m1**2*m0_std**2)/m0**4))
+
+            else:
+                Temp[t,chbin] = np.nan
+                Temp_unc[t,chbin] = np.nan
+            t+=1
+
+    if plot:
+        # plot time series of Hirex-Sr signals for all channels
+        plt.figure()
+        for i in range(rot.shape[1]):
+            plt.errorbar(time_sel, Temp[:,i], Temp_unc[:,i], fmt='-.', label='ch. %d'%i)
+        leg=plt.legend(fontsize=8)
+        leg.draggable()
+
+    return Temp, Temp_unc, time_sel

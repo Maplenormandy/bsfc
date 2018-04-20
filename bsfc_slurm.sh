@@ -21,8 +21,11 @@ export I_MPI_FABRICS=shm:tcp
 # print out date and time 
 date
 
+# Copy the virtual environment to the /tmp directory of the assigned node
+srun --nodes=$SLURM_NNODES --ntasks=$SLURM_NNODES --ntasks-per-node=1 bash -c ./bsfc_env_setup.sh
+
 # Activate virtual environment:
-. ~/cenv/bin/activate
+. /tmp/bsfc_env/bin/activate
 echo "********** Activated Virtual Environment **********"
 
 # Print a few job details: 
@@ -35,9 +38,9 @@ echo "SLURM_JOB_NAME: " $SLURM_JOB_NAME
 echo "SLURM_NTASKS: " $SLURM_NTASKS
 
 # ===========================
-shot=1101014029  #1120914036
+shot=1121002022  #1120914036 # 1121002022 # 1101014029
 option=3
-nsteps=50000
+nsteps=100000
 
 python bsfc_run.py $shot $SLURM_NTASKS $option $nsteps
 

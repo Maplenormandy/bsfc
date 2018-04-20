@@ -1,0 +1,13 @@
+#!/bin/bash 
+
+
+
+cd /tmp
+rm -rf env
+mkdir env_tmp
+cd env_tmp
+tar xfz /home/sciortino/fs_virtualenv.tgz
+mv cenv ..
+cd ..
+rm -r cenv_tmp
+cd /nobackup1/sciortino
