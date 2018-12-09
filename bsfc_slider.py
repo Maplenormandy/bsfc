@@ -59,7 +59,7 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     a_plot.set_ylabel(zlabel)
     
     color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-    style_vals = ['-', '--', '-.', ':']
+    style_vals = ['.', '--', '-.', ':']
     ls_vals = []
     for s in style_vals:
         for c in color_vals:

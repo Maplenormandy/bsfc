@@ -22,11 +22,11 @@ export I_MPI_FABRICS=shm:tcp
 date
 
 # Copy the virtual environment to the /tmp directory of the assigned node
-srun --nodes=$SLURM_NNODES --ntasks=$SLURM_NNODES --ntasks-per-node=1 bash -c ./bsfc_env_setup.sh
+#srun --nodes=$SLURM_NNODES --ntasks=$SLURM_NNODES --ntasks-per-node=1 bash -c ./bsfc_env_setup.sh
 
 # Activate virtual environment:
-. /tmp/bsfc_env/bin/activate
-echo "********** Activated Virtual Environment **********"
+#. /tmp/bsfc_env/bin/activate
+#echo "********** Activated Virtual Environment **********"
 
 # Print a few job details: 
 echo "SLURM_JOB_ID: " $SLURM_JOB_ID

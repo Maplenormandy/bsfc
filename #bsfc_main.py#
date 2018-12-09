@@ -650,7 +650,7 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=10):
+    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=1):
         ''' Helper function to do MCMC sampling. This uses the emcee implementations of Ensemble 
         Sampling MCMC or Parallel-Tempering MCMC (PT-MCMC). In the latter case, a number of 
         ``temperatures'' must be defined. These are used to modify the likelihood in a way that 

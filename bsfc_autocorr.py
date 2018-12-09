@@ -89,7 +89,7 @@ def plot_convergence(chain, dim=1, nsteps=1024):
 
 	# Plot the comparisons
 	plt.figure()
-	plt.loglog(N, gw2010, "o-", label="G\&W 2010")
+	plt.loglog(N, gw2010, "o-", label="GW 2010")
 	plt.loglog(N, new, "o-", label="new")
 	ylim = plt.gca().get_ylim()
 	# plt.plot(N, N / 50.0, "--k", label=r"$\tau = N/50$")
