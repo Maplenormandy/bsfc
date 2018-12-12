@@ -496,31 +496,12 @@ class LineModel:
         # Hermite coefficients:
         herm = [None]*self.nfit
         cind = self.noiseFuncs+2
-            
-        # The following is not possible unless we make theta a global variable...
-        '''
-        noise, center, scale, herm = self.unpackTheta(theta)
-
-        # loop over number of spectral lines:
-        for i in range(self.nfit):
-            cube[cind] = cube[cind] * 1e3  # first Hermite coeff must be +ve (large upper bound?)
-            
-            for j in range(1, len(herm)): #loop over higher order Hermite coeffs (only j=2 and j=3 normally)
-                # force higher order Hermite coeffs to be at least 8 times smaller than the 0th coeff
-                if herm0[cind - (self.noiseFuncs+2)] - 8 * np.abs(np.array([h[j] for h in herm])[cind - (self.noiseFuncs+2)]) > 0:
-                    cube[cind+j]  = cube[cind+j] *1e3  # second Hermite coeff must be +ve (large upper bound?)
-                else:
-                    cube[cind+j] = cube[cind+j] - np.infty  # if condition is not met, return ln-prior=-np.infty
-        
-            # increase count by number of Hermite polynomials considered. 
-            cind = cind + self.hermFuncs[i]
-        '''
 
         # loop over number of spectral lines:
         for i in range(self.nfit):
             #loop over Hermite coeffs (only j=1,2,3 normally)
-            for j in range(0, len(herm)): 
-                cube[cind+j]  = cube[cind+j] *1e3  # second Hermite coeff must be +ve (large upper bound?)
+            for j in range(0, self.hermFuncs[i]): 
+                cube[cind+j]  = cube[cind+j] *1e3  # Hermite coeff must be +ve (large upper bound?)
      
             # increase count by number of Hermite polynomials considered. 
             cind = cind + self.hermFuncs[i]
@@ -650,7 +631,7 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=10):
+    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=1):
         ''' Helper function to do MCMC sampling. This uses the emcee implementations of Ensemble 
         Sampling MCMC or Parallel-Tempering MCMC (PT-MCMC). In the latter case, a number of 
         ``temperatures'' must be defined. These are used to modify the likelihood in a way that 
@@ -821,7 +802,7 @@ class BinFit:
 
         pymultinest.run(
             self.lineModel.hypercube_lnlike,   # log-likelihood
-            self.lineModel.hypercube_lnprior,   # log-prior
+            self.lineModel.hypercube_lnprior_simple,   # log-prior   
             # or need to use _LnLike_Wrapper(self), _LnPrior_Wrapper(self) ?
             ndim, 
             outputfiles_basename=basename,
