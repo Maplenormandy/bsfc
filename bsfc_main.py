@@ -385,13 +385,14 @@ class LineModel:
         '''
         prior = gptools.UniformJointPrior(
             [(0, 1e3)]* self.noiseFuncs  +  # noise must be positive (large upper bound?)
-            [(0, 1e3)]  + # wavelength must be positive (large upper bound?)
-            [(0, 1e3)]  # scale must be positive (large upper bound?)
+            [(-1e2, 1e2)]  + # wavelength must be positive (large upper bound?)
+            [(0, 1e2)]  # scale must be positive (large upper bound?)
             )
 
         for i in range(self.nfit):
-            for j in range(self.hermFuncs[i]): #loop over all Hermite coeffs (only j=1,2,3 normally)
-                prior = prior * gptools.UniformJointPrior([(0, 1e3)] )
+            prior = prior * gptools.UniformJointPrior([(0, 1e5)] )
+            for j in range(1,self.hermFuncs[i]): #loop over all Hermite coeffs (only j=1,2,3 normally)
+                prior = prior * gptools.UniformJointPrior([(-1e4, 1e4)] )
             
         return prior
 
@@ -485,13 +486,14 @@ class LineModel:
         """
         
         # noise:
-        cube[0:self.noiseFuncs] = cube[0:self.noiseFuncs] * 1e3 # noise must be positive (large upper bound?)
+        for kk in range(self.noiseFuncs):
+            cube[kk] = cube[kk] * 1e3 # noise must be positive 
         
-        # center wavelength (in A or nm?)
-        cube[self.noiseFuncs] = cube[self.noiseFuncs:self.noiseFuncs+1]*1e3 # wavelength must be positive (large upper bound?)
+        # center wavelength (in 1e-4 A units)
+        cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e2 - 1e2 # wavelength must be positive
 
-        # scale 
-        cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*1e3 # scale must be positive (large upper bound?)
+        # scale (in 1e-4 A units)
+        cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*1e2 # scale must be positive 
 
         # Hermite coefficients:
         herm = [None]*self.nfit
@@ -499,9 +501,10 @@ class LineModel:
 
         # loop over number of spectral lines:
         for i in range(self.nfit):
-            #loop over Hermite coeffs (only j=1,2,3 normally)
-            for j in range(0, self.hermFuncs[i]): 
-                cube[cind+j]  = cube[cind+j] *1e3  # Hermite coeff must be +ve (large upper bound?)
+            cube[cind]  = cube[cind] *1e5
+            #loop over other Hermite coeffs (only j=2,3 normally)
+            for j in range(1, self.hermFuncs[i]): 
+                cube[cind+j]  = cube[cind+j] *2e4 - 1e4  # Hermite coeff must be +ve (large upper bound?)
      
             # increase count by number of Hermite polynomials considered. 
             cind = cind + self.hermFuncs[i]
@@ -682,14 +685,14 @@ class BinFit:
                 pass
             sampler.reset()
             
-            # now sample (and thin by a factor of 10):
+            # now sample (and thin by a factor of `thin`):
             for p, lnprob, lnlike in sampler.sample(p, lnprob0=lnprob, lnlike0=lnlike, iterations=nsteps, thin=thin):
                 pass
             
             # not sure how to use the output of PT. Use only T=0 chain for the moment...
             samples = sampler.chain[0,:,:,:].reshape((-1, ndim))
         
-        pdb.set_trace()
+        #pdb.set_trace()
 
         # sanity check
         if PT==True:
@@ -800,10 +803,11 @@ class BinFit:
         # dimensionality of the problem
         ndim = self.lineModel.thetaLength()
 
+        print("Baseline = ", baseline)
+
         pymultinest.run(
             self.lineModel.hypercube_lnlike,   # log-likelihood
             self.lineModel.hypercube_lnprior_simple,   # log-prior   
-            # or need to use _LnLike_Wrapper(self), _LnPrior_Wrapper(self) ?
             ndim, 
             outputfiles_basename=basename,
             n_live_points=n_live_points,
@@ -1201,7 +1205,7 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, NS=False):
+    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, NS=True):
         w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
         lam = self.lam_all[w0:w1,tbin,chbin]
         specBr = self.specBr_all[w0:w1,tbin,chbin]

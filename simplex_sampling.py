@@ -14,6 +14,12 @@ def hypercubeToSimplex(z, r):
     Takes a length-n vector with components between 0-1 (e.g. sampled from an n-dimensional
     hypercube), and a m x (n+1) dimensional array consisting of the (n+1) vertices
     of the simplex each with m specified coordinates
+
+    Parameters:
+    z : array (n-elements)
+         vector with components between 0 and 1
+    r : array m x (n+1)  (NB: usually m=n)
+        vertices of the simplex to be sampled.
     """
     z_sorted = np.concatenate(([0], np.sort(z), [1]))
     bary_coords = np.diff(z_sorted)
@@ -28,7 +34,7 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
     a2 < a0*a2_limit
     
     Note this forms a pyramid with square cross sections in the a1-a2 plane. By
-    cutting along the line a1/a1_limit = a2/a2_limit, this forms two simplices
+    cutting along the line a1/a1_limit = a2/a2_limit, this forms two simplexes.
     
     The strategy is to slice the hypercube according to the volume of the resulting simplices, then remap
     this to two hypercubes in a continuous way (so the hypercubes share a face along the cut plane).
