@@ -22,6 +22,7 @@ import os
 import gptools
 import sys
 import warnings
+from simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
 
 sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 import pymultinest
@@ -510,6 +511,55 @@ class LineModel:
             cind = cind + self.hermFuncs[i]
 
 
+    def hypercube_lnprior_simplex(self,cube, ndim, nparams):
+        """Prior distribution function for :py:mod:`pymultinest`.
+        This version does NOT set any correlations between parameters in the prior. 
+        
+        Maps the (free) parameters in `cube` from [0, 1] to real space.
+        This is necessary because MultiNest only works in a unit hypercube.
+        
+        Do NOT attempt to change function arguments, even if they are not used!
+        This function signature is internally required in Fortran by MultiNest.
+
+        Parameters
+        ----------
+        cube : array of float, (`num_free_params`,)
+            The variables in the unit hypercube.
+        ndim : int
+            The number of dimensions (meaningful length of `cube`).
+        nparams : int
+            The number of parameters (length of `cube`).
+        """
+
+        
+        # set simplex limits so that a1 and a2 are 1/8 of a0 at most
+        # a0 is set to be >0 and smaller than 1e5
+        f_simplex = hypercubeToHermiteSampleFunction(1e5, 0.125, 0.125)
+
+        # noise:
+        for kk in range(self.noiseFuncs):
+            cube[kk] = cube[kk] * 1e3 # noise must be positive 
+        
+        # center wavelength (in 1e-4 A units)
+        cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e2 - 1e2 # wavelength must be positive
+
+        # scale (in 1e-4 A units)
+        cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*1e2 # scale must be positive 
+
+        # Hermite coefficients:
+        herm = [None]*self.nfit
+        cind = self.noiseFuncs+2
+
+        # loop over number of spectral lines:
+        for i in range(self.nfit):
+            
+            # map hypercube to constrained simplex:
+            [cube[cind], cube[cind+1],cube[cind+2]] = f_simplex([cube[cind],cube[cind+1], cube[cind+2] ])
+            
+            # increase count by number of Hermite polynomials considered. 
+            cind = cind + self.hermFuncs[i]
+
+            
 
     def hypercube_lnlike(self, cube, ndim, nparams, lnew):
         """Log-likelihood function for py:mod:`pymultinest`. 
@@ -634,7 +684,7 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=1):
+    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=1, burn=1000):
         ''' Helper function to do MCMC sampling. This uses the emcee implementations of Ensemble 
         Sampling MCMC or Parallel-Tempering MCMC (PT-MCMC). In the latter case, a number of 
         ``temperatures'' must be defined. These are used to modify the likelihood in a way that 
@@ -653,13 +703,15 @@ class BinFit:
             Number of threads used within emcee. Parallelization is possible only within a single machine/node. 
         ntemps : int, optional
             Number of temperatures used in PT-MCMC. This is a quite arbitrary number. Note that in emcee
-            the temperature ladder is implemented such that each temperature is larger by a factor of \sqrt{2}. 
+            the temperature ladder is implemented such that each temperature is larger by a factor of \sqrt{2}.
+        burn : int, optional
+            Burn-in of chains. Default is 1000 
         '''
         
         # round number of steps to multiple of thinning factor:
         nsteps = nsteps - nsteps%thin
         
-        print "PT = ", PT
+        #print "PT = ", PT
         ndim, nwalkers = len(theta_ml), len(theta_ml)*4
         
         if PT == False:
@@ -668,20 +720,20 @@ class BinFit:
             
             # use affine-invariant Ensemble Sampling
             sampler = emcee.EnsembleSampler(nwalkers, ndim, _LnPost_Wrapper(self), threads=emcee_threads) # self.lineModel.lnprob
-            # get MCMC samples, adding 1000 steps which will be burnt later
-            sampler.run_mcmc(pos, nsteps+1000)
+            # get MCMC samples, adding 'burn' steps which will be burnt later
+            sampler.run_mcmc(pos, nsteps+burn)
             
             # flatten chain (but keep ndim)
-            samples = sampler.chain[:,1000::thin, :].reshape((-1, ndim))
+            samples = sampler.chain[:,burn::thin, :].reshape((-1, ndim))
         else:
             # pos has shape (ntemps, nwalkers, ndim)
             pos = [[theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)] for t in range(ntemps)]
 
             # use PT-MCMC 
-            sampler = emcee.PTSampler(ntemps, nwalkers, ndim, _LnLike_Wrapper(self), _LnPrior_Wrapper(self), threads=emcee_threads) # self.lineModel.lnprob
+            sampler = emcee.PTSampler(ntemps, nwalkers, ndim, _LnLike_Wrapper(self), _LnPrior_Wrapper(self), threads=emcee_threads)
             
-            # burn-in 1000 iterations
-            for p, lnprob, lnlike in sampler.sample(pos, iterations=1000):
+            # burn-in 'burn' iterations
+            for p, lnprob, lnlike in sampler.sample(pos, iterations=burn):
                 pass
             sampler.reset()
             
@@ -699,7 +751,7 @@ class BinFit:
             assert sampler.chain.shape == (ntemps, nwalkers, nsteps//thin, ndim)
             assert samples.shape == ( nwalkers * nsteps//thin, ndim)
         else:
-            assert sampler.chain.shape == (nwalkers, 1000+nsteps, ndim)
+            assert sampler.chain.shape == (nwalkers, burn+nsteps, ndim)
             assert samples.shape == (nwalkers * nsteps//thin, ndim)    
 
         return samples, sampler
@@ -779,7 +831,7 @@ class BinFit:
             return True
 
     
-    def NSfit(self, lnev_tol= 0.5, n_live_points=100, sampling_efficiency=0.3, INS=True, const_eff=True, basename=None):
+    def NSfit(self, lnev_tol=0.5, n_live_points=100, sampling_efficiency=0.8, INS=True, const_eff=True, basename=None):
         ''' Fit with Nested Sampling (MultiNest algorithm).
         For Nested Sampling, the prior and likelihood are not simply combined into a posterior
         (which is the only function passed to EMCEE), but they are used differently to explore the 
@@ -799,15 +851,22 @@ class BinFit:
             Setting to activate Importance Nested Sampling in MultiNest. Refer to Feroz et al. 2014. 
         basename : str, optional
         '''
+        # obtain maximum likelihood fits 
+        theta0 = self.lineModel.guessFit()
+        self.result_ml = self.optimizeFit(theta0)
+        self.theta_ml = self.result_ml['x']
         
+        # save moments obtained from maximum likelihood optimization
+        self.m_ml = self.lineModel.modelMoments(self.theta_ml)
+
         # dimensionality of the problem
         ndim = self.lineModel.thetaLength()
 
-        print("Baseline = ", baseline)
+        print("Basename = ", basename)
 
         pymultinest.run(
             self.lineModel.hypercube_lnlike,   # log-likelihood
-            self.lineModel.hypercube_lnprior_simple,   # log-prior   
+            self.lineModel.hypercube_lnprior_simplex, #self.lineModel.hypercube_lnprior_simple,   # log-prior   
             ndim, 
             outputfiles_basename=basename,
             n_live_points=n_live_points,
@@ -825,7 +884,7 @@ class BinFit:
             mode_tolerance = -1e90,  #keeps all modes
             seed = -1, 
             verbose = True,
-            resume = False, 
+            resume = True, 
             context = 0,   # additional info by user (leave empty)
             write_output = True, 
             log_zero = -1e99, 
@@ -843,26 +902,68 @@ class BinFit:
         
         # get chains and weights
         data = a.get_data()
+
+        self.samples = data[:,2:]
+        self.sample_weights = data[:,0]
+        self.sample_n2ll = data[:,1]
+        
         # save statistics
-        s = a.get_stats()
-        self.multinest_stats = s
+        stats = a.get_stats()
+        self.multinest_stats = stats
+        
+        self.modes=stats['modes'][0]
+        self.maximum= self.modes['maximum']
+        self.maximum_a_posterior= self.modes['maximum a posterior']
+        self.mean=np.asarray(self.modes['mean'])
+        self.sigma=np.asarray(self.modes['sigma'])
 
         # get log-evidence estimate and uncertainty
-        self.lnev = (s['global evidence'], s['global evidence error'])
+        self.lnev = (stats['global evidence'], stats['global evidence error'])
 
-        pdb.set_trace()
-            
-        # find moments of line fits from the samples/chains obtained above
-        self.m_samples = np.apply_along_axis(self.lineModel.modelMoments, axis=1, arr=self.samples)
+        f = gptools.plot_sampler(
+            data[:, 2:], # index 0 is weights, index 1 is -2*loglikelihood, then samples
+            weights=data[:, 0],
+            labels=self.lineModel.thetaLabels(),
+            chain_alpha=1.0,
+            cutoff_weight=0.01,
+            cmap='plasma',
+            #suptitle='Posterior distribution of $D$ and $V$',
+            plot_samples=False,
+            plot_chains=False,
+            #xticklabel_angle=120,
+            #ticklabel_fontsize=15,
+        )
+        
+        g=gptools.summarize_sampler(data[:, 2:],
+                                    weights=data[:, 0], 
+                                    burn=0, 
+                                    ci=0.95, chain_mask=None)
+        self.params_mean = np.asarray(g[0])
+        self.params_ci_l = np.asarray(g[1])
+        self.params_ci_u = np.asarray(g[2])
 
-        # save moments obtained from maximum likelihood optimization
-        self.m_ml = self.lineModel.modelMoments(self.theta_ml)
+        # summarize results
+        self.m_map = self.lineModel.modelMoments(self.maximum_a_posterior)
+        self.m_map_mean = self.lineModel.modelMoments(self.mean) 
+        m1 = self.lineModel.modelMoments(self.mean+self.sigma)
+        m2 = self.lineModel.modelMoments(self.mean - self.sigma)
+        self.m_map_std = (m1 - m2)/2.0   #temporary
+
+        # marginalized (fully-Bayesian) results:
+        self.m_bayes_marg = self.lineModel.modelMoments(self.params_mean)
+        self.m_bayes_marg_low = self.lineModel.modelMoments(self.params_ci_l)
+        self.m_bayes_marg_up = self.lineModel.modelMoments(self.params_ci_u)
         
-        self.theta_avg = np.average(self.samples, axis=0)
-        self.m_avg = np.average(self.m_samples, axis=0)
-        self.m_std = np.std(self.m_samples, axis=0) #, ddof=len(theta0))
-        
+        # temporary, for compatibility with MCMC methods:
+        self.theta_avg = self.params_mean
+        self.m_avg = self.m_bayes_marg
+        self.m_std = self.m_map_std
+
         return True
+
+
+
+
 
     def NS_analyze(self):
         ''' Function to analyze Nested Sampling chains. 
@@ -1205,7 +1306,21 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, NS=True):
+    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, NS=False):
+        ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
+        with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the 
+        algorithm runs until meeting a convergence threshold. Parallelization is activated by 
+        default in MultiNest if MPI libraries are available. 
+        
+        If NS==False, emcee is used. Either an affine-invariant Ensemble Sampler or 
+        Parallel-Tempering MCMC are used. Both require specification of a certain number of 
+        steps and a number of threads for parallelization. It is recommended to keep this to 1
+        if the user is already using parallelization to compute multiple spectal images at the same 
+        time (i.e. avoid double-layer parallelization).         
+
+        '''
+
+        self.NS = NS
         w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
         lam = self.lam_all[w0:w1,tbin,chbin]
         specBr = self.specBr_all[w0:w1,tbin,chbin]
@@ -1220,14 +1335,14 @@ class MomentFitter:
             good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads)
         else:
             print "Using Nested Sampling!"
-            basename = os.path.abspath('NS_out/' )
+            # create output 
+            basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
             chains_dir = os.path.dirname(basename)
             if chains_dir and not os.path.exists(chains_dir):
                 os.mkdir(chains_dir)
 
-            good = bf.NSfit(lnev_tol= 0.5, n_live_points=100, sampling_efficiency=0.3, INS=True, basename=chains_dir)
+            good = bf.NSfit(lnev_tol= 0.5, n_live_points=400, sampling_efficiency=0.8, INS=True, basename=basename)
 
-        # print self.fits[tbin][chbin].good
         if not good:
             print "not worth fitting"
         else:
@@ -1326,7 +1441,11 @@ class MomentFitter:
 
     #####
     def plotSingleBinFit(self, tbin, chbin):
-        # bf = self.fits[tbin,chbin]
+        ''' Function designed to plot spectrum from a single time and a single channel bin. 
+        This allows visualization and comparison of the results of nonlinear optimization, 
+        MCMC sampling or Nested Sampling. 
+
+        '''
         bf = self.fits[tbin][chbin]
 
         if bf == None:
@@ -1336,14 +1455,16 @@ class MomentFitter:
         a0.errorbar(bf.lam, bf.specBr, yerr=bf.sig, c='m', fmt='.')
 
         if bf.good:
+        
             pred = bf.lineModel.modelPredict(bf.theta_ml)
+            
             a0.plot(bf.lam, pred, c='r')
 
             for samp in range(25):
                 theta = bf.samples[np.random.randint(len(bf.samples))]
                 noise = bf.lineModel.modelNoise(theta)
                 a0.plot(bf.lam, noise, c='g', alpha=0.08)
-
+                
                 for i in range(len(self.lines.names)):
                     line = bf.lineModel.modelLine(theta, i)
                     a0.plot(bf.lam, line+noise, c='c', alpha=0.08)
@@ -1410,7 +1531,7 @@ def unpack_moments(mf, tidx_min, tidx_max):
 
     for chbin in range(mf.maxChan):
         t=0
-        for tbin in range(tidx_min, tidx_max):
+        for tbin in range(tidx_max-tidx_min): #range(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
                 moments[t,chbin,:] = mf.fits[tbin][chbin].m_avg
                 moments_std[t,chbin,:] = mf.fits[tbin][chbin].m_std
@@ -1446,7 +1567,7 @@ def get_brightness(mf, t_min=1.2, t_max=1.4, plot=False, save=False):
     br_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
     for chbin in range(mf.maxChan):
         t=0
-        for tbin in range(tidx_min, tidx_max):
+        for tbin in range(tidx_max-tidx_min): #range(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
                 br[t,chbin] = mf.fits[tbin][chbin].m_avg[0]
                 br_unc[t,chbin] = mf.fits[tbin][chbin].m_std[0]

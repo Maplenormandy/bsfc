@@ -46,21 +46,21 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
     # Each simplex is a tetrahedron with 4 vertices, one at the origin. Only the
     # 3rd vertex differs between the two simplices
     r0 = [0,0,0]
-    r1 = [a0_max, 0, 0]
-    r2 = [a0_max, a1_limit*a0_max, a2_limit*a0_max]
-    r31 = [a0_max, a1_limit*a0_max, 0]
-    r32 = [a0_max, 0, a2_limit*a0_max]
+    r1 = [a0_max, a1_limit*a0_max, a2_limit*a0_max]
+    r2 = [a0_max, -a1_limit*a0_max, -a2_limit*a0_max]
+    r31 = [a0_max, a1_limit*a0_max, -a2_limit*a0_max]
+    r32 = [a0_max, -a1_limit*a0_max, a2_limit*a0_max]
     
-    # The volume of the tetrahedra is calculated as 1/6 of the volume of the parallelpiped
+    # The volume of the tetrahedra is calculated as 1/6 of the volume of the parallelepiped
     # formed by the vectors pointing to the three non-zero coordinates
     vol1 = np.abs(np.linalg.det(np.array([r1, r2, r31]))/6)
     vol2 = np.abs(np.linalg.det(np.array([r1, r2, r32]))/6)
     
-    # The cutpoint from [0,1] such that the ratio of the cut hypercube volumes is
+    # The cutpoint is from [0,1] in one dimension such that the ratio of the cut hypercube volumes is
     # equal to the ratio of the simplex volumes
     cutpoint = vol1/(vol1+vol2)
     
-    # Sets of vertices. Note that the vertex that differs is in the last slot.
+    # Sets of vertices. Note that the vertex that differs is in the first slot.
     # This is because z[0]==0 is the face that the hypercubes will share, and so
     # the last vertex is the one that will get set to 0
     tet1 = np.stack((r31, r2, r1, r0)).T

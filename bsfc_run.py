@@ -85,7 +85,11 @@ elif shot==1100305019:
 
 # try loading result
 try:
-    with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'rb') as f:
+    try:
+        with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'rb') as f:
+            mf=pkl.load(f)
+    except: 
+        with open('./bsfc_fits/mf_%d_%d_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
             mf=pkl.load(f)
     loaded = True
     print "Loaded previous result"
@@ -101,32 +105,35 @@ if option==1:
 
     if loaded==True:
         chain = mf.fits[tbin][chbin].samples
-        figure = corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
-            quantiles=[0.16,0.5, 0.84], show_titles=True, title_kwargs={'fontsize':12},
-            levels=(0.68,))
 
-        # pdb.set_trace()
-        # figure.set_figheight(10)
-        # figure.set_figwidth(10)
-        plt.savefig('./cornerplots/cornerplot_%d_%d.png'%(shot,nsteps), bbox_inches='tight')
+        plot_posterior=False
+        if plot_posterior:
+            figure = corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
+                                   quantiles=[0.16,0.5, 0.84], show_titles=True, title_kwargs={'fontsize':12},
+                                   levels=(0.68,))
 
-        # extract axes
-        ndim = chain.shape[-1]
-        axes = np.array(figure.axes).reshape((ndim,ndim))
+            # pdb.set_trace()
+            # figure.set_figheight(10)
+            # figure.set_figwidth(10)
+            plt.savefig('./cornerplots/cornerplot_%d_%d.png'%(shot,nsteps), bbox_inches='tight')
 
-        # plot empirical means on corner plot
-        mean_emp = np.mean(chain, axis=0)
-        for i in range(ndim):
-            ax= axes[i,i]
-            ax.axvline(mean_emp[i], color='r')
+            # extract axes
+            ndim = chain.shape[-1]
+            axes = np.array(figure.axes).reshape((ndim,ndim))
+            
+            # plot empirical means on corner plot
+            mean_emp = np.mean(chain, axis=0)
+            for i in range(ndim):
+                ax= axes[i,i]
+                ax.axvline(mean_emp[i], color='r')
 
-        # add empirical mean to histograms
-        for yi in range(ndim):
-            for xi in range(yi):
-                ax = axes[yi,xi]
-                ax.axvline(mean_emp[xi],color='r')
-                ax.axhline(mean_emp[yi], color='r')
-                ax.plot(mean_emp[xi],mean_emp[yi],'sr')
+            # add empirical mean to histograms
+            for yi in range(ndim):
+                for xi in range(yi):
+                    ax = axes[yi,xi]
+                    ax.axvline(mean_emp[xi],color='r')
+                    ax.axhline(mean_emp[yi], color='r')
+                    ax.plot(mean_emp[xi],mean_emp[yi],'sr')
 
         mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
