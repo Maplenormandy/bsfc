@@ -149,3 +149,66 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     )
 
  
+
+
+#  ================
+def visualize_moments(moments_vals,moments_stds, time_sel, q='br'):
+    ''' Convenience function to plot all moments of a chosen spectral line. 
+
+    Parameters:
+    moments_vals: array
+         values of the spectral moments. These are in the order (1) brightness;
+         (2) ion velocity (3) ion temperature. 
+    moments_stds: array
+         standard deviations/uncertainties associated with each of the moments 
+         above. 
+    time_sel: array
+        array giving the diagnostic times selected as part of the fitting process. 
+    q : str, optional
+         Quantity to be plotted, one of {'br": brightness; 'vel': velocity; 'Temp': temperature}
+    '''
+    
+    if q == 'br':
+        vals = moments_vals[:,:,0]
+        stds = moments_stds[:,:,0]
+        zlbl = r'$B$ [eV]'
+        title_lbl='Brightness'
+    elif q == 'vel':
+        vals = moments_vals[:,:,1]
+        stds = moments_stds[:,:,1]
+        zlbl = r'$v$ [km/s]'
+        title_lbl='Velocity'
+    elif q =='Temp':
+        vals = moments_vals[:,:,2]
+        stds = moments_stds[:,:,2]
+        zlbl = r'$Ti$ [keV]'
+        title_lbl='Ion Temperature'
+    else:
+        raise ValueError('Please indicate a valid quantity to measure')
+
+    slider_plot(
+        np.asarray(range(vals.shape[1])),
+        time_sel,
+        np.expand_dims(vals.T,axis=0),
+        np.expand_dims(stds.T,axis=0),
+        xlabel=r'channel #',
+        ylabel=r'$t$ [s]',
+        zlabel=zlbl,
+        labels=[title_lbl],
+        plot_sum=False
+    )
+    
+    slider_plot(
+        time_sel,
+        np.asarray(range(vals.shape[1])),
+        np.expand_dims(vals,axis=0),
+        np.expand_dims(stds,axis=0),
+        xlabel=r'$t$ [s]',
+        ylabel=r'channel #',
+        zlabel=zlbl,
+        labels=[title_lbl],
+        plot_sum=False
+    )
+
+
+    

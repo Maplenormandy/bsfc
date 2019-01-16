@@ -23,6 +23,7 @@ import time as time_
 import pdb
 import itertools
 import os
+import shutil
 
 # MPI parallelization
 from mpi4py import MPI
@@ -102,7 +103,7 @@ if rank==0:
 else:
     mf = None
 
-if size==2: #1:
+if size==1:
     # if only 1 core is being used, assume that script is being used for plotting
 
     with open('./bsfc_fits/moments_%d_%dsteps_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
@@ -127,29 +128,9 @@ if size==2: #1:
             moments_vals[tbin,chbin,2] = gathered_moments[tbin,chbin][0][2]
             moments_stds[tbin,chbin,2] = gathered_moments[tbin,chbin][1][2]
             
-    bsfc_slider.slider_plot(
-        np.asarray(range(moments_vals[:,:,0].shape[1])),
-        time_sel,
-        np.expand_dims(moments_vals[:,:,0].T,axis=0),
-        np.expand_dims(moments_stds[:,:,0].T,axis=0),
-        xlabel=r'channel #',
-        ylabel=r'$t$ [s]',
-        zlabel=r'$B$ [eV]',
-        labels=['Brightness'],
-        plot_sum=False
-    )
-    
-    bsfc_slider.slider_plot(
-        time_sel,
-        np.asarray(range(moments_vals[:,:,0].shape[1])),
-        np.expand_dims(moments_vals[:,:,0],axis=0),
-        np.expand_dims(moments_stds[:,:,0],axis=0),
-        xlabel=r'$t$ [s]',
-        ylabel=r'channel #',
-        zlabel=r'$B$ [eV]',
-        labels=['Brightness'],
-        plot_sum=False
-    )
+    bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
+    bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='vel')
+    bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='Temp')
 
     plt.show(block=True)
 else:
@@ -225,7 +206,6 @@ else:
         else:
                 
             mf.fits[binn[0]][binn[1]] = ff(binn)
-
             if mf.fits[binn[0]][binn[1]].good ==True:
                 chain = mf.fits[binn[0]][binn[1]].samples
                 moments_vals = np.apply_along_axis(mf.fits[binn[0]][binn[1]].lineModel.modelMeasurements, axis=1, arr=chain)
@@ -253,7 +233,7 @@ else:
 
         if resume:
             # eliminate checkpoint directory if this was created
-            os.rmdir('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max))
+            shutil.rmtree('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max))
         
         # end time count
         elapsed_time = MPI.Wtime() - t_start
