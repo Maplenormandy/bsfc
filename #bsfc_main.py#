@@ -1754,30 +1754,3 @@ def get_meas(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
             t+=1
 
     return moments_vals, moments_std, time_sel
-
-'''
-def get_single_meas(mf, t_min=1.2, t_max=1.4,chbin=0, line=0, plot=False):
-    #print "Computing brightness, rotation and ion temperature"
-    # # select times of interest
-    tidx_min = np.argmin(np.abs(mf.time - t_min))
-    tidx_max = np.argmin(np.abs(mf.time - t_max))
-    time_sel= mf.time[tidx_min: tidx_max]
-
-    # collect moments and respective standard deviations
-    moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
-    moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))
-    moments[:] = None
-    moments_std[:] = None
-
-    t=0
-    for tbin in range(tidx_min, tidx_max):
-        
-        if mf.fits[tbin][chbin].good:
-            chain = mf.fits[tbin][chbin].samples
-            moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
-            moments[t, chbin,:] = np.mean(moments_vals, axis=0)
-            moments_std[t, chbin,:] = np.std(moments_vals, axis=0)
-        t+=1
-
-    return moments_vals, moments_std, time_sel
-'''

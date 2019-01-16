@@ -22,6 +22,7 @@ import sys
 import time as time_
 import pdb
 import itertools
+import os
 
 # MPI parallelization
 from mpi4py import MPI
@@ -35,6 +36,11 @@ shot = int(sys.argv[1])
 # second command line argument gives number of MCMC steps 
 nsteps = int(sys.argv[2])
     
+try:
+    # third command-line argument specified whether to attempt checkpointing for every bin fit
+    resume=bool(int(sys.argv[3]))
+except:
+    resume=False
 
 # =====================================
 # shot=1101014029
@@ -65,7 +71,7 @@ elif shot==1101014019:
     primary_impurity = 'Ca'
     primary_line = 'w'
     tbin=128; chbin=11
-    t_min=1.24; t_max=1.27#1.4
+    t_min=1.24; t_max=1.4
     tht=0
 elif shot==1101014029:
     primary_impurity = 'Ca'
@@ -90,23 +96,42 @@ elif shot==1100305019:
 
 # ==============
 
-if size==1:
+# Always create new object by default when running with MPI
+if rank==0:
+    mf = bsfc_main.MomentFitter(primary_impurity, primary_line, shot, tht=tht)
+else:
+    mf = None
+
+if size==2: #1:
     # if only 1 core is being used, assume that script is being used for plotting
 
-    with open('./bsfc_fits/mf_%d_%d_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
-            mf=pkl.load(f)
+    with open('./bsfc_fits/moments_%d_%dsteps_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
+            gathered_moments=pkl.load(f)
 
     tidx_min = np.argmin(np.abs(mf.time - t_min))
     tidx_max = np.argmin(np.abs(mf.time - t_max))
     time_sel= mf.time[tidx_min: tidx_max]
 
-    br, br_unc, time_sel = bsfc_main.get_brightness(mf, t_min=t_min, t_max=t_max)
-		
+    # get individual spectral moments 
+    moments_vals = np.empty((tidx_max-tidx_min,mf.maxChan,3))
+    moments_stds = np.empty((tidx_max-tidx_min,mf.maxChan,3))
+    moments_vals[:] = None
+    moments_stds[:] = None
+
+    for tbin in range(tidx_max-tidx_min):
+        for chbin in range(mf.maxChan):
+            moments_vals[tbin,chbin,0] = gathered_moments[tbin,chbin][0][0]
+            moments_stds[tbin,chbin,0] = gathered_moments[tbin,chbin][1][0]
+            moments_vals[tbin,chbin,1] = gathered_moments[tbin,chbin][0][1]
+            moments_stds[tbin,chbin,1] = gathered_moments[tbin,chbin][1][1]
+            moments_vals[tbin,chbin,2] = gathered_moments[tbin,chbin][0][2]
+            moments_stds[tbin,chbin,2] = gathered_moments[tbin,chbin][1][2]
+            
     bsfc_slider.slider_plot(
-        np.asarray(range(br.shape[1])),
+        np.asarray(range(moments_vals[:,:,0].shape[1])),
         time_sel,
-        np.expand_dims(br.T,axis=0),
-        np.expand_dims(br_unc.T,axis=0),
+        np.expand_dims(moments_vals[:,:,0].T,axis=0),
+        np.expand_dims(moments_stds[:,:,0].T,axis=0),
         xlabel=r'channel #',
         ylabel=r'$t$ [s]',
         zlabel=r'$B$ [eV]',
@@ -116,9 +141,9 @@ if size==1:
     
     bsfc_slider.slider_plot(
         time_sel,
-        np.asarray(range(br.shape[1])),
-        np.expand_dims(br,axis=0),
-        np.expand_dims(br_unc,axis=0),
+        np.asarray(range(moments_vals[:,:,0].shape[1])),
+        np.expand_dims(moments_vals[:,:,0],axis=0),
+        np.expand_dims(moments_stds[:,:,0],axis=0),
         xlabel=r'$t$ [s]',
         ylabel=r'channel #',
         zlabel=r'$B$ [eV]',
@@ -130,17 +155,8 @@ if size==1:
 else:
     # Run MPI job:
 
-    # Always create new object by default when running with MPI
-    if rank==0:
-        mf = bsfc_main.MomentFitter(primary_impurity, primary_line, shot, tht=tht)
-    else:
-        mf = None
-
     # broadcast r object to all cores
     mf = comm.bcast(mf, root = 0)  
-    
-    # synchronize processes
-    comm.Barrier()
     
     tidx_min = np.argmin(np.abs(mf.time - t_min))
     tidx_max = np.argmin(np.abs(mf.time - t_max))
@@ -152,60 +168,93 @@ else:
     # map range of channels and compute each
     map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(mf.maxChan)))
     map_args = [list(a) for a in map_args_tpm]
-    
 
     # we have comm.size cores available. Total number of jobs to be run:
     njobs = len(map_args)
     
-    # number of jobs per worker if number of total jobs is exactly a multiple of the number of workers
-    personal_njobs = njobs // size 
-    
-    # starting index of assigned bins for current worker:
-    assigned_jobs_offset = rank * personal_njobs
-    
-    # bins to be run
+    # Block-cyclic parallelization scheme
+    extra_njobs = njobs - njobs//size * size
+
+    if rank < extra_njobs:
+        personal_njobs = njobs // size + 1
+        assigned_jobs_offset = rank * personal_njobs + rank 
+    else:
+        personal_njobs = njobs // size
+        assigned_jobs_offset = rank * personal_njobs + extra_njobs
+
     assigned_bins = map_args[assigned_jobs_offset:assigned_jobs_offset+personal_njobs]
     
-    # if #total jobs is NOT exactly a multiple of the total number of workers, distribute remaining bins 
-    if njobs%size != 0:
-        # number of bins still to be assigned:
-        extra_njobs = njobs - njobs//size * size
-        
-        # assign remaining 'n' bins to first workers with rank<n
-        if rank < extra_njobs:
-            # add one job to first #extra_njobs workers available
-            assigned_bins += ([ map_args[assigned_jobs_offset+personal_njobs+rank ] ])
-            
-
-    # now, for each worker:
-    fits = np.asarray([ None for yy in range(len(assigned_bins)) ])
-    comm.Barrier()
+    # now, fill up result array for each worker:
+    res = np.asarray([ None for yy in range(len(assigned_bins)) ])
 
     # ===============================
     # Actual evaluation for each worker
     for j, binn in enumerate(assigned_bins):
-        fits[j] = ff(binn)
 
+        if resume:
+            # create checkpoint directory if it doesn't exist yet
+            if not os.path.exists('checkpoints'):
+                os.makedirs('checkpoints')
+
+            if not os.path.exists('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max)):
+                os.makedirs('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max))
+
+            try:
+                # if fit has already been created, re-load it from checkpoint directory
+                with open('./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl'%(shot,
+                                                                                               nsteps,t_min,t_max,shot,nsteps, binn[0], binn[1])) as f:
+                          res[j] = pkl.load(f)
+                print "Loaded fit moments from ./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl"%(shot,
+                                                                                                                   nsteps,t_min,t_max,shot,nsteps, binn[0], binn[1])
+
+            except:
+                # create new fit      
+                mf.fits[binn[0]][binn[1]] = ff(binn)
+                if mf.fits[binn[0]][binn[1]].good ==True:
+                    chain = mf.fits[binn[0]][binn[1]].samples
+                    moments_vals = np.apply_along_axis(mf.fits[binn[0]][binn[1]].lineModel.modelMeasurements, axis=1, arr=chain)
+
+                    res[j] = [np.mean(moments_vals, axis=0), np.std(moments_vals, axis=0)]
+                else:
+                    res[j] =[np.asarray([np.nan, np.nan, np.nan]), np.asarray([np.nan, np.nan, np.nan])]
+
+                with open('./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl'%(shot,
+                                                                                               nsteps,t_min,t_max,shot,nsteps, binn[0], binn[1]),'wb') as f:
+                    pkl.dump(res[j],f)
+
+        else:
+                
+            mf.fits[binn[0]][binn[1]] = ff(binn)
+
+            if mf.fits[binn[0]][binn[1]].good ==True:
+                chain = mf.fits[binn[0]][binn[1]].samples
+                moments_vals = np.apply_along_axis(mf.fits[binn[0]][binn[1]].lineModel.modelMeasurements, axis=1, arr=chain)
+           
+                res[j] = [np.mean(moments_vals, axis=0), np.std(moments_vals, axis=0)]
+            else:
+                res[j] = [np.asarray([np.nan, np.nan, np.nan]), np.asarray([np.nan, np.nan, np.nan])]
+            
+            pdb.set_trace()
     # ===============================
 
-    comm.Barrier()
-    
     # collect results on rank=0 process:
-    gathered_fits = comm.gather(fits, root=0)
+    gathered_res = comm.gather(res, root=0)
 
     #join all results
     if rank==0:
-        gath_fits = np.concatenate(gathered_fits)
+        gath_res = np.concatenate(gathered_res)
+        gathered_moments= np.asarray(gath_res).reshape((tidx_max-tidx_min,mf.maxChan))
 
-        mf.fits = np.asarray(gath_fits).reshape((tidx_max-tidx_min,mf.maxChan))
-    
         print "*********** Completed fits *************"
     
         # save fits for future use
-        with open('./bsfc_fits/mf_%d_%d_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'wb') as f:
-            pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
+        with open('./bsfc_fits/moments_%d_%dsteps_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'wb') as f:
+            pkl.dump(gathered_moments, f, protocol=pkl.HIGHEST_PROTOCOL)
 
-
+        if resume:
+            # eliminate checkpoint directory if this was created
+            os.rmdir('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max))
+        
         # end time count
         elapsed_time = MPI.Wtime() - t_start
         
