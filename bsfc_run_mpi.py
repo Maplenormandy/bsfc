@@ -128,11 +128,28 @@ if size==1:
             moments_vals[tbin,chbin,2] = gathered_moments[tbin,chbin][0][2]
             moments_stds[tbin,chbin,2] = gathered_moments[tbin,chbin][1][2]
             
+    # exclude values with brightness greater than a certain value
+    BR_THRESH = 10.0
+    moments_vals[:,:,0][moments_vals[:,:,0] > BR_THRESH] = np.nan
+    moments_stds[:,:,0][moments_vals[:,:,0] > BR_THRESH] = np.nan
+    moments_vals[:,:,1][moments_vals[:,:,0] > BR_THRESH] = np.nan
+    moments_stds[:,:,1][moments_vals[:,:,0] > BR_THRESH] = np.nan
+    moments_vals[:,:,2][moments_vals[:,:,0] > BR_THRESH] = np.nan
+    moments_stds[:,:,2][moments_vals[:,:,0] > BR_THRESH] = np.nan
+
+    # normalize brightness to largest value
+    idx1,idx2 = np.unravel_index(np.nanargmax(moments_vals[:,:,0]), moments_vals[:,:,0].shape)
+    max_br = moments_vals[idx1,idx2,0]
+    max_br_std = moments_stds[idx1,idx2,0]
+
+    moments_vals[:, :,0] = moments_vals[:,:,0]/ max_br
+    moments_stds[:,:,0] = scipy.sqrt((moments_stds[:,:,0] / max_br)**2.0 + ((moments_vals[:,:,0] / max_br)*(max_br_std / max_br))**2.0)
+    
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='vel')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='Temp')
 
-    plt.show(block=True)
+    plt.show(block=False)
 else:
     # Run MPI job:
 
@@ -156,9 +173,9 @@ else:
     # Block-cyclic parallelization scheme
     extra_njobs = njobs - njobs//size * size
 
-    if rank < extra_njobs:
+    if rank < extra_njobs - 1 :   #first "extra_njobs" workers take extra task (NB: Python numbering starts at 0)
         personal_njobs = njobs // size + 1
-        assigned_jobs_offset = rank * personal_njobs + rank 
+        assigned_jobs_offset = rank * personal_njobs 
     else:
         personal_njobs = njobs // size
         assigned_jobs_offset = rank * personal_njobs + extra_njobs

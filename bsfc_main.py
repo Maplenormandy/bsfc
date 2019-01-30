@@ -23,6 +23,7 @@ import gptools
 import sys
 import warnings
 from simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
+from matplotlib.pyplot import cm
 
 sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 import pymultinest
@@ -198,7 +199,8 @@ class LineModel:
 
     def modelLine(self, theta, line=0, order=-1):
         """
-        Get only a single line
+        Get only a single line. Update this to plot a continuous line rather than discretely at 
+        the same values of wavelengths.
         """
         noise, center, scale, herm = self.unpackTheta(theta)
 
@@ -224,6 +226,7 @@ class LineModel:
         hnEv = (4 * hn + hnEdge[1:] + hnEdge[:-1])/6.0
 
         return np.sum(hnEv, axis=1)
+
 
     def modelMoments(self, theta, line=0, order=-1):
         """
@@ -684,7 +687,7 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=10, thin=1, burn=1000):
+    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=5, thin=1, burn=1000):
         ''' Helper function to do MCMC sampling. This uses the emcee implementations of Ensemble 
         Sampling MCMC or Parallel-Tempering MCMC (PT-MCMC). In the latter case, a number of 
         ``temperatures'' must be defined. These are used to modify the likelihood in a way that 
@@ -702,7 +705,7 @@ class BinFit:
         emcee_threads : int, optional
             Number of threads used within emcee. Parallelization is possible only within a single machine/node. 
         ntemps : int, optional
-            Number of temperatures used in PT-MCMC. This is a quite arbitrary number. Note that in emcee
+            Number of temperatures used in PT-MCMC. This is a rather arbitrary number. Note that in emcee
             the temperature ladder is implemented such that each temperature is larger by a factor of \sqrt{2}.
         burn : int, optional
             Burn-in of chains. Default is 1000 
@@ -711,7 +714,7 @@ class BinFit:
         # round number of steps to multiple of thinning factor:
         nsteps = nsteps - nsteps%thin
         
-        #print "PT = ", PT
+        if PT: print "Using PT-MCMC!"
         ndim, nwalkers = len(theta_ml), len(theta_ml)*4
         
         if PT == False:
@@ -741,10 +744,8 @@ class BinFit:
             for p, lnprob, lnlike in sampler.sample(p, lnprob0=lnprob, lnlike0=lnlike, iterations=nsteps, thin=thin):
                 pass
             
-            # not sure how to use the output of PT. Use only T=0 chain for the moment...
+            # Keep only samples corresponding to T=0 chains
             samples = sampler.chain[0,:,:,:].reshape((-1, ndim))
-        
-        #pdb.set_trace()
 
         # sanity check
         if PT==True:
@@ -1306,7 +1307,7 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, NS=False):
+    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False, NS=False):
         ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the 
         algorithm runs until meeting a convergence threshold. Parallelization is activated by 
@@ -1332,7 +1333,7 @@ class MomentFitter:
 
         print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
         if NS==False:
-            good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads)
+            good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads, PT=PT)
         else:
             print "Using Nested Sampling!"
             # create output 
@@ -1455,28 +1456,34 @@ class MomentFitter:
         a0.errorbar(bf.lam, bf.specBr, yerr=bf.sig, c='m', fmt='.')
 
         if bf.good:
-        
+            # color list, one color for each spectral line
+            #color=cm.rainbow(np.linspace(0,1,len(self.lines.names)))
+            color = ['b','g','c','m','y','k']
+            # plot in red the overall reconstructed spectrum (sum of all spectral lines)
             pred = bf.lineModel.modelPredict(bf.theta_ml)
-            
             a0.plot(bf.lam, pred, c='r')
 
+            # plot some samples: noise floor in black, spectral lines all in different colors 
             for samp in range(25):
                 theta = bf.samples[np.random.randint(len(bf.samples))]
                 noise = bf.lineModel.modelNoise(theta)
-                a0.plot(bf.lam, noise, c='g', alpha=0.08)
+                a0.plot(bf.lam, noise, c='k', alpha=0.08)
                 
                 for i in range(len(self.lines.names)):
                     line = bf.lineModel.modelLine(theta, i)
-                    a0.plot(bf.lam, line+noise, c='c', alpha=0.08)
+                    a0.plot(bf.lam, line+noise, c=color[i], alpha=0.08)
 
+            # add average inferred noise 
             noise = bf.lineModel.modelNoise(bf.theta_avg)
-            a0.plot(bf.lam, noise, c='g')
+            a0.plot(bf.lam, noise, c='k', label='Inferred noise')
             a0.set_title('tbin='+str(tbin)+', chbin='+str(chbin))
 
+            # plot all fitted spectral lines, one in each color
             for i in range(len(self.lines.names)):
                 line = bf.lineModel.modelLine(bf.theta_avg, i)
-                a0.plot(bf.lam, line+noise, c='c')
+                a0.plot(bf.lam, line+noise, c=color[i])
 
+            # on second subplot, plot residuals
             a1.errorbar(bf.lam, bf.specBr - pred, yerr=bf.sig, c='r', fmt='.')
             a1.axhline(c='m', ls='--')
 
@@ -1754,30 +1761,3 @@ def get_meas(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
             t+=1
 
     return moments_vals, moments_std, time_sel
-
-'''
-def get_single_meas(mf, t_min=1.2, t_max=1.4,chbin=0, line=0, plot=False):
-    #print "Computing brightness, rotation and ion temperature"
-    # # select times of interest
-    tidx_min = np.argmin(np.abs(mf.time - t_min))
-    tidx_max = np.argmin(np.abs(mf.time - t_max))
-    time_sel= mf.time[tidx_min: tidx_max]
-
-    # collect moments and respective standard deviations
-    moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
-    moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))
-    moments[:] = None
-    moments_std[:] = None
-
-    t=0
-    for tbin in range(tidx_min, tidx_max):
-        
-        if mf.fits[tbin][chbin].good:
-            chain = mf.fits[tbin][chbin].samples
-            moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
-            moments[t, chbin,:] = np.mean(moments_vals, axis=0)
-            moments_std[t, chbin,:] = np.std(moments_vals, axis=0)
-        t+=1
-
-    return moments_vals, moments_std, time_sel
-'''

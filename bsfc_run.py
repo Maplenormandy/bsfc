@@ -32,11 +32,15 @@ option = int(sys.argv[3])
 # fourth command line argument gives number of MCMC steps
 nsteps = int(sys.argv[4])
 
-# # fifth argument specifies whether to plot (choose not to if running in SLURM)
-# try:
-#     plot = bool(sys.argv[5])
-# except:
-#     plot = True
+try:
+    PT = bool(int(sys.argv[5]))
+except:
+    PT = False
+
+try:
+    NS = bool(int(sys.argv[6]))
+except:
+    NS = False
 
 # Start counting time:
 start_time=time_.time()
@@ -101,7 +105,8 @@ except:
 # ==================================
 if option==1:
     if loaded==False:
-        mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps, emcee_threads=4)
+        mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps, 
+                        emcee_threads=NTASKS, PT=PT, NS=NS)
 
     if loaded==True:
         chain = mf.fits[tbin][chbin].samples
