@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Apply tools in bsfc_main.py to a number of test cases. 
+MPI high-throughput parallelization of BSFC fitting. 
+Run 
+mpirun python <SHOT> <NUMBER OF STEPS> 
+where <SHOT> is the CMOD shot number and the second argument is the number of steps
+that MCMC analysis should run (burn in and thinning are already hard-coded). 
+
+To visualize results, after the above mpirun, run
+python  <SHOT> <NUMBER OF STEPS> 
+i.e. the same, without the 'mpirun' command. 
 
 @author: sciortino
 """
@@ -24,6 +32,7 @@ import pdb
 import itertools
 import os
 import shutil
+from bsfc_clean_moments import clean_moments
 
 # MPI parallelization
 from mpi4py import MPI
@@ -41,7 +50,17 @@ try:
     # third command-line argument specified whether to attempt checkpointing for every bin fit
     resume=bool(int(sys.argv[3]))
 except:
-    resume=False
+    resume=True
+
+try:
+    # fourth argument indicates whether to use quiet mode (requires specifying third argument)
+    quiet_mode = bool(int(sys.argv[4]))
+except:
+    quiet_mode = False
+
+if quiet_mode:
+    import warnings
+    warnings.filterwarnings("ignore")
 
 # =====================================
 # shot=1101014029
@@ -109,42 +128,10 @@ if size==1:
     with open('./bsfc_fits/moments_%d_%dsteps_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
             gathered_moments=pkl.load(f)
 
-    tidx_min = np.argmin(np.abs(mf.time - t_min))
-    tidx_max = np.argmin(np.abs(mf.time - t_max))
-    time_sel= mf.time[tidx_min: tidx_max]
-
-    # get individual spectral moments 
-    moments_vals = np.empty((tidx_max-tidx_min,mf.maxChan,3))
-    moments_stds = np.empty((tidx_max-tidx_min,mf.maxChan,3))
-    moments_vals[:] = None
-    moments_stds[:] = None
-
-    for tbin in range(tidx_max-tidx_min):
-        for chbin in range(mf.maxChan):
-            moments_vals[tbin,chbin,0] = gathered_moments[tbin,chbin][0][0]
-            moments_stds[tbin,chbin,0] = gathered_moments[tbin,chbin][1][0]
-            moments_vals[tbin,chbin,1] = gathered_moments[tbin,chbin][0][1]
-            moments_stds[tbin,chbin,1] = gathered_moments[tbin,chbin][1][1]
-            moments_vals[tbin,chbin,2] = gathered_moments[tbin,chbin][0][2]
-            moments_stds[tbin,chbin,2] = gathered_moments[tbin,chbin][1][2]
-            
-    # exclude values with brightness greater than a certain value
-    BR_THRESH = 10.0  #just a parameter
-    moments_vals[:,:,0][moments_vals[:,:,0] > BR_THRESH] = np.nan
-    moments_stds[:,:,0][moments_vals[:,:,0] > BR_THRESH] = np.nan
-    moments_vals[:,:,1][moments_vals[:,:,0] > BR_THRESH] = np.nan
-    moments_stds[:,:,1][moments_vals[:,:,0] > BR_THRESH] = np.nan
-    moments_vals[:,:,2][moments_vals[:,:,0] > BR_THRESH] = np.nan
-    moments_stds[:,:,2][moments_vals[:,:,0] > BR_THRESH] = np.nan
-
-    # normalize brightness to largest value
-    idx1,idx2 = np.unravel_index(np.nanargmax(moments_vals[:,:,0]), moments_vals[:,:,0].shape)
-    max_br = moments_vals[idx1,idx2,0]
-    max_br_std = moments_stds[idx1,idx2,0]
-
-    moments_vals[:, :,0] = moments_vals[:,:,0]/ max_br
-    moments_stds[:,:,0] = scipy.sqrt((moments_stds[:,:,0] / max_br)**2.0 + ((moments_vals[:,:,0] / max_br)*(max_br_std / max_br))**2.0)
+    # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
+    moments_vals, moments_stds, time_sel = clean_moments(mf.time, mf.maxChan, t_min,t_max, gathered_moments, BR_THRESH=2.0, BR_STD_THRESH=0.1)
     
+    # BSFC slider visualization
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='vel')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='Temp')

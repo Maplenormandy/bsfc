@@ -19,28 +19,29 @@ import bsfc_slider
 import scipy
 import sys
 import time as time_
+import multiprocessing
 
 # first command line argument gives shot number
 shot = int(sys.argv[1])
 
-# second command line argument tells how many processes to run in parallel
-NTASKS = int(sys.argv[2])
-
 # third command line argument specifies the type of run
-option = int(sys.argv[3])
+option = int(sys.argv[2])
 
 # fourth command line argument gives number of MCMC steps
-nsteps = int(sys.argv[4])
+nsteps = int(sys.argv[3])
 
 try:
-    PT = bool(int(sys.argv[5]))
+    PT = bool(int(sys.argv[4]))
 except:
     PT = False
 
 try:
-    NS = bool(int(sys.argv[6]))
+    NS = bool(int(sys.argv[5]))
 except:
     NS = False
+
+# Use as many cores as are available (this only works on a single machine/node!)
+NTASKS = multiprocessing.cpu_count()
 
 # Start counting time:
 start_time=time_.time()
@@ -72,7 +73,7 @@ elif shot==1101014019:
 elif shot==1101014029:
     primary_impurity = 'Ca'
     primary_line = 'w'
-    tbin=128; chbin=13
+    tbin= 129; chbin= 22 #tbin=128; chbin=13
     t_min=1.17; t_max=1.3
 elif shot==1101014030:
     primary_impurity = 'Ca'
