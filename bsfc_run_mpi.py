@@ -129,7 +129,7 @@ if size==1:
             moments_stds[tbin,chbin,2] = gathered_moments[tbin,chbin][1][2]
             
     # exclude values with brightness greater than a certain value
-    BR_THRESH = 10.0
+    BR_THRESH = 10.0  #just a parameter
     moments_vals[:,:,0][moments_vals[:,:,0] > BR_THRESH] = np.nan
     moments_stds[:,:,0][moments_vals[:,:,0] > BR_THRESH] = np.nan
     moments_vals[:,:,1][moments_vals[:,:,0] > BR_THRESH] = np.nan
@@ -149,7 +149,8 @@ if size==1:
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='vel')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='Temp')
 
-    plt.show(block=False)
+    plt.show(block=True)
+
 else:
     # Run MPI job:
 
