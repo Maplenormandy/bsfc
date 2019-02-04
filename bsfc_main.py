@@ -1189,22 +1189,70 @@ class _fitTimeWindowWrapper(object):
 LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split())
 
 class MomentFitter:
-    def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None):
+    def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None, experiment='CMOD', instrument='Hirex-Sr'):
+	''' Class to store experimental data and inferred spectral fits.
+	
+	Parameters:
+	primary_impurity: 
+	primary_line:
+	shot:
+	tht: 
+	lam_bounds:
+	experiment: {'CMOD','D3D',...}
+		Experimental device of interest. Only pre-defined choices for which data fetching is made available 
+		are acceptable inputs. Default is 'CMOD'. 
+	instrument: {'Hirex-Sr','XEUS','LOWEUS', 'CER', ...}
+		Instrument/diagnostic for which spectral data should be fitted. Note that said instrument must be 
+		available for the experiment given above. Default is 'Hirex-Sr'. 
+	
+	'''
         self.lines = LineInfo(None, None, None, None, None, None)
         self.primary_line = primary_line
         self.tht=tht
         self.shot = shot
 
-        amuToKeV = 931494.095 # amu in keV
-        #speedOfLight = 2.998e+5 # speed of light in km/s
-
+	self.experiment = experiment
+	if experiment=='CMOD':
+	    if instrument in ['Hirex-Sr','XEUS','LOWEUS']:
+	        self.instrument = instrument
+	    else:
+		raise ValueError('%s instrument not available for CMOD!'%str(instrument))
+	elif experiment=='D3D':
+	    if instrument in ['CER','XEUS','LOWEUS']:
+	        self.instrument = instrument
+	    else:
+		raise ValueError('%s instrument not available for D3D!'%str(instrument))
+	
+	if experiment=='CMOD':
+	    if instrument=='Hirex-Sr':
+	        self.load_hirex_data()
+	    else:
+		raise ValueError('Instruments other than Hirex-Sr not yet implemented for CMOD!')
+	elif  experiment=='D3D':
+	    if instrument=='CER':
+		self.load_D3D_cer()
+	    else:
+		raise ValueError('Instruments other than CER are not yet implemented for D3D!')
+	else:
+	    raise ValueError('Experiments other than CMOD not yet implemented!')
+	
+    def load_hirex_data(self, hirexsr_file='hirexsr_wavelengths.csv'):
+	'''
+	Function to load Hirex-Sr data for CMOD. Assumes that rest wavelengths, ionization stages and 
+	atomic line names are given in a file provided as input. 
+	'''
+	self.hirexsr_file = str(hirexsr_file)
+	
         # Load all wavelength data
-        with open('hirexsr_wavelengths.csv', 'r') as f:
+        with open(hirexsr_file, 'r') as f:
             lineData = [s.strip().split(',') for s in f.readlines()]
             lineLam = np.array([float(ld[1]) for ld in lineData[2:]])
             lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
             lineName = np.array([ld[3] for ld in lineData[2:]])
 
+	amuToKeV = 931494.095 # amu in keV
+        #speedOfLight = 2.998e+5 # speed of light in km/s
+	
         # Load atomic data, for calculating line widths, etc...
         with open('atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
@@ -1288,6 +1336,123 @@ class MomentFitter:
         if not lamInRange:
             raise ValueError("Fit range does not appear to be on detector")
 
+        # Indices are [lambda, time, channel]
+        self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
+        self.sig_all = branchNode.getNode('SPEC:SIG').data()
+
+        pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data()
+        self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
+
+        # Maximum number of channels, time bins
+        self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
+        self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
+
+        # get time basis
+        tmp=np.asarray(branchNode.getNode('SPEC:SIG').dim_of(1))
+        mask = [tmp>-1]
+        self.time = tmp[mask]
+
+        self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
+
+    def load_D3D_cer(self, cer_file='cer_wavelengths.csv'):
+	'''
+	Function to load CER data for D3D. Assumes that rest wavelengths, ionization stages and 
+	atomic line names are given in a file provided as input. 
+	'''
+	self.cer_file = str(cer_file)
+	
+        # Load all wavelength data
+        with open(cer_file, 'r') as f:
+            lineData = [s.strip().split(',') for s in f.readlines()]
+            lineLam = np.array([float(ld[1]) for ld in lineData[2:]])
+            lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
+            lineName = np.array([ld[3] for ld in lineData[2:]])
+
+	amuToKeV = 931494.095 # amu in keV
+	
+        # Load atomic data, for calculating line widths, etc...
+        with open('atomic_data.csv', 'r') as f:
+            atomData = [s.strip().split(',') for s in f.readlines()]
+            atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
+            atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
+
+        if lam_bounds == None:
+            if primary_impurity == 'Ca':
+                if primary_line == 'w':
+                    lam_bounds = (3.172, 3.188)
+                elif primary_line == 'lya1':
+                    lam_bounds = (3.010, 3.027)
+                else:
+                    raise NotImplementedError("Line is not yet implemented")
+            elif primary_impurity == 'Ar':
+                if primary_line == 'w':
+                    lam_bounds = (3.945, 3.960)
+                elif primary_line == 'z':
+                    raise NotImplementedError("Not implemented yet (needs line tying)")
+                elif primary_line == 'lya1':
+                    lam_bounds = (3.725, 3.742)
+                else:
+                    raise NotImplementedError("Line is not yet implemented")
+
+        self.lam_bounds = lam_bounds
+
+        # Populate the line data
+        lineInd = np.logical_and(lineLam>lam_bounds[0], lineLam<lam_bounds[1])
+        #satelliteLines = np.array(['s' not in l for l in lineName])
+        #lineInd = np.logical_and(satelliteLines, lineInd)
+        ln = lineName[lineInd]
+        ll = lineLam[lineInd]
+        lz = lineZ[lineInd]
+        lm = atomMass[lz-1]
+        ls = atomSymbol[lz-1]
+
+        # Get the index of the primary line
+        self.pl = np.where(ln==primary_line)[0][0]
+
+        lr = np.sqrt(lm / lm[self.pl])
+
+        self.lines = LineInfo(ll, lm, ln, ls, lz, lr)
+
+        # Sort lines by distance from primary line
+        pl_sorted = np.argsort(np.abs(self.lines.lam-self.lines.lam[self.pl]))
+        for data in self.lines:
+            data = data[pl_sorted]
+
+        print 'Fitting:', [self.lines.symbol[i] +
+                ' ' + self.lines.names[i] + ' @ ' +
+                str(self.lines.lam[i]) for i in range(len(self.lines.names))]
+
+	# MODIFY for D3D!!!!
+        specTree = MDSplus.Tree('spectroscopy', shot)
+
+        ana = '.ANALYSIS'
+        if tht > 0:
+            ana += str(tht)
+
+        # Determine which, if any, detector has the desired lam_bounds
+        rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
+        lamInRange = False
+        try:
+            branchNode = specTree.getNode(rootPath+'.HELIKE')
+            self.lam_all = branchNode.getNode('SPEC:LAM').data()
+            if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
+                print "Fitting on Branch A"
+                lamInRange = True
+        except:
+            pass
+
+        if not lamInRange:
+            try:
+                branchNode = specTree.getNode(rootPath+'.HLIKE')
+                self.lam_all = branchNode.getNode('SPEC:LAM').data()
+                if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
+                    print "Fitting on Branch B"
+                    lamInRange = True
+            except:
+                pass
+
+        if not lamInRange:
+            raise ValueError("Fit range does not appear to be on detector")
 
         # Indices are [lambda, time, channel]
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
