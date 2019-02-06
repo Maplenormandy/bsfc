@@ -194,7 +194,7 @@ class LineModel:
         if self.noiseFuncs == 1:
             noiseEv = noise[0] * np.ones(self.lamNorm.shape)
         elif self.noiseFuncs == 3:
-            noiseEv = noise[0] + noise[1]*self.lamNorm + noise[2]*(3*self.lamNorm**2-1)/2
+            noiseEv = noise[0] + noise[1]*self.lamNorm + noise[2]*(3*self.lamNorm**2-1)/2.0
         return noiseEv
 
     def modelLine(self, theta, line=0, order=-1):
@@ -790,7 +790,7 @@ class BinFit:
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
 
         # if amplitude of primary line is less than 10% of the noise, not worth fitting better
-        if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05?
+        if herm[0][0] < noise[0]*0.05: #0.1 or 0.05?
             self.m0_ml = 0.0
             self.good = False
             return False
@@ -1174,6 +1174,9 @@ class _fitTimeWindowWrapper(object):
             good = bf.MCMCfit(nsteps=self.nsteps)
         except ValueError:
             print "BinFit.fit() failed."
+            print "++++++++++++++++++++++++++++++++"
+            print "Failed at fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps
+            print "++++++++++++++++++++++++++++++++"
             good = False
         if not good:
             print "Fitting not available. Result will be None."

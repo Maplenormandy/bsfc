@@ -20,6 +20,7 @@ import scipy
 import sys
 import time as time_
 import multiprocessing
+import bsfc_cmod_shots
 
 # first command line argument gives shot number
 shot = int(sys.argv[1])
@@ -42,51 +43,15 @@ except:
 
 # Use as many cores as are available (this only works on a single machine/node!)
 NTASKS = multiprocessing.cpu_count()
-
+print "Running on ", NTASKS, "cores"
 # Start counting time:
 start_time=time_.time()
 
-# =====================================
-# shot=1101014029
-# shot=1121002022
-# shot=1101014019
-# shot = 1101014030
-# ====================================
-print "Analyzing shot ", shot
-# load = True
 
-if shot==1121002022:
-    primary_impurity = 'Ar'
-    primary_line = 'lya1'
-    tbin=5; chbin=40
-    t_min=0.7; t_max=0.8
-elif shot==1120914036:
-    primary_impurity = 'Ca'
-    primary_line = 'lya1'
-    tbin=104; chbin=11
-    t_min=1.05; t_max=1.27
-elif shot==1101014019:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    tbin=128; chbin=11
-    t_min=1.24; t_max=1.4
-elif shot==1101014029:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    tbin= 129; chbin= 22 #tbin=128; chbin=13
-    t_min=1.17; t_max=1.3
-elif shot==1101014030:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    # tbin=128; chbin=11
-    tbin=116; chbin=18
-    t_min=1.17; t_max=1.3
-elif shot==1100305019:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    # tbin=128; chbin=11
-    tbin=116; chbin=18
-    t_min=1.17; t_max=1.3
+print "Analyzing shot ", shot
+
+# get key info for requested shot:
+primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
 # try loading result
 try:
@@ -147,7 +112,7 @@ if option==1:
         chain=chain.reshape((-1, nsteps, chain.shape[-1]))
         bsfc_autocorr.plot_convergence(chain, dim=1, nsteps=nsteps)
 
-
+        plt.show(block=True)
 
 # ==================================
 elif option==2:
