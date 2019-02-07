@@ -124,21 +124,27 @@ def generateMeasurements(b0, b1, v0, v1, t0, t1):
 def modelMoments(mf, tbin, chbin):
     mf.plotSingleBinFit(0, 0)
     bf = mf.fits[0][0]
-    g_lya1 = bf.lineModel.modelMoments(bf.theta_ml, line=0, thaco=False)
-    g_lya2 = bf.lineModel.modelMoments(bf.theta_ml, line=2, thaco=False)
-    g_mo10d = bf.lineModel.modelMoments(bf.theta_ml, line=1, thaco=False)
+    g_lya1 = bf.lineModel.modelMoments(bf.theta_ml, line=0)
+    g_lya2 = bf.lineModel.modelMoments(bf.theta_ml, line=2)
+    g_mo10d = bf.lineModel.modelMoments(bf.theta_ml, line=1)
+    noise, center, scale, herm = bf.lineModel.unpackTheta(bf.theta_ml)
+    
 
     moments = np.array([g_lya1, g_mo10d, g_lya2])
     moments[:,1] = moments[:,1] / moments[:,0]
     moments[:,2] = moments[:,2] / moments[:,0]
+    
+    moments[0,0] = moments[0,0] / scale[0]
+    moments[1,0] = moments[1,0] / scale[1]
+    moments[2,0] = moments[2,0] / scale[2]
 
     return moments
 
-m_lya1 = generateMeasurements(1e5, 1e5, 20, 0, 3.5, 1.5)
-m_lya2 = generateMeasurements(5e3, 5e3, 20, 0, 3.5, 1.5)
-m_mo10d = generateMeasurements(1e3, 1e3, 20, 0, 3.5, 1.5)
+m_lya1 = generateMeasurements(1e4, 1e3, 20, 0, 3.5, 1.5)
+m_lya2 = generateMeasurements(5e2, 5e1, 20, 0, 3.5, 1.5)
+m_mo10d = generateMeasurements(1e3, 1e2, 20, 0, 3.5, 1.5)
 
-shiftMoLine(mf, 0.7)
+shiftMoLine(mf, 0.2)
 g_lya1 = momentsFromMeasurements(mf, m_lya1, 0)
 g_lya2 = momentsFromMeasurements(mf, m_lya2, 1)
 g_mo10d = momentsFromMeasurements(mf, m_mo10d, 2)

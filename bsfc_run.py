@@ -15,7 +15,6 @@ import bsfc_autocorr
 import pdb
 import corner
 import bsfc_main
-import bsfc_slider
 import scipy
 import sys
 import time as time_
@@ -87,7 +86,19 @@ elif shot==1100305019:
     # tbin=128; chbin=11
     tbin=116; chbin=18
     t_min=1.17; t_max=1.3
+elif shot==1160506007:
+    primary_impurity = 'Ar'
+    primary_line = 'w'
+    tbin = 46; chbin = 27
+    t_min=0.93; t_max=0.99
+    
+    
+    
 
+if (option%10==3):
+    import bsfc_slider
+else:
+    bsfc_slider=None
 # try loading result
 try:
     try:
@@ -112,7 +123,7 @@ if option==1:
     if loaded==True:
         chain = mf.fits[tbin][chbin].samples
 
-        plot_posterior=False
+        plot_posterior=True
         if plot_posterior:
             figure = corner.corner(chain, labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
                                    quantiles=[0.16,0.5, 0.84], show_titles=True, title_kwargs={'fontsize':12},
@@ -155,7 +166,7 @@ elif option==2:
         mf.fitTimeBin(tbin, parallel=True, nproc=NTASKS, nsteps=nsteps)
 
     if loaded==True:
-        bsfc_main.plotOverChannels(mf, tbin=126, parallel=True)
+        bsfc_main.plotOverChannels(mf, tbin=tbin, parallel=True)
 
 
 # ==================================

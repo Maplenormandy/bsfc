@@ -25,8 +25,12 @@ import warnings
 from simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
 from matplotlib.pyplot import cm
 
-sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
-import pymultinest
+try:
+    sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
+    import pymultinest
+except:
+    print "Unable to load multinest"
+    pymultinest = None
 
 # counter:
 counter = 0
@@ -68,6 +72,7 @@ class LineModel:
             self.hermFuncs = [3] * self.nfit
         else:
             self.hermFuncs = hermFuncs
+        self.hermFuncs[0] = 9
 
     """
     Helper functions for theta (i.e. the model parameters).
@@ -230,7 +235,9 @@ class LineModel:
 
     def modelMoments(self, theta, line=0, order=-1):
         """
-        Calculate the moments predicted by the model
+        Calculate the moments predicted by the model.
+        
+        Note, THACO actually calculates the zeroth moment 
         """
         noise, center, scale, herm = self.unpackTheta(theta)
 
@@ -248,11 +255,13 @@ class LineModel:
 
     def modelMeasurements(self, theta, line=0, order=-1):
         """
-        Calculate the M0, v, Ti predicted by the model
-        M0 in counts, v in km/s, Ti in keV
+        Calculate the counts, v, Ti predicted by the model
+        counts in #, v in km/s, Ti in keV
         """
         c = 2.998e+5 # speed of light in km/s
 
+        noise, center, scale, herm = self.unpackTheta(theta)
+        
         moments = self.modelMoments(theta, line, order)
         m0 = moments[0]
         # velocity is normalized M1 divided by rest wavelength times c
@@ -261,8 +270,9 @@ class LineModel:
         # width of a 1 kev line = rest wavelength ** 2 / mass in kev
         w = self.linesLam[line]**2 / self.lineData.m_kev[self.linesFit][line]
         ti = moments[2]*1e-6/moments[0] / w
+        counts = m0/scale[line]
 
-        return np.array([m0, v, ti])
+        return np.array([counts, v, ti])
 
 
     """
@@ -1003,82 +1013,82 @@ class BinFit:
         if dim2:
             plt.figure(figsize=(5*n_params, 5*n_params))
             for i in range(n_params):
-		plt.subplot(n_params, n_params, i + 1)
-		plt.xlabel(parameters[i])
+                plt.subplot(n_params, n_params, i + 1)
+                plt.xlabel(parameters[i])
                 
-		m = s['marginals'][i]
-		plt.xlim(m['5sigma'])
-	
-		oldax = plt.gca()
-		x,w,patches = oldax.hist(values[:,i], bins=nbins, edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
-		oldax.set_ylim(0, x.max())
-	
-		newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
-		p.plot_marginal(i, ls='-', color='blue', linewidth=3)
-		newax.set_ylim(0, 1)
-	
-		ylim = newax.get_ylim()
-		y = ylim[0] + 0.05*(ylim[1] - ylim[0])
-		center = m['median']
-		low1, high1 = m['1sigma']
-		#print(center, low1, high1)
-		newax.errorbar(x=center, y=y,
-			xerr=numpy.transpose([[center - low1, high1 - center]]), 
-			color='blue', linewidth=2, marker='s')
-		oldax.set_yticks([])
-		#newax.set_yticks([])
-		newax.set_ylabel("Probability")
-		ylim = oldax.get_ylim()
-		newax.set_xlim(m['5sigma'])
-		oldax.set_xlim(m['5sigma'])
-		#plt.close()
-	
-		for j in range(i):
-			plt.subplot(n_params, n_params, n_params * (j + 1) + i + 1)
-			p.plot_conditional(i, j, bins=20, cmap = plt.cm.gray_r)
-			for m in modes:
-				plt.errorbar(x=m['mean'][i], y=m['mean'][j], xerr=m['sigma'][i], yerr=m['sigma'][j])
-			plt.xlabel(parameters[i])
-			plt.ylabel(parameters[j])
-			
+                m = s['marginals'][i]
+                plt.xlim(m['5sigma'])
+        
+                oldax = plt.gca()
+                x,w,patches = oldax.hist(values[:,i], bins=nbins, edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
+                oldax.set_ylim(0, x.max())
+        
+                newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+                p.plot_marginal(i, ls='-', color='blue', linewidth=3)
+                newax.set_ylim(0, 1)
+        
+                ylim = newax.get_ylim()
+                y = ylim[0] + 0.05*(ylim[1] - ylim[0])
+                center = m['median']
+                low1, high1 = m['1sigma']
+                #print(center, low1, high1)
+                newax.errorbar(x=center, y=y,
+                        xerr=numpy.transpose([[center - low1, high1 - center]]), 
+                        color='blue', linewidth=2, marker='s')
+                oldax.set_yticks([])
+                #newax.set_yticks([])
+                newax.set_ylabel("Probability")
+                ylim = oldax.get_ylim()
+                newax.set_xlim(m['5sigma'])
+                oldax.set_xlim(m['5sigma'])
+                #plt.close()
+        
+                for j in range(i):
+                        plt.subplot(n_params, n_params, n_params * (j + 1) + i + 1)
+                        p.plot_conditional(i, j, bins=20, cmap = plt.cm.gray_r)
+                        for m in modes:
+                                plt.errorbar(x=m['mean'][i], y=m['mean'][j], xerr=m['sigma'][i], yerr=m['sigma'][j])
+                        plt.xlabel(parameters[i])
+                        plt.ylabel(parameters[j])
+                        
         else:
             from matplotlib.backends.backend_pdf import PdfPages
             sys.stderr.write('1dimensional only. Set the D environment variable \n')
             sys.stderr.write('to D=2 to force 2d marginal plots.\n')
-	
+        
             for i in range(n_params):
-		plt.figure(figsize=(3, 3))
-		plt.xlabel(parameters[i])
-		plt.locator_params(nbins=5)
-		
-		m = s['marginals'][i]
-		iqr = m['q99%'] - m['q01%']
-		xlim = m['q01%'] - 0.3 * iqr, m['q99%'] + 0.3 * iqr
-		#xlim = m['5sigma']
-		plt.xlim(xlim)
-	
-		oldax = plt.gca()
-		x,w,patches = oldax.hist(values[:,i], bins=numpy.linspace(xlim[0], xlim[1], 20), edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
-		oldax.set_ylim(0, x.max())
-	
-		newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
-		p.plot_marginal(i, ls='-', color='blue', linewidth=3)
-		newax.set_ylim(0, 1)
-	
-		ylim = newax.get_ylim()
-		y = ylim[0] + 0.05*(ylim[1] - ylim[0])
-		center = m['median']
-		low1, high1 = m['1sigma']
-		#print center, low1, high1
-		newax.errorbar(x=center, y=y,
-			xerr=numpy.transpose([[center - low1, high1 - center]]), 
-			color='blue', linewidth=2, marker='s')
-		oldax.set_yticks([])
-		newax.set_ylabel("Probability")
-		ylim = oldax.get_ylim()
-		newax.set_xlim(xlim)
-		oldax.set_xlim(xlim)
-	
+                plt.figure(figsize=(3, 3))
+                plt.xlabel(parameters[i])
+                plt.locator_params(nbins=5)
+                
+                m = s['marginals'][i]
+                iqr = m['q99%'] - m['q01%']
+                xlim = m['q01%'] - 0.3 * iqr, m['q99%'] + 0.3 * iqr
+                #xlim = m['5sigma']
+                plt.xlim(xlim)
+        
+                oldax = plt.gca()
+                x,w,patches = oldax.hist(values[:,i], bins=numpy.linspace(xlim[0], xlim[1], 20), edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
+                oldax.set_ylim(0, x.max())
+        
+                newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+                p.plot_marginal(i, ls='-', color='blue', linewidth=3)
+                newax.set_ylim(0, 1)
+        
+                ylim = newax.get_ylim()
+                y = ylim[0] + 0.05*(ylim[1] - ylim[0])
+                center = m['median']
+                low1, high1 = m['1sigma']
+                #print center, low1, high1
+                newax.errorbar(x=center, y=y,
+                        xerr=numpy.transpose([[center - low1, high1 - center]]), 
+                        color='blue', linewidth=2, marker='s')
+                oldax.set_yticks([])
+                newax.set_ylabel("Probability")
+                ylim = oldax.get_ylim()
+                newax.set_xlim(xlim)
+                oldax.set_xlim(xlim)
+        
         return True
 
 
@@ -1190,59 +1200,59 @@ LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split(
 
 class MomentFitter:
     def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None, experiment='CMOD', instrument='Hirex-Sr'):
-	''' Class to store experimental data and inferred spectral fits.
-	
-	Parameters:
-	primary_impurity: 
-	primary_line:
-	shot:
-	tht: 
-	lam_bounds:
-	experiment: {'CMOD','D3D',...}
-		Experimental device of interest. Only pre-defined choices for which data fetching is made available 
-		are acceptable inputs. Default is 'CMOD'. 
-	instrument: {'Hirex-Sr','XEUS','LOWEUS', 'CER', ...}
-		Instrument/diagnostic for which spectral data should be fitted. Note that said instrument must be 
-		available for the experiment given above. Default is 'Hirex-Sr'. 
-	
-	'''
+        ''' Class to store experimental data and inferred spectral fits.
+        
+        Parameters:
+        primary_impurity: 
+        primary_line:
+        shot:
+        tht: 
+        lam_bounds:
+        experiment: {'CMOD','D3D',...}
+                Experimental device of interest. Only pre-defined choices for which data fetching is made available 
+                are acceptable inputs. Default is 'CMOD'. 
+        instrument: {'Hirex-Sr','XEUS','LOWEUS', 'CER', ...}
+                Instrument/diagnostic for which spectral data should be fitted. Note that said instrument must be 
+                available for the experiment given above. Default is 'Hirex-Sr'. 
+        
+        '''
         self.lines = LineInfo(None, None, None, None, None, None)
         self.primary_line = primary_line
         self.tht=tht
         self.shot = shot
 
-	self.experiment = experiment
-	if experiment=='CMOD':
-	    if instrument in ['Hirex-Sr','XEUS','LOWEUS']:
-	        self.instrument = instrument
-	    else:
-		raise ValueError('%s instrument not available for CMOD!'%str(instrument))
-	elif experiment=='D3D':
-	    if instrument in ['CER','XEUS','LOWEUS']:
-	        self.instrument = instrument
-	    else:
-		raise ValueError('%s instrument not available for D3D!'%str(instrument))
-	
-	if experiment=='CMOD':
-	    if instrument=='Hirex-Sr':
-	        self.load_hirex_data()
-	    else:
-		raise ValueError('Instruments other than Hirex-Sr not yet implemented for CMOD!')
-	elif  experiment=='D3D':
-	    if instrument=='CER':
-		self.load_D3D_cer()
-	    else:
-		raise ValueError('Instruments other than CER are not yet implemented for D3D!')
-	else:
-	    raise ValueError('Experiments other than CMOD not yet implemented!')
-	
-    def load_hirex_data(self, hirexsr_file='hirexsr_wavelengths.csv'):
-	'''
-	Function to load Hirex-Sr data for CMOD. Assumes that rest wavelengths, ionization stages and 
-	atomic line names are given in a file provided as input. 
-	'''
-	self.hirexsr_file = str(hirexsr_file)
-	
+        self.experiment = experiment
+        if experiment=='CMOD':
+            if instrument in ['Hirex-Sr','XEUS','LOWEUS']:
+                self.instrument = instrument
+            else:
+                raise ValueError('%s instrument not available for CMOD!'%str(instrument))
+        elif experiment=='D3D':
+            if instrument in ['CER','XEUS','LOWEUS']:
+                self.instrument = instrument
+            else:
+                raise ValueError('%s instrument not available for D3D!'%str(instrument))
+        
+        if experiment=='CMOD':
+            if instrument=='Hirex-Sr':
+                self.load_hirex_data(primary_impurity, primary_line, shot, tht, lam_bounds)
+            else:
+                raise ValueError('Instruments other than Hirex-Sr not yet implemented for CMOD!')
+        elif  experiment=='D3D':
+            if instrument=='CER':
+                self.load_D3D_cer(primary_impurity, primary_line, shot, tht, lam_bounds)
+            else:
+                raise ValueError('Instruments other than CER are not yet implemented for D3D!')
+        else:
+            raise ValueError('Experiments other than CMOD not yet implemented!')
+        
+    def load_hirex_data(self, primary_impurity, primary_line, shot, tht, lam_bounds, hirexsr_file='hirexsr_wavelengths.csv'):
+        '''
+        Function to load Hirex-Sr data for CMOD. Assumes that rest wavelengths, ionization stages and 
+        atomic line names are given in a file provided as input. 
+        '''
+        self.hirexsr_file = str(hirexsr_file)
+        
         # Load all wavelength data
         with open(hirexsr_file, 'r') as f:
             lineData = [s.strip().split(',') for s in f.readlines()]
@@ -1250,9 +1260,9 @@ class MomentFitter:
             lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
             lineName = np.array([ld[3] for ld in lineData[2:]])
 
-	amuToKeV = 931494.095 # amu in keV
+        amuToKeV = 931494.095 # amu in keV
         #speedOfLight = 2.998e+5 # speed of light in km/s
-	
+        
         # Load atomic data, for calculating line widths, etc...
         with open('atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
@@ -1269,7 +1279,7 @@ class MomentFitter:
                     raise NotImplementedError("Line is not yet implemented")
             elif primary_impurity == 'Ar':
                 if primary_line == 'w':
-                    lam_bounds = (3.945, 3.960)
+                    lam_bounds = (3.945, 3.954)
                 elif primary_line == 'z':
                     raise NotImplementedError("Not implemented yet (needs line tying)")
                 elif primary_line == 'lya1':
@@ -1313,6 +1323,7 @@ class MomentFitter:
 
         # Determine which, if any, detector has the desired lam_bounds
         rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
+        branchB = False
         lamInRange = False
         try:
             branchNode = specTree.getNode(rootPath+'.HELIKE')
@@ -1320,6 +1331,7 @@ class MomentFitter:
             if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
                 print "Fitting on Branch A"
                 lamInRange = True
+                branchB = False
         except:
             pass
 
@@ -1330,6 +1342,7 @@ class MomentFitter:
                 if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
                     print "Fitting on Branch B"
                     lamInRange = True
+                    branchB = True
             except:
                 pass
 
@@ -1340,7 +1353,7 @@ class MomentFitter:
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
 
-        pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data()
+        pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
         self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
 
         # Maximum number of channels, time bins
@@ -1354,13 +1367,13 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-    def load_D3D_cer(self, cer_file='cer_wavelengths.csv'):
-	'''
-	Function to load CER data for D3D. Assumes that rest wavelengths, ionization stages and 
-	atomic line names are given in a file provided as input. 
-	'''
-	self.cer_file = str(cer_file)
-	
+    def load_D3D_cer(self, primary_impurity, primary_line, shot, tht, lam_bounds, cer_file='cer_wavelengths.csv'):
+        '''
+        Function to load CER data for D3D. Assumes that rest wavelengths, ionization stages and 
+        atomic line names are given in a file provided as input. 
+        '''
+        self.cer_file = str(cer_file)
+        
         # Load all wavelength data
         with open(cer_file, 'r') as f:
             lineData = [s.strip().split(',') for s in f.readlines()]
@@ -1368,8 +1381,8 @@ class MomentFitter:
             lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
             lineName = np.array([ld[3] for ld in lineData[2:]])
 
-	amuToKeV = 931494.095 # amu in keV
-	
+        amuToKeV = 931494.095 # amu in keV
+        
         # Load atomic data, for calculating line widths, etc...
         with open('atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
@@ -1422,7 +1435,7 @@ class MomentFitter:
                 ' ' + self.lines.names[i] + ' @ ' +
                 str(self.lines.lam[i]) for i in range(len(self.lines.names))]
 
-	# MODIFY for D3D!!!!
+        # MODIFY for D3D!!!!
         specTree = MDSplus.Tree('spectroscopy', shot)
 
         ana = '.ANALYSIS'
