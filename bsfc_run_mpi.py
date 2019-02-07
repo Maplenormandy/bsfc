@@ -33,6 +33,7 @@ import itertools
 import os
 import shutil
 from bsfc_clean_moments import clean_moments
+import bsfc_cmod_shots
 
 # MPI parallelization
 from mpi4py import MPI
@@ -62,57 +63,14 @@ if quiet_mode:
     import warnings
     warnings.filterwarnings("ignore")
 
-# =====================================
-# shot=1101014029
-# shot=1121002022 
-# shot=1101014019
-# shot = 1101014030
-# ====================================
 if rank == 0:
     print "Analyzing shot ", shot
     
     # Start counting time:
     t_start=MPI.Wtime()
 
-
-if shot==1121002022:
-    primary_impurity = 'Ar'
-    primary_line = 'lya1'
-    tbin=5; chbin=40
-    t_min=0.7; t_max=0.8
-    tht=0
-elif shot==1120914036:
-    primary_impurity = 'Ca'
-    primary_line = 'lya1'
-    tbin=104; chbin=11
-    t_min=1.05; t_max=1.27
-    tht=5
-elif shot==1101014019:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    tbin=128; chbin=11
-    t_min=1.24; t_max=1.4
-    tht=0
-elif shot==1101014029:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    tbin=128; chbin=11
-    t_min=1.17; t_max=1.3
-    tht=0
-elif shot==1101014030:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    # tbin=128; chbin=11
-    tbin=116; chbin=18
-    t_min=1.17; t_max=1.3
-    tht=0
-elif shot==1100305019:
-    primary_impurity = 'Ca'
-    primary_line = 'w'
-    # tbin=128; chbin=11
-    tbin=116; chbin=18
-    t_min=0.98; t_max=1.2
-    tht=9
+# get key info for requested shot:
+primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
 # ==============
 

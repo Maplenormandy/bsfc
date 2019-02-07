@@ -72,7 +72,7 @@ class LineModel:
             self.hermFuncs = [3] * self.nfit
         else:
             self.hermFuncs = hermFuncs
-        self.hermFuncs[0] = 9
+        #self.hermFuncs[0] = 9
 
     """
     Helper functions for theta (i.e. the model parameters).
@@ -199,7 +199,7 @@ class LineModel:
         if self.noiseFuncs == 1:
             noiseEv = noise[0] * np.ones(self.lamNorm.shape)
         elif self.noiseFuncs == 3:
-            noiseEv = noise[0] + noise[1]*self.lamNorm + noise[2]*(3*self.lamNorm**2-1)/2
+            noiseEv = noise[0] + noise[1]*self.lamNorm + noise[2]*(3*self.lamNorm**2-1)/2.0
         return noiseEv
 
     def modelLine(self, theta, line=0, order=-1):
@@ -253,10 +253,13 @@ class LineModel:
 
         return np.array([m0, m1*1e3, m2*1e6])
 
-    def modelMeasurements(self, theta, line=0, order=-1):
+    def modelMeasurements(self, theta, line=0, order=-1, thaco=True):
         """
         Calculate the counts, v, Ti predicted by the model
-        counts in #, v in km/s, Ti in keV
+        counts in #, v in km/s, Ti in keV.
+        
+        Note that THACO doesn't calculate the total counts, and instead uses
+        M0 as the A.U. brightness.
         """
         c = 2.998e+5 # speed of light in km/s
 
@@ -270,7 +273,10 @@ class LineModel:
         # width of a 1 kev line = rest wavelength ** 2 / mass in kev
         w = self.linesLam[line]**2 / self.lineData.m_kev[self.linesFit][line]
         ti = moments[2]*1e-6/moments[0] / w
-        counts = m0/scale[line]
+        if thaco:
+            counts = m0/scale[line]            
+        else:
+            counts = m0
 
         return np.array([counts, v, ti])
 
@@ -800,7 +806,7 @@ class BinFit:
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
 
         # if amplitude of primary line is less than 10% of the noise, not worth fitting better
-        if herm[0][0] < noise[0]*0.1: # maybe we should set the multiplier to 0.05?
+        if herm[0][0] < noise[0]*0.05: #0.1 or 0.05?
             self.m0_ml = 0.0
             self.good = False
             return False
@@ -1184,6 +1190,9 @@ class _fitTimeWindowWrapper(object):
             good = bf.MCMCfit(nsteps=self.nsteps)
         except ValueError:
             print "BinFit.fit() failed."
+            print "++++++++++++++++++++++++++++++++"
+            print "Failed at fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps
+            print "++++++++++++++++++++++++++++++++"
             good = False
         if not good:
             print "Fitting not available. Result will be None."
