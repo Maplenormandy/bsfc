@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Database of C-Mod shots, corresponding atomic lines, times of interest, THT for Hirex-Sr data access, etc.. 
+Database of C-Mod shots, corresponding atomic lines, times of interest, THT for Hirex-Sr data access, etc..
 
 @author: sciortino
 """
@@ -26,8 +26,8 @@ def get_shot_info(shot):
         primary_impurity = 'Ca'
         primary_line = 'w'
         #tbin=128; chbin=11
-        #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
-        tbin=111; chbin=15   #problematic
+        tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
+        #tbin=111; chbin=15   #problematic
         t_min=1.24; t_max=1.4
         tht=0
     elif shot==1101014029:
@@ -61,6 +61,6 @@ def get_shot_info(shot):
     else:
         # define more lines!
         raise Exception('Times of interest not set for this shot!')
-        
+
 
     return primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht
