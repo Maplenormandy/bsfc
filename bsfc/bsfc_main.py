@@ -1,9 +1,9 @@
 ''' Bayesian Spectral Fitting Code (BSFC)
 by N. Cao & F. Sciortino
 
-This is the main script containing major classes for spectral fitting. 
+This is the main script containing major classes for spectral fitting.
 Refer to the description of individual classes and functions for a description
-of their functionalities. 
+of their functionalities.
 
 '''
 
@@ -11,11 +11,11 @@ import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermemulx
 import scipy.optimize as op
 from collections import namedtuple
-import pdb
+#import pdb
 import multiprocessing
-import cPickle as pkl
+#import cPickle as pkl
 import itertools
-import time as time_
+#import time as time_
 import os
 import sys
 import warnings
@@ -43,7 +43,11 @@ try:
     import pymultinest
 except:
     # assume that user has pymultinest in PYTHONPATH
-    import pymultinest
+    try:
+        import pymultinest
+    except:
+        print "Unable to load pymultinest"
+        pymultinest = None
 
 
 # counter:
@@ -76,6 +80,7 @@ class LineModel:
         lamEdge[-1] = 2 * lamEdge[-2] - lamEdge[-3]
         lamEdge[0] = 2 * lamEdge[1] - lamEdge[2]
         self.lamEdge = lamEdge
+        self.dlam = np.mean(np.diff(lam))
 
         self.noiseFuncs = 1
 
@@ -189,11 +194,7 @@ class LineModel:
             hnEdge[:,i] = hermeval(lamEdgeEv[:,i], herm[i]) * gaussEdge[:,i]
 
         # Compute integral over finite pixel size
-        # Note: I've found that since lambda is stored as a float32 instead of a float64,
-        # the floating point rounding error introduces some unwanted numerical noise if
-        # delta-lambda is used here. Thus, I have simply assumed delta-lambda to be approx
-        # constant.
-        hnEv = (4 * hn + hnEdge[1:] + hnEdge[:-1])/6.0
+        hnEv = (4 * hn + hnEdge[1:] + hnEdge[:-1])/6.0*self.dlam/scale[np.newaxis,:]
 
         # Evaluate noise as 2nd order Legendre fit
         if self.noiseFuncs == 1:
@@ -245,7 +246,7 @@ class LineModel:
         hnEdge[:,i] = hermeval(lamEdgeEv[:,i], herm[i]) * gaussEdge[:,i]
 
         # Compute integral over finite pixel size
-        hnEv = (4 * hn + hnEdge[1:] + hnEdge[:-1])/6.0
+        hnEv = (4 * hn + hnEdge[1:] + hnEdge[:-1])/6.0*self.dlam/scale[np.newaxis,:]
 
         return np.sum(hnEv, axis=1)
 
@@ -1290,7 +1291,7 @@ class MomentFitter:
         #speedOfLight = 2.998e+5 # speed of light in km/s
 
         # Load atomic data, for calculating line widths, etc...
-        with open('atomic_data.csv', 'r') as f:
+        with open('../data/atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
             atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
             atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV

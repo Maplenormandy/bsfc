@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 import cPickle as pkl
-import pdb
+#import pdb
 import corner
 import bsfc_main
-import scipy
+#import scipy
 import sys
 import time as time_
 import multiprocessing
@@ -65,10 +65,10 @@ primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.g
 # try loading result
 try:
     try:
-        with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'rb') as f:
+        with open('../bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'rb') as f:
             mf=pkl.load(f)
-    except: 
-        with open('./bsfc_fits/mf_%d_%d_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
+    except:
+        with open('../bsfc_fits/mf_%d_%d_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
             mf=pkl.load(f)
     loaded = True
     print "Loaded previous result"
@@ -80,7 +80,7 @@ except:
 # ==================================
 if option==1:
     if loaded==False:
-        mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps, 
+        mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps,
                         emcee_threads=NTASKS, PT=PT, NS=NS)
 
     if loaded==True:
@@ -95,12 +95,12 @@ if option==1:
             # pdb.set_trace()
             # figure.set_figheight(10)
             # figure.set_figwidth(10)
-            plt.savefig('./cornerplots/cornerplot_%d_%d.png'%(shot,nsteps), bbox_inches='tight')
+            plt.savefig('../cornerplots/cornerplot_%d_%d.png'%(shot,nsteps), bbox_inches='tight')
 
             # extract axes
             ndim = chain.shape[-1]
             axes = np.array(figure.axes).reshape((ndim,ndim))
-            
+
             # plot empirical means on corner plot
             mean_emp = np.mean(chain, axis=0)
             for i in range(ndim):
@@ -252,7 +252,7 @@ elif option==3333: # get temperature
 
 	else:
 		moments, moments_std, time_sel=bsfc_main.get_meas(mf, t_min=t_min, t_max=t_max)
-    	
+
     	br = moments[:,:,0]; br_std = moments_std[:,:,0]
     	rot = moments[:,:,1]; rot_std = moments_std[:,:,1]
     	Temp = moments[:,:,2]; Temp_std = moments_std[:,:,2]
@@ -310,7 +310,7 @@ elif option==11:
 
 
 # save fits for future use
-with open('./bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'wb') as f:
+with open('../bsfc_fits/mf_%d_%d_option%d_tbin%d_chbin_%d.pkl'%(shot,nsteps,int(str(option%10)[0]),tbin,chbin),'wb') as f:
     pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
 
 
