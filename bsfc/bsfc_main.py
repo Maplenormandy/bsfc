@@ -1,37 +1,53 @@
-import numpy as np
-import matplotlib.pyplot as plt
-plt.ion()
+''' Bayesian Spectral Fitting Code (BSFC)
+by N. Cao & F. Sciortino
 
+This is the main script containing major classes for spectral fitting. 
+Refer to the description of individual classes and functions for a description
+of their functionalities. 
+
+'''
+
+import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermemulx
-import MDSplus
 import scipy.optimize as op
-import emcee
 from collections import namedtuple
-import bsfc_helper
-# import cPickle as pkl
-import bsfc_autocorr
 import pdb
 import multiprocessing
-#import dill as pkl
 import cPickle as pkl
 import itertools
 import time as time_
 import os
-import gptools
 import sys
 import warnings
-from simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
+import matplotlib.pyplot as plt
+plt.ion()
+
+# packages that are specific to tokamak fits:
+import MDSplus
+
+# make it possible to use other packages within the BSFC distribution:
+from os import path
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+from helpers import bsfc_helper
+from helpers import bsfc_autocorr
+from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
+
+# packages that require extra installation/care:
+import emcee
+import gptools
 
 try:
+    # this is only necessary on engaging, where jcwright's pymultinest
+    # version is normally loaded by default
     sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
     import pymultinest
 except:
-    print "Unable to load multinest"
-    pymultinest = None
+    # assume that user has pymultinest in PYTHONPATH
+    import pymultinest
+
 
 # counter:
 counter = 0
-
 
 # %%
 class LineModel:
@@ -1256,7 +1272,7 @@ class MomentFitter:
         else:
             raise ValueError('Experiments other than CMOD not yet implemented!')
 
-    def load_hirex_data(self, primary_impurity, primary_line, shot, tht, lam_bounds, hirexsr_file='hirexsr_wavelengths.csv'):
+    def load_hirex_data(self, primary_impurity, primary_line, shot, tht, lam_bounds, hirexsr_file='../data/hirexsr_wavelengths.csv'):
         '''
         Function to load Hirex-Sr data for CMOD. Assumes that rest wavelengths, ionization stages and
         atomic line names are given in a file provided as input.

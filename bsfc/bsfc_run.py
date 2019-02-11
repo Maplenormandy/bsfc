@@ -9,9 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-import bsfc_helper
 import cPickle as pkl
-import bsfc_autocorr
 import pdb
 import corner
 import bsfc_main
@@ -19,7 +17,12 @@ import scipy
 import sys
 import time as time_
 import multiprocessing
-import bsfc_cmod_shots
+
+# make it possible to use other packages within the BSFC distribution:
+from os import path
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+from helpers import bsfc_cmod_shots
+from helpers import bsfc_autocorr
 
 # first command line argument gives shot number
 shot = int(sys.argv[1])
