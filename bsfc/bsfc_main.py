@@ -36,18 +36,7 @@ from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampl
 import emcee
 import gptools
 
-try:
-    # this is only necessary on engaging, where jcwright's pymultinest
-    # version is normally loaded by default
-    sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
-    import pymultinest
-except:
-    # assume that user has pymultinest in PYTHONPATH
-    try:
-        import pymultinest
-    except:
-        print "Unable to load pymultinest"
-        pymultinest = None
+
 
 
 # counter:
@@ -824,7 +813,7 @@ class BinFit:
         noise, center, scale, herm = self.lineModel.unpackTheta(theta0)
 
         # if amplitude of primary line is less than 10% of the noise, not worth fitting better
-        if herm[0][0] < noise[0]*0.05: #0.1 or 0.05?
+        if herm[0][0] < noise[0]*0.5: #0.1 or 0.05?
             self.m0_ml = 0.0
             self.good = False
             return False
@@ -1518,18 +1507,18 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
+        
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False, NS=False):
         ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
         default in MultiNest if MPI libraries are available.
-
+        
         If NS==False, emcee is used. Either an affine-invariant Ensemble Sampler or
         Parallel-Tempering MCMC are used. Both require specification of a certain number of
         steps and a number of threads for parallelization. It is recommended to keep this to 1
         if the user is already using parallelization to compute multiple spectal images at the same
         time (i.e. avoid double-layer parallelization).
-
         '''
 
         self.NS = NS
@@ -1544,11 +1533,29 @@ class MomentFitter:
 
         print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
         if NS==False:
+            # MCMC fit
             good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads, PT=PT)
         else:
             print "Using Nested Sampling!"
+
+            try:
+                # if possible, read pymultinest from a known, tested version
+                sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
+                import pymultinest 
+            except:
+                # assume that user has pymultinest in PYTHONPATH
+                try:
+                    import pymultinest
+                except:
+                    raise ValueError("Unable to load pymultinest")
+                    
             # create output
-            basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+            if 'BSFC_ROOT' in os.environ:
+                basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+            else:
+                # assume bsfc is in user's home
+                os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
+                
             chains_dir = os.path.dirname(basename)
             if chains_dir and not os.path.exists(chains_dir):
                 os.mkdir(chains_dir)
@@ -1761,7 +1768,7 @@ def unpack_moments(mf, tidx_min, tidx_max):
     moments = np.array(moments)
     moments_std = np.array(moments_std)
 
-    return moments_vals, moments_std
+    return moments, moments_std
 
 
 def get_brightness(mf, t_min=1.2, t_max=1.4, plot=False, save=False):

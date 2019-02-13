@@ -46,12 +46,11 @@ except:
 # Use as many cores as are available (this only works on a single machine/node!)
 NTASKS = multiprocessing.cpu_count()
 print "Running on ", NTASKS, "cores"
+
 # Start counting time:
 start_time=time_.time()
 
-
 print "Analyzing shot ", shot
-
 
 # Only load bsfc_slider if option 3 is selected
 if (option%10==3):

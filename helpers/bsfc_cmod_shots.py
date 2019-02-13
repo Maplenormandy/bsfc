@@ -36,7 +36,8 @@ def get_shot_info(shot):
         #tbin=128; chbin=11  #good
         #tbin=6; chbin=19   # apparently below noise level ?
         tbin=9; chbin = 4
-        t_min=1.17; t_max=1.3
+        #t_min=1.17; t_max=1.3
+        t_min=2.5; t_max=2.7
         tht=0
     elif shot==1101014030:
         primary_impurity = 'Ca'
