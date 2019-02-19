@@ -25,17 +25,17 @@ def get_shot_info(shot):
     elif shot==1101014019:
         primary_impurity = 'Ca'
         primary_line = 'w'
-        #tbin=128; chbin=11
-        tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
+        tbin=128; chbin=11
+        #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
         #tbin=111; chbin=15   #problematic
         t_min=1.24; t_max=1.4
         tht=0
     elif shot==1101014029:
         primary_impurity = 'Ca'
         primary_line = 'w'
-        #tbin=128; chbin=11  #good
+        tbin=128; chbin=11  #good
         #tbin=6; chbin=19   # apparently below noise level ?
-        tbin=9; chbin = 4
+        #tbin=9; chbin = 4    # very little signal, fit should be thrown out
         #t_min=1.17; t_max=1.3
         t_min=2.5; t_max=2.7
         tht=0

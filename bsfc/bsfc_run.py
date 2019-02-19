@@ -10,13 +10,15 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 import cPickle as pkl
-#import pdb
+import pdb
 import corner
 import bsfc_main
 #import scipy
 import sys
 import time as time_
 import multiprocessing
+import os
+import shutil
 
 # make it possible to use other packages within the BSFC distribution:
 from os import path
@@ -38,20 +40,22 @@ try:
 except:
     PT = False
 
+# if NS is used, this script will be called with mpirun
 try:
     NS = bool(int(sys.argv[5]))
 except:
     NS = False
 
 # Use as many cores as are available (this only works on a single machine/node!)
-NTASKS = multiprocessing.cpu_count()
-print "Running on ", NTASKS, "cores"
+if NS==False:
+    NTASKS = multiprocessing.cpu_count()
+    print "Running on ", NTASKS, "cores"
+    print "Analyzing shot ", shot
+else:
+    NTASKS=1 # not actually used
+
 # Start counting time:
 start_time=time_.time()
-
-
-print "Analyzing shot ", shot
-
 
 # Only load bsfc_slider if option 3 is selected
 if (option%10==3):
@@ -72,10 +76,30 @@ try:
             mf=pkl.load(f)
     loaded = True
     print "Loaded previous result"
+    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+
 except:
     # if this wasn't run before, initialize the moment fitting class
     mf = bsfc_main.MomentFitter(primary_impurity, primary_line, shot, tht=0)
     loaded = False
+
+    # if NS sampling is requested, set up output directory
+    if NS==True:
+        # create output
+        if 'BSFC_ROOT' not in os.environ:          
+            # assume bsfc is in user's home
+            os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
+        
+        # moved the following operation to submit_bsfc.sh for MultiNest runs
+        '''
+        basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+        chains_dir = os.path.dirname(basename)
+
+        # delete and re-create directory for MultiNest output
+        if os.path.exists(chains_dir):
+            shutil.rmtree(chains_dir)
+        os.mkdir(chains_dir)
+        '''
 
 # ==================================
 if option==1:
@@ -84,8 +108,26 @@ if option==1:
                         emcee_threads=NTASKS, PT=PT, NS=NS)
 
     if loaded==True:
+        # the following will be empty at this stage for MultiNest
         chain = mf.fits[tbin][chbin].samples
         
+        if NS==True:
+            print "Loaded MultiNest output"
+            # load MultiNest output
+            mf.fits[tbin][chbin].NS_analysis(basename)
+
+            # corner plot
+            f = gptools.plot_sampler(
+                mf.fits[tbin][chbin].samples,
+                weights = mf.fits[tbin][chbin].sample_weights, # MultiNest internally computes weights for its samples
+                labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
+                chain_alpha=1.0,
+                cutoff_weight=0.01,
+                cmap='plasma',
+                plot_samples=False,
+                plot_chains=False,
+            )
+
         if chain==None: plot_posterior=False
         else: plot_posterior=True
         
@@ -117,18 +159,23 @@ if option==1:
                     ax.axhline(mean_emp[yi], color='r')
                     ax.plot(mean_emp[xi],mean_emp[yi],'sr')
 
-        if chain is not None:
+        if chain is not None and NS==False:
             mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
             
-            # if thinning is done, but divide nsteps by ``thin''
+            # if thinning is done, divide nsteps by ``thin''
             chain=chain.reshape((-1, nsteps, chain.shape[-1]))
             bsfc_autocorr.plot_convergence(chain, dim=1, nsteps=nsteps)
             
             plt.show(block=True)
-        else:
+        elif chain is None and NS==False:
             print " ********* "
             print "No result to plot"
             print " ********* "
+        else:
+            # should still work for NS
+            mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
+
+
             
 # ==================================
 elif option==2:

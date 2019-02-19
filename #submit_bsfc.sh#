@@ -41,6 +41,8 @@ cd $BSFC_ROOT/bsfc
 rm -r mn_chains
 mkdir mn_chains
 
+python bsfc_setup_NS.py 
+
 mpirun python bsfc_run.py $shot 1 112 0 1  #activated NS
 #mpirun python bsfc_run_mpi.py $shot $nsteps 
 
