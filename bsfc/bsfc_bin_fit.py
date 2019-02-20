@@ -233,7 +233,7 @@ class BinFit:
             return True
 
 
-    def NSfit(self, lnev_tol=0.5, n_live_points=100, sampling_efficiency=0.8, INS=True, const_eff=True, basename=None):
+    def NSfit(self, lnev_tol=0.5, n_live_points=100, sampling_efficiency=0.8, INS=False, const_eff=True, basename=None):
         ''' Fit with Nested Sampling (MultiNest algorithm).
         For Nested Sampling, the prior and likelihood are not simply combined into a posterior
         (which is the only function passed to EMCEE), but they are used differently to explore the
@@ -320,11 +320,11 @@ class BinFit:
         stats = a.get_stats()
         self.multinest_stats = stats
 
-        self.modes=stats['modes'][0]
-        self.maximum= self.modes['maximum']
-        self.maximum_a_posterior= self.modes['maximum a posterior']
-        self.mean=np.asarray(self.modes['mean'])
-        self.sigma=np.asarray(self.modes['sigma'])
+        #self.modes=stats['modes'][0]
+        #self.maximum= self.modes['maximum']
+        #self.maximum_a_posterior= self.modes['maximum a posterior']
+        #self.mean=np.asarray(self.modes['mean'])
+        #self.sigma=np.asarray(self.modes['sigma'])
 
         # get log-evidence estimate and uncertainty
         self.lnev = (stats['global evidence'], stats['global evidence error'])
@@ -339,11 +339,11 @@ class BinFit:
         self.params_ci_u = np.asarray(g[2])
 
         # summarize results
-        self.m_map = self.lineModel.modelMoments(self.maximum_a_posterior)
-        self.m_map_mean = self.lineModel.modelMoments(self.mean)
-        m1 = self.lineModel.modelMoments(self.mean+self.sigma)
-        m2 = self.lineModel.modelMoments(self.mean - self.sigma)
-        self.m_map_std = (m1 - m2)/2.0   #temporary
+        #self.m_map = self.lineModel.modelMoments(self.maximum_a_posterior)
+        #self.m_map_mean = self.lineModel.modelMoments(self.mean)
+        #m1 = self.lineModel.modelMoments(self.mean+self.sigma)
+        #m2 = self.lineModel.modelMoments(self.mean - self.sigma)
+        #self.m_map_std = (m1 - m2)/2.0   #temporary
 
         # marginalized (fully-Bayesian) results:
         self.m_bayes_marg = self.lineModel.modelMoments(self.params_mean)
@@ -353,7 +353,7 @@ class BinFit:
         # temporary, for compatibility with MCMC methods:
         self.theta_avg = self.params_mean
         self.m_avg = self.m_bayes_marg
-        self.m_std = self.m_map_std
+        #self.m_std = self.m_map_std
 
         return True
 

@@ -1,6 +1,9 @@
 # emacs temp files
 *~
 
+# Do not save MultiNest chains
+mn_chains/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
