@@ -27,6 +27,9 @@ from helpers import bsfc_autocorr
 
 from bsfc_moment_fitter import *
 
+# To be removed before public release:
+sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
+
 # first command line argument gives shot number
 shot = int(sys.argv[1])
 

@@ -7,6 +7,7 @@ This script contains the BinFit class, where methods for spectral fitting are de
 
 import numpy as np
 import scipy.optimize as op
+import pdb  #may delete before release
 
 # make it possible to use other packages within the BSFC distribution:
 from os import path
@@ -22,17 +23,6 @@ from bsfc_line_model import *
 import emcee
 import gptools
 
-try:
-    # if possible, read pymultinest from a known, tested version
-    sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
-    import pymultinest 
-except:
-    # assume that user has pymultinest in PYTHONPATH
-    try:
-        import pymultinest
-    except:
-        raise ValueError("Unable to load pymultinest")
-
 
 # =====================================================
 
@@ -40,7 +30,7 @@ class BinFit:
     """
     Performs a nonlinear fit and MCMC error estimate of given binned data
     """
-    def __init__(self, lam, specBr, sig, lineData, linesFit):
+    def __init__(self, lam, specBr, sig, lineData, linesFit, n_hermite):
         self.lam = lam
         self.specBr = specBr
         self.sig = sig
@@ -61,7 +51,6 @@ class BinFit:
         self.good = False
 
         # number of Hermite polynomial terms:
-        n_hermite = 3
         hermFuncs = [n_hermite]*len(linesFit)
         hermFuncs[0] = n_hermite
 
@@ -87,7 +76,7 @@ class BinFit:
         return result_ml
 
 
-    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=5, thin=1, burn=1000):
+    def mcmcSample(self, theta_ml, emcee_threads, nsteps=1000, PT=True, ntemps=20, Tmax=None, betas=None, thin=1, burn=1000):
         ''' Helper function to do MCMC sampling. This uses the emcee implementations of Ensemble
         Sampling MCMC or Parallel-Tempering MCMC (PT-MCMC). In the latter case, a number of
         ``temperatures'' must be defined. These are used to modify the likelihood in a way that
@@ -107,6 +96,15 @@ class BinFit:
         ntemps : int, optional
             Number of temperatures used in PT-MCMC. This is a rather arbitrary number. Note that in emcee
             the temperature ladder is implemented such that each temperature is larger by a factor of \sqrt{2}.
+        Tmax : float, optional
+            Maximum temperature allowed for emcee PTSampler. If ``ntemps`` is not given, this argument 
+            controls the number of temperatures.  Temperatures are chosen according to the spacing criteria until 
+            the maximum temperature exceeds ``Tmax`. Default is to set ``ntemps`` and leave Tmax=None.
+        betas : array, optional
+            Array giving the inverse temperatures, :math:`\\beta=1/T`, used in the ladder. The default is chosen 
+            so that a Gaussian posterior in the given number of dimensions will have a 0.25 tswap acceptance rate.
+        thin: int, optional
+            thinning factor (choose 1 to avoid thinning)        
         burn : int, optional
             Burn-in of chains. Default is 1000
         '''
@@ -129,12 +127,19 @@ class BinFit:
             # flatten chain (but keep ndim)
             samples = sampler.chain[:,burn::thin, :].reshape((-1, ndim))
         else:
+            # testing purposes ONLY
+            #betas=np.asarray([1.0,0.9,0.8,0.7,0.6, 0.5])
+            
+            # use PT-MCMC 
+            sampler = emcee.PTSampler(ntemps, nwalkers, ndim, _LnLike_Wrapper(self), _LnPrior_Wrapper(self),
+                                      threads=emcee_threads, Tmax=Tmax, betas=betas)
+            
+            # if Tmax is not None, ntemps was set internally in PTSampler
+            ntemps = sampler.ntemps
+
             # pos has shape (ntemps, nwalkers, ndim)
             pos = [[theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)] for t in range(ntemps)]
-
-            # use PT-MCMC
-            sampler = emcee.PTSampler(ntemps, nwalkers, ndim, _LnLike_Wrapper(self), _LnPrior_Wrapper(self), threads=emcee_threads)
-
+            
             # burn-in 'burn' iterations
             for p, lnprob, lnlike in sampler.sample(pos, iterations=burn):
                 pass
@@ -209,7 +214,7 @@ class BinFit:
                 # if MCMC is not requested, do nothing...? (we might want to make this smarter)
                 self.samples = np.array([self.theta_ml]*50)
 
-            if plot_convergence and mcmc:
+            if plot_convergence and mcmc and not PT:
                 # use external scripts to plot chains' autocorrelation function
                 bsfc_autocorr.plot_convergence(sampler.chain, dim=1, nsteps=nsteps)
 
@@ -264,6 +269,15 @@ class BinFit:
         # dimensionality of the problem
         ndim = self.lineModel.thetaLength()
 
+        # import pymultinest only if NS is needed
+        try:
+            import pymultinest 
+        except:
+            print "********************"
+            print "Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH."
+            print "MultiNest must also be on your LD_LIBRARY_PATH"
+            raise ValueError("Abort BSFC fit")
+        
         pymultinest.run(
             self.lineModel.hypercube_lnlike,   # log-likelihood
             self.lineModel.hypercube_lnprior_simplex, #self.lineModel.hypercube_lnprior_simplex,   # log-prior

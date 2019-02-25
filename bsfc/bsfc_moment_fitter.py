@@ -336,7 +336,8 @@ class MomentFitter:
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
         
-    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False, NS=False):
+    def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
+                     NS=False,n_hermite=3):
         ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
@@ -355,7 +356,7 @@ class MomentFitter:
         specBr = self.specBr_all[w0:w1,tbin,chbin]
         sig = self.sig_all[w0:w1,tbin,chbin]
 
-        bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)))
+        bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)), n_hermite=n_hermite)
 
         self.fits[tbin][chbin] = bf
 

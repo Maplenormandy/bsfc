@@ -39,6 +39,11 @@ try: #parallel tempering
 except:
     PT = False
 
+try: # possibly give number of Hermite polynomials via command line
+    n_hermite = int(sys.argv[4])
+except:
+    n_hermite = 3 #default
+
 # Use as many cores as are available (this only works on a single machine/node!)
 NTASKS = multiprocessing.cpu_count()
 print "Running on ", NTASKS, "cores"
@@ -56,9 +61,7 @@ try:
         mf=pkl.load(f)
   
     loaded = True
-    print "Loaded previous result"
-    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-
+    print "Loaded previous result"    
 except:
     # if this wasn't run before, initialize the moment fitting class
     mf = MomentFitter(primary_impurity, primary_line, shot, tht=0)
@@ -68,7 +71,7 @@ except:
 
 if loaded==False:
     mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps,
-                    emcee_threads=NTASKS, PT=PT, NS=0)
+                    emcee_threads=NTASKS, PT=PT, NS=0, n_hermite=n_hermite)
 
 if loaded==True:
     # the following will be empty at this stage for MultiNest
@@ -111,7 +114,7 @@ if loaded==True:
         chain=chain.reshape((-1, nsteps, chain.shape[-1]))
         bsfc_autocorr.plot_convergence(chain, dim=1, nsteps=nsteps)
         
-        plt.show(block=True)
+        #plt.show(block=True)
     else:
         print " ********* "
         print "No result to plot"
