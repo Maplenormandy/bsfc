@@ -238,7 +238,7 @@ class BinFit:
             return True
 
 
-    def NSfit(self, lnev_tol=0.5, n_live_points=100, sampling_efficiency=0.8, INS=False, const_eff=True, basename=None):
+    def NSfit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3, INS=True, const_eff=False, basename=None):
         ''' Fit with Nested Sampling (MultiNest algorithm).
         For Nested Sampling, the prior and likelihood are not simply combined into a posterior
         (which is the only function passed to EMCEE), but they are used differently to explore the
@@ -269,7 +269,6 @@ class BinFit:
         # dimensionality of the problem
         ndim = self.lineModel.thetaLength()
 
-        # import pymultinest only if NS is needed
         try:
             import pymultinest 
         except:
@@ -292,7 +291,7 @@ class BinFit:
             const_efficiency_mode = const_eff, # only appropriate with INS
             evidence_tolerance = lnev_tol,
             sampling_efficiency = sampling_efficiency,
-            n_iter_before_update = 10000, #MultiNest internally multiplies by 10
+            n_iter_before_update = 1000000, #MultiNest internally multiplies by 10
             null_log_evidence = -1e90,
             max_modes = 10,
             mode_tolerance = -1e90,  #keeps all modes
@@ -317,6 +316,14 @@ class BinFit:
 
         '''
 
+        try:
+            import pymultinest 
+        except:
+            print "********************"
+            print "Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH."
+            print "MultiNest must also be on your LD_LIBRARY_PATH"
+            raise ValueError("Abort BSFC fit")
+        
         # after MultiNest run, read results
         a = pymultinest.Analyzer(
             n_params= self.lineModel.thetaLength(),

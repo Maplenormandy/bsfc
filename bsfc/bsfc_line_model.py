@@ -9,9 +9,9 @@ import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermemulx
 
 # make it possible to use other packages within the BSFC distribution:
-from os import path
-import sys
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+#from os import path
+#import sys
+#sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
 
 # BSFC modules
 from helpers import bsfc_helper
@@ -321,7 +321,7 @@ class LineModel:
 
 
     # ==============================================
-    #                             Likelihood and prior functions
+    #         Likelihood and prior functions
     # ==============================================
 
     def lnlike(self, theta):
@@ -362,10 +362,11 @@ class LineModel:
         ''' Posterior probability. This simply sums the log-likelihood and the log-prior.
         This function is used by MCMC methods that do not need to distinguish between
         the prior and the likelihood, but only deal with a single probability distribution (the posterior).
+
         For example, application of a M-H algorithm, the Enseble Sampling MCMC implementation in emcee
         require this function. A nonlinear optimizer can also work with this function, but it's simpler to
         just optimize the log-likelihood and set constraints (which might be better handled by the specific
-        algorithm at hand.
+        algorithm at hand).
         '''
 
         lp = self.lnprior(theta)
@@ -441,7 +442,7 @@ class LineModel:
             The number of parameters (length of `cube`).
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
-        # a0 is set to be >0 and smaller than 1e5
+        # a0 is set to be >0 and smaller than 1e5 (widest bound)
         f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
 
         # noise:

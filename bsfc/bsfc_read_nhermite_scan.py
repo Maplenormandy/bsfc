@@ -31,9 +31,9 @@ from bsfc_moment_fitter import *
 # ===========
 # Scan parameters
 shot = 1101014019
-nsteps = int(1e4) #make sure this is an integer
+nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
-nh_max = 7
+nh_max = 3
 # ============
 
 # get key info for requested shot:
@@ -47,7 +47,7 @@ lnev_unc = {} #np.zeros_like(lnev)
 for nh in range(nh_min, nh_max+1):
     
     # save each fit independently
-    with open('../bsfc_fits/mf_%d_%d_tbin%d_chbin_%d_nh_%d.pkl'%(shot,nsteps,tbin,chbin, nh),'rb') as f:
+    with open('../bsfc_fits/mf_%d_%d_tbin%d_chbin_%d_nh_%d_nsteps_%d.pkl'%(shot,nsteps,tbin,chbin,nh,nsteps),'rb') as f:
         mf = pkl.load(f)
         
     #mf.plotSingleBinFit(tbin=tbin, chbin=chbin)  
@@ -78,6 +78,7 @@ for nh in range(nh_min, nh_max+1):
     
     
 plt.figure()
-plt.errorbar(nh, lnev, lnev_unc, fmt='.')
+plt.errorbar(range(nh_min,nh_max+1), lnev_arr, lnev_unc_arr, fmt='.')
 plt.xlabel('# Hermite coefficients')
 plt.ylabel('ln(ev)')
+plt.xlim([nh_min-1, nh_max+1])

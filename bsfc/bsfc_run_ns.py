@@ -39,12 +39,13 @@ start_time=time_.time()
 # get key info for requested shot:
 primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
-# on engaging, this might be in /nobackup1c
-basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-
 if 'BSFC_ROOT' not in os.environ:
     # make sure that correct directory is pointed at
     os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
+
+# location of MultiNest chains
+basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+
 
 # try loading result
 try:
@@ -78,8 +79,8 @@ except:
 
 if loaded==False:
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1,
-                    emcee_threads=1, PT=0, NS=True)
+    mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1, emcee_threads=1, PT=0,
+                    NS=True, n_hermite=3, n_live_points=1000, sampling_efficiency=0.3)
 
 if loaded==True:
         

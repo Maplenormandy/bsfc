@@ -21,13 +21,6 @@ import shutil
 # packages that are specific to tokamak fits:
 import MDSplus
 
-# make it possible to use other packages within the BSFC distribution:
-sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ))
-from helpers import bsfc_helper
-from helpers import bsfc_autocorr
-from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
-
-####
 from bsfc_bin_fit import BinFit
 
 # packages that require extra installation/care:
@@ -337,7 +330,7 @@ class MomentFitter:
 
         
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
-                     NS=False,n_hermite=3):
+                     NS=False,n_hermite=3, n_live_points=400, sampling_efficiency=0.3):
         ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
@@ -367,7 +360,8 @@ class MomentFitter:
         else:
             #print "Using Nested Sampling!"
             basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-            good = bf.NSfit(lnev_tol= 0.5, n_live_points=100, sampling_efficiency=0.5, INS=False, basename=basename)
+            good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,
+                            sampling_efficiency=sampling_efficiency, basename=basename)
 
         if not good:
             print "not worth fitting"
