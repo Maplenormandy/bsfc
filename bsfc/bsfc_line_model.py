@@ -443,11 +443,11 @@ class LineModel:
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
-        f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
+        f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
 
         # noise:
         for kk in range(self.noiseFuncs):
-            cube[kk] = cube[kk] * 1e1 # noise must be positive
+            cube[kk] = cube[kk] * 1e2 # noise must be positive
 
         # center wavelength (in 1e-4 A units)
         cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1 
