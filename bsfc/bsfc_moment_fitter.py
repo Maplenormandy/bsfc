@@ -363,10 +363,10 @@ class MomentFitter:
             good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,sampling_efficiency=sampling_efficiency,
                             basename=basename, verbose=verbose)
 
-        if not good:
-            print "not worth fitting"
-        else:
-            print "--> done"
+        #if not good:
+        #    print "not worth fitting"
+        #else:
+        #    print "--> done"
 
 
     def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
