@@ -238,7 +238,8 @@ class BinFit:
             return True
 
 
-    def NSfit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3, INS=True, const_eff=True, basename=None):
+    def NSfit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3, INS=True, const_eff=True,
+              basename=None, verbose=True):
         ''' Fit with Nested Sampling (MultiNest algorithm).
         For Nested Sampling, the prior and likelihood are not simply combined into a posterior
         (which is the only function passed to EMCEE), but they are used differently to explore the
@@ -257,6 +258,9 @@ class BinFit:
         INS : bool, optional
             Setting to activate Importance Nested Sampling in MultiNest. Refer to Feroz et al. 2014.
         basename : str, optional
+            Location where MultiNest output is written.
+        verbose: bool, optional
+            Boolean indicating whether to output verbose MultiNest progress. 
         '''
         # obtain maximum likelihood fits
         theta0 = self.lineModel.guessFit()
@@ -296,7 +300,7 @@ class BinFit:
             max_modes = 10,
             mode_tolerance = -1e90,  #keeps all modes
             seed = -1,
-            verbose = True,
+            verbose = verbose,
             resume = False,
             context = 0,   # additional info by user (leave empty)
             write_output = True,

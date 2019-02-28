@@ -443,8 +443,9 @@ class LineModel:
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
+        #f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
         f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
-
+        
         # noise:
         for kk in range(self.noiseFuncs):
             cube[kk] = cube[kk] * 1e2 # noise must be positive
@@ -464,6 +465,10 @@ class LineModel:
             # map hypercube to constrained simplex:
             [cube[cind], cube[cind+1],cube[cind+2]] = f_simplex([cube[cind],cube[cind+1], cube[cind+2] ])
 
+            for nn in range(3, self.hermFuncs[i]):
+                # constrain any further coefficients to be +/-0.3 h_0
+                cube[cind + 3] = 0.3 *  cube[cind] * (2 * cube[cind+3] +1)
+                
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
 
