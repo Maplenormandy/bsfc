@@ -58,7 +58,7 @@ class LineModel:
         else:
             self.hermFuncs = hermFuncs
         #self.hermFuncs[0] = 9
-            
+
         self.simpleConstraints = False
 
     """
@@ -113,13 +113,13 @@ class LineModel:
         """
         constraints = []
 
-        
+
         h0cnstr = lambda theta, n: theta[n]
         # Don't allow functions to grow more than 10% of the original Gaussian
         hncnstr = lambda theta, n, m: theta[n] - np.abs(10*theta[n+m])
 
         cind = self.noiseFuncs+2
-        
+
         if self.simpleConstraints:
             for i in range(self.nfit):
                 for j in range(self.hermFuncs[i]):
@@ -135,7 +135,7 @@ class LineModel:
                             'fun': hncnstr,
                             'args': [cind, j]
                             })
-    
+
                 cind = cind + self.hermFuncs[i]
         else:
             for i in range(self.nfit):
@@ -144,15 +144,15 @@ class LineModel:
                     'fun': h0cnstr,
                     'args': [cind]
                     })
-                
+
                 constraints.append({
                     'type': 'ineq',
                     'fun': generalizedHypercubeConstraintFunction(cind, self.hermFuncs[i], 0.75),
                     'args': []
                     })
-    
+
                 cind = cind + self.hermFuncs[i]
-            
+
 
         return constraints
 
@@ -367,12 +367,12 @@ class LineModel:
         '''
         # unpack parameters:
         noise, center, scale, herm = self.unpackTheta(theta)
-        
+
         if self.simpleConstraints:
             herm0 = np.array([h[0] for h in herm])
             herm1= np.array([h[1] for h in herm])
             herm2 = np.array([h[2] for h in herm])
-    
+
             # correlated prior:
             if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and
                 np.all(herm0-8*np.abs(herm1)>0) and np.all(herm0-8*np.abs(herm2)>0)):
@@ -381,7 +381,7 @@ class LineModel:
                 return -np.inf
         else:
             hermiteConstraintsEv = self.hermiteConstraints()
-            
+
             if (np.all(noise[0]>0) and np.all(scale>0)):
                 for f in hermiteConstraintsEv:
                     if f['fun'](theta, *f['args'])<0:
@@ -478,12 +478,11 @@ class LineModel:
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
-        
         f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
 
         # noise:
         for kk in range(self.noiseFuncs):
-            cube[kk] = cube[kk] * 1e1 # noise must be positive
+            cube[kk] = cube[kk] * 1e2 # noise must be positive
 
         # center wavelength (in 1e-4 A units)
         cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1
@@ -502,7 +501,7 @@ class LineModel:
 
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
-            
+
     def hypercube_lnprior_generalized_simplex(self,cube, ndim, nparams):
         """Prior distribution function for :py:mod:`pymultinest`.
         This version sets smart bounds within hypercube method of MultiNest.
@@ -523,10 +522,6 @@ class LineModel:
             The number of parameters (length of `cube`).
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
-        
-        # set simplex limits so that a1 and a2 are 1/8 of a0 at most
-        # a0 is set to be >0 and smaller than 1e5 (widest bound)
-        f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
 
         # noise:
         for kk in range(self.noiseFuncs):
@@ -546,12 +541,12 @@ class LineModel:
             a0 = herm[0][0]
             a_max = (a0 + noise[0]) * 1.1
             f_simplex = generalizedHypercubeToHermiteSampleFunction(a_max, self.hermFuncs[i])
-            
+
             cubeCoords = np.array([cube[cind+j] for j in range(self.hermFuncs[i])])
 
             # map hypercube to constrained simplex:
             hermCoefs = f_simplex(cubeCoords)
-            
+
             for j in range(self.hermFuncs):
                 cube[cind+j] = hermCoefs[j]
 

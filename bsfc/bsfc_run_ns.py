@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Run nested sampling for model selection
+Run nested sampling for model selection. 
+
+This script can either be run on 1 CPU using 
+python bsfc_run_ns.py <SHOT>
+
+or with MPI, using
+mpirun python bsfc_run_ns.py <SHOT>
+whereby the maximum number of coworkers will be automatically identified. 
+
+After completion of a MultiNest execution, running again this script (without mpirun!) will 
+pull up some useful plots. 
 
 @author: sciortino
 """
@@ -80,7 +90,7 @@ except:
 if loaded==False:
     # Do a single spectral fit with nested sampling
     mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1, emcee_threads=1, PT=0,
-                    NS=True, n_hermite=3, n_live_points=1000, sampling_efficiency=0.3)
+                    NS=True, n_hermite=3, n_live_points=400, sampling_efficiency=0.3)
 
 if loaded==True:
         
@@ -107,6 +117,14 @@ with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as
     pkl.dump(mf, f)
 
 
-# end time count
-elapsed_time=time_.time()-start_time
-print 'Time to run: ' + str(elapsed_time) + " s"
+# Import mpi4py here to output timing, just because why not
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+
+if rank==0:
+    # end time count
+    elapsed_time=time_.time()-start_time
+    print 'Time to run: ' + str(elapsed_time) + " s"
+    print 'MultiNest executed on ', size, 'core(s)'
