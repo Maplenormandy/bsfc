@@ -138,20 +138,10 @@ if loaded==True:
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
-    # Get model predictions
-    # \mu = \frac{\sum_i w_i x_i}{\sum_i w_i}
-    meanw = scipy.einsum('i...,i...->i...', sample_weights,samples).sum(axis=0)/sample_weights.sum(axis=0)
-    moms=mf.fits[tbin][chbin].lineModel.modelMeasurements(meanw)
+    measurements = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, 1, samples)
+    moms = np.average(measurements, 0, weights=sample_weights)
+    moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
-    # weighted variance: s^2 = \frac{\sum_i w_i}{(\sum_i w_i)^2 - \sum_i w_i^2}\sum_i w_i (x_i - \mu)^2
-    V1 = sample_weights.sum(axis=0)
-    M = scipy.einsum('i...,i...->i...', sample_weights, (samples - meanw)**2).sum(axis=0)
-    stdw = V1 / (V1**2 - (sample_weights**2).sum(axis=0))*M
-
-    # get standard deviation of moments:
-    moms_up = mf.fits[tbin][chbin].lineModel.modelMeasurements(meanw+stdw)
-    moms_down = mf.fits[tbin][chbin].lineModel.modelMeasurements(meanw-stdw)
-    moms_std = (moms_up - moms_down)/2.0
 
     print "Counts = ", moms[0], "+/-", moms_std[0]
     print "v = ", moms[1], "+/-", moms_std[1]
