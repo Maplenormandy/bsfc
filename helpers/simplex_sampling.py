@@ -77,10 +77,10 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
     return hypercubeToHermiteSample
 
 # TODO unhardcode these paths
-prior_bound_means = np.load(r'/home/normandy/git/bsfc/data/prior_bound_means.npz')
-prior_bound_matrices = np.load(r'/home/normandy/git/bsfc/data/prior_bound_matrices.npz')
-prior_bound_zeros = np.load(r'/home/normandy/git/bsfc/data/prior_bound_zeros.npz')
-prior_bound_axes = np.load(r'/home/normandy/git/bsfc/data/prior_bound_axes.npz')
+prior_bound_means = np.load(r'../data/prior_bound_means.npz')
+prior_bound_matrices = np.load(r'../data/prior_bound_matrices.npz')
+prior_bound_zeros = np.load(r'../data/prior_bound_zeros.npz')
+prior_bound_axes = np.load(r'../data/prior_bound_axes.npz')
 prior_bound_inv = {}
 for key in prior_bound_matrices:
     transMatrix = prior_bound_matrices[key]
