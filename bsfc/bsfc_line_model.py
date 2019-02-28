@@ -17,7 +17,8 @@ from numpy.polynomial.hermite_e import hermeval, hermemulx
 #from helpers import bsfc_helper
 #from helpers import bsfc_autocorr
 #from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
-from helpers.simplex_sampling import hypercubeToHermiteSampleFunction, generalizedHypercubeToHermiteSampleFunction, generalizedHypercubeConstraintFunction
+from helpers.simplex_sampling import hypercubeToHermiteSampleFunction
+from helpers.simplex_sampling import generalizedHypercubeToHermiteSampleFunction, generalizedHypercubeConstraintFunction
 
 
 # %%
@@ -478,14 +479,8 @@ class LineModel:
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
-<<<<<<< HEAD
-        #f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
-        f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
-        
-=======
         f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
-
->>>>>>> 70f700948af4386e15011d9180ab970b9e1192c2
+        
         # noise:
         for kk in range(self.noiseFuncs):
             cube[kk] = cube[kk] * 1e2 # noise must be positive
@@ -533,6 +528,8 @@ class LineModel:
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
 
+        import pdb
+        pdb.set_trace()
         # noise:
         for kk in range(self.noiseFuncs):
             cube[kk] = cube[kk] * noise[0] * (1 + 10.0 / np.sqrt(noise[0]))  # noise must be positive

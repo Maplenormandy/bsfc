@@ -28,7 +28,8 @@ def get_shot_info(shot):
         tbin=128; chbin=11
         #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
         #tbin=111; chbin=15   #problematic
-        t_min=1.24; t_max=1.4
+        #t_min=1.24; t_max=1.4
+        t_min=1.26; t_max=1.7
         tht=0
     elif shot==1101014029:
         primary_impurity = 'Ca'

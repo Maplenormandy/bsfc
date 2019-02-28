@@ -266,6 +266,9 @@ class BinFit:
         theta0 = self.lineModel.guessFit()
         self.result_ml = self.optimizeFit(theta0)
         self.theta_ml = self.result_ml['x']
+
+        # save theta_ml also in the lineModel object, so that constraints may be set based on ML result
+        self.lineModel.theta_ml = self.theta_ml
         
         # save moments obtained from maximum likelihood optimization
         self.m_ml = self.lineModel.modelMoments(self.theta_ml)
@@ -283,30 +286,19 @@ class BinFit:
 
         pymultinest.run(
             self.lineModel.hypercube_lnlike,   # log-likelihood
-            self.lineModel.hypercube_lnprior_simplex, #self.lineModel.hypercube_lnprior_simplex,   # log-prior
+            self.lineModel.hypercube_lnprior_generalized_simplex,   # log-prior
             ndim,
             outputfiles_basename=basename,
             n_live_points=n_live_points,
-            n_params = None, # defaults to same as ndim
-            n_clustering_params = None, # defaults to same as ndim
-            wrapped_params = None,
             importance_nested_sampling = INS,
-            multimodal = True,
             const_efficiency_mode = const_eff, # only appropriate with INS
             evidence_tolerance = lnev_tol,
             sampling_efficiency = sampling_efficiency,
-            n_iter_before_update = 1000000, #MultiNest internally multiplies by 10
-            null_log_evidence = -1e90,
-            max_modes = 10,
+            n_iter_before_update = 1000, #MultiNest internally multiplies by 10
+            max_modes = 100,
             mode_tolerance = -1e90,  #keeps all modes
-            seed = -1,
             verbose = verbose,
             resume = False,
-            context = 0,   # additional info by user (leave empty)
-            write_output = True,
-            log_zero = -1e99,
-            max_iter = 0,   #unlimited
-            dump_callback = None
         )
 
         self.good=True
