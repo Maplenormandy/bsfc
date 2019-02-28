@@ -26,13 +26,14 @@ import os
 import shutil
 
 # make it possible to use other packages within the BSFC distribution:
-from os import path
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+#from os import path
+#sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
 
-import bsfc_main
+#import bsfc_main
 from helpers import bsfc_slider
 from helpers.bsfc_clean_moments import clean_moments
 from helpers import bsfc_cmod_shots
+import bsfc_bin_fit
 
 # MPI parallelization
 from mpi4py import MPI
@@ -86,7 +87,8 @@ if size==1:
             gathered_moments=pkl.load(f)
 
     # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
-    moments_vals, moments_stds, time_sel = clean_moments(mf.time, mf.maxChan, t_min,t_max, gathered_moments, BR_THRESH=2.0, BR_STD_THRESH=0.1)
+    moments_vals, moments_stds, time_sel = clean_moments(mf.time, mf.maxChan, t_min,t_max,
+                                                         gathered_moments, BR_THRESH=2.0, BR_STD_THRESH=0.1)
     
     # BSFC slider visualization
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
@@ -106,7 +108,7 @@ else:
     time_sel= mf.time[tidx_min: tidx_max]
     
     # requires a wrapper for multiprocessing to pickle the function
-    ff = bsfc_main._fitTimeWindowWrapper(mf,nsteps=nsteps)
+    ff = bsfc_bin_fit._fitTimeWindowWrapper(mf,nsteps=nsteps)
 
     # map range of channels and compute each
     map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(mf.maxChan)))
@@ -144,11 +146,10 @@ else:
 
             try:
                 # if fit has already been created, re-load it from checkpoint directory
-                with open('./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl'%(shot,
-                                                                                               nsteps,t_min,t_max,shot,nsteps, binn[0], binn[1])) as f:
+                resdir ='./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl'%(shot,                                                                                             nsteps,t_min,t_max,shot,nsteps,binn[0],binn[1])
+                with open(resdir,'rb') as f:
                           res[j] = pkl.load(f)
-                print "Loaded fit moments from ./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl"%(shot,
-                                                                                                                   nsteps,t_min,t_max,shot,nsteps, binn[0], binn[1])
+                print "Loaded fit moments from ", resdir
 
             except:
                 # create new fit      

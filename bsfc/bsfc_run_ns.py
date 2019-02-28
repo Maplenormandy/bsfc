@@ -7,7 +7,7 @@ python bsfc_run_ns.py <SHOT>
 
 or with MPI, using
 mpirun python bsfc_run_ns.py <SHOT>
-whereby the maximum number of coworkers will be automatically identified. 
+whereby the maximum number of workers will be automatically identified. 
 
 After completion of a MultiNest execution, running again this script (without mpirun!) will 
 pull up some useful plots. 
@@ -28,10 +28,7 @@ import time as time_
 import multiprocessing
 import os
 import shutil
-
-# make it possible to use other packages within the BSFC distribution:
-from os import path
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+import scipy
 from helpers import bsfc_cmod_shots
 from helpers import bsfc_autocorr
 
@@ -48,7 +45,7 @@ start_time=time_.time()
 
 # get key info for requested shot:
 primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
-
+    
 if 'BSFC_ROOT' not in os.environ:
     # make sure that correct directory is pointed at
     os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
@@ -84,23 +81,31 @@ except:
         # if directory does not exist, create it
         os.mkdir(chains_dir)
         
-    
+
 # ==================================
 
 if loaded==False:
+    
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=1, emcee_threads=1, PT=0,
-                    NS=True, n_hermite=3, n_live_points=400, sampling_efficiency=0.3)
-
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True, n_hermite=3, n_live_points=400,
+                    sampling_efficiency=0.3, verbose=True)
+    
+    # save fits for future use
+    with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as f:
+        pkl.dump(mf, f)       
+    
 if loaded==True:
         
     # load MultiNest output
     mf.fits[tbin][chbin].NS_analysis(basename)
+
+    samples = mf.fits[tbin][chbin].samples
+    sample_weights = mf.fits[tbin][chbin].sample_weights
     
     # corner plot
     f = gptools.plot_sampler(
-        mf.fits[tbin][chbin].samples,
-        weights = mf.fits[tbin][chbin].sample_weights, # MultiNest internally computes weights for its samples
+        samples,
+        sample_weights,
         labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
         chain_alpha=1.0,
         cutoff_weight=0.01,
@@ -110,14 +115,24 @@ if loaded==True:
     )
     
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
-        
 
-# save fits for future use
-with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as f:
-    pkl.dump(mf, f)
+    '''
+    # Get model predictions
+    # \mu = \frac{\sum_i w_i x_i}{\sum_i w_i}
+    moms=np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=samples)
+    meanw = scipy.einsum('i...,i...->i...', sample_weights, moms).sum(axis=0)/sample_weights.sum(axis=0)
 
-
-# Import mpi4py here to output timing, just because why not
+    # weighted variance: s^2 = \frac{\sum_i w_i}{(\sum_i w_i)^2 - \sum_i w_i^2}\sum_i w_i (x_i - \mu)^2
+    V1 = sample_weights.sum(axis=0)
+    M = scipy.einsum('i...,i...->i...', sample_weights, (moms - meanw)**2).sum(axis=0)
+    stdw = np.sqrt(V1/M)
+    
+    print "Counts = ", meanw[0], "+/-", stdw[0]
+    print "v = ", meanw[1], "+/-", stdw[1]
+    print "Ti = ", meanw[2], "+/-", stdw[2]
+    '''
+    
+# Import mpi4py here to output timing only once
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -127,4 +142,4 @@ if rank==0:
     # end time count
     elapsed_time=time_.time()-start_time
     print 'Time to run: ' + str(elapsed_time) + " s"
-    print 'MultiNest executed on ', size, 'core(s)'
+

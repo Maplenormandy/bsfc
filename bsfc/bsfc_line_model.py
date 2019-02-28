@@ -1,7 +1,7 @@
 ''' Bayesian Spectral Fitting Code (BSFC)
 by N. Cao & F. Sciortino
 
-This script contains the LineModel class, which define the Hermite polynomial decomposition for each line, model noise, the likelihood function and prior function. 
+This script contains the LineModel class, which define the Hermite polynomial decomposition for each line, model noise, the likelihood function and prior function.
 
 '''
 
@@ -14,9 +14,10 @@ from numpy.polynomial.hermite_e import hermeval, hermemulx
 #sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
 
 # BSFC modules
-from helpers import bsfc_helper
-from helpers import bsfc_autocorr
-from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
+#from helpers import bsfc_helper
+#from helpers import bsfc_autocorr
+#from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
+from helpers.simplex_sampling import hypercubeToHermiteSampleFunction, generalizedHypercubeToHermiteSampleFunction, generalizedHypercubeConstraintFunction
 
 
 # %%
@@ -57,6 +58,8 @@ class LineModel:
         else:
             self.hermFuncs = hermFuncs
         #self.hermFuncs[0] = 9
+
+        self.simpleConstraints = False
 
     """
     Helper functions for theta (i.e. the model parameters).
@@ -106,31 +109,50 @@ class LineModel:
 
     def hermiteConstraints(self):
         """
-        Constraint function helper
+        Constraint function helper for non-linear fitting stage
         """
         constraints = []
+
 
         h0cnstr = lambda theta, n: theta[n]
         # Don't allow functions to grow more than 10% of the original Gaussian
         hncnstr = lambda theta, n, m: theta[n] - np.abs(10*theta[n+m])
 
         cind = self.noiseFuncs+2
-        for i in range(self.nfit):
-            for j in range(self.hermFuncs[i]):
-                if j == 0:
-                    constraints.append({
-                        'type': 'ineq',
-                        'fun': h0cnstr,
-                        'args': [cind]
-                        })
-                else:
-                    constraints.append({
-                        'type': 'ineq',
-                        'fun': hncnstr,
-                        'args': [cind, j]
-                        })
 
-            cind = cind + self.hermFuncs[i]
+        if self.simpleConstraints:
+            for i in range(self.nfit):
+                for j in range(self.hermFuncs[i]):
+                    if j == 0:
+                        constraints.append({
+                            'type': 'ineq',
+                            'fun': h0cnstr,
+                            'args': [cind]
+                            })
+                    else:
+                        constraints.append({
+                            'type': 'ineq',
+                            'fun': hncnstr,
+                            'args': [cind, j]
+                            })
+
+                cind = cind + self.hermFuncs[i]
+        else:
+            for i in range(self.nfit):
+                constraints.append({
+                    'type': 'ineq',
+                    'fun': h0cnstr,
+                    'args': [cind]
+                    })
+
+                constraints.append({
+                    'type': 'ineq',
+                    'fun': generalizedHypercubeConstraintFunction(cind, self.hermFuncs[i], 0.75),
+                    'args': []
+                    })
+
+                cind = cind + self.hermFuncs[i]
+
 
         return constraints
 
@@ -342,20 +364,33 @@ class LineModel:
         '''
         Log-prior. This is the simplest version of this function, used by emcee's Ensemble Sampler.
         This function sets correlations between Hermite polynomial coefficients.
-
         '''
         # unpack parameters:
         noise, center, scale, herm = self.unpackTheta(theta)
-        herm0 = np.array([h[0] for h in herm])
-        herm1= np.array([h[1] for h in herm])
-        herm2 = np.array([h[2] for h in herm])
 
-        # correlated prior:
-        if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and
-            np.all(herm0-8*np.abs(herm1)>0) and np.all(herm0-8*np.abs(herm2)>0)):
-            return 0.0
+        if self.simpleConstraints:
+            herm0 = np.array([h[0] for h in herm])
+            herm1= np.array([h[1] for h in herm])
+            herm2 = np.array([h[2] for h in herm])
+
+            # correlated prior:
+            if (np.all(noise[0]>0) and np.all(scale>0) and np.all(herm0>0) and
+                np.all(herm0-8*np.abs(herm1)>0) and np.all(herm0-8*np.abs(herm2)>0)):
+                return 0.0
+            else:
+                return -np.inf
         else:
-            return -np.inf
+            hermiteConstraintsEv = self.hermiteConstraints()
+
+            if (np.all(noise[0]>0) and np.all(scale>0)):
+                for f in hermiteConstraintsEv:
+                    if f['fun'](theta, *f['args'])<0:
+                        return -np.inf
+                    else:
+                        continue
+                return 0.0
+            else:
+                return -np.inf
 
 
     def lnprob(self, theta):
@@ -408,7 +443,7 @@ class LineModel:
         cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*1e2 # scale must be positive
 
         # Hermite coefficients:
-        herm = [None]*self.nfit
+        #herm = [None]*self.nfit
         cind = self.noiseFuncs+2
 
         # loop over number of spectral lines:
@@ -443,15 +478,20 @@ class LineModel:
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
+<<<<<<< HEAD
         #f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
         f_simplex = hypercubeToHermiteSampleFunction(1e4, 0.125, 0.125)
         
+=======
+        f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
+
+>>>>>>> 70f700948af4386e15011d9180ab970b9e1192c2
         # noise:
         for kk in range(self.noiseFuncs):
             cube[kk] = cube[kk] * 1e2 # noise must be positive
 
         # center wavelength (in 1e-4 A units)
-        cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1 
+        cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1
 
         # scale (in 1e-4 A units)
         cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*20 + 1 # scale must be positive (>1)
@@ -469,6 +509,57 @@ class LineModel:
                 # constrain any further coefficients to be +/-0.3 h_0
                 cube[cind + 3] = 0.3 *  cube[cind] * (2 * cube[cind+3] +1)
                 
+            # increase count by number of Hermite polynomials considered.
+            cind = cind + self.hermFuncs[i]
+
+    def hypercube_lnprior_generalized_simplex(self,cube, ndim, nparams):
+        """Prior distribution function for :py:mod:`pymultinest`.
+        This version sets smart bounds within hypercube method of MultiNest.
+
+        Maps the (free) parameters in `cube` from [0, 1] to real space.
+        This is necessary because MultiNest only works in a unit hypercube.
+
+        Do NOT attempt to change function arguments, even if they are not used!
+        This function signature is internally required in Fortran by MultiNest.
+
+        Parameters
+        ----------
+        cube : array of float, (`num_free_params`,)
+            The variables in the unit hypercube.
+        ndim : int
+            The number of dimensions (meaningful length of `cube`).
+        nparams : int
+            The number of parameters (length of `cube`).
+        """
+        noise, center, scale, herm = self.unpackTheta(self.theta_ml)
+
+        # noise:
+        for kk in range(self.noiseFuncs):
+            cube[kk] = cube[kk] * noise[0] * (1 + 10.0 / np.sqrt(noise[0]))  # noise must be positive
+
+        # center wavelength (in 1e-4 A units)
+        cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1
+
+        # scale (in 1e-4 A units)
+        cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*20 + 1 # scale must be positive (>1)
+
+        # Hermite coefficients:
+        cind = self.noiseFuncs+2
+
+        # loop over number of spectral lines:
+        for i in range(self.nfit):
+            a0 = herm[0][0]
+            a_max = (a0 + noise[0]) * 1.1
+            f_simplex = generalizedHypercubeToHermiteSampleFunction(a_max, self.hermFuncs[i])
+
+            cubeCoords = np.array([cube[cind+j] for j in range(self.hermFuncs[i])])
+
+            # map hypercube to constrained simplex:
+            hermCoefs = f_simplex(cubeCoords)
+
+            for j in range(self.hermFuncs):
+                cube[cind+j] = hermCoefs[j]
+
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
 
@@ -491,11 +582,11 @@ class LineModel:
         lnew : float
             New log-likelihood. Probably just there for FORTRAN compatibility?
         """
-        
+
         # parameters are in the hypercube space defined by multinest_lnprior
         theta = [cube[i] for i in range(0, ndim)]
-        
+
         pred = self.modelPredict(theta)
         ll = -np.sum((self.specBr-pred)**2/self.sig**2)
-        
+
         return ll

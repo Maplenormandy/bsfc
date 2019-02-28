@@ -12,18 +12,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-#import bsfc_helper
-#import cPickle as pkl
-#import bsfc_autocorr
-#import pdb
-#import corner
+import sys
+sys.path.append('/home/normandy/git/bsfc/bsfc/')
+
 import bsfc_main
 reload(bsfc_main)
-#import bsfc_slider
-#import bsfc_autocorr
-#import scipy
-#import sys
-#import time as time_
+
 
 # Start counting time:
 #start_time=time_.time()
@@ -31,7 +25,7 @@ reload(bsfc_main)
 # %%
 
 # Do a quick hack and load Ca lya1 lines
-mf = bsfc_main.MomentFitter('Ca', 'lya1', 1120914036, tht=0)
+#mf = bsfc_main.MomentFitter('Ca', 'lya1', 1120914036, tht=0)
 
 
 
