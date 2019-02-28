@@ -480,7 +480,7 @@ class LineModel:
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
         f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
-        
+
         # noise:
         for kk in range(self.noiseFuncs):
             cube[kk] = cube[kk] * 1e2 # noise must be positive
@@ -503,7 +503,7 @@ class LineModel:
             for nn in range(3, self.hermFuncs[i]):
                 # constrain any further coefficients to be +/-0.3 h_0
                 cube[cind + 3] = 0.3 *  cube[cind] * (2 * cube[cind+3] +1)
-                
+
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
 
@@ -528,8 +528,6 @@ class LineModel:
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
 
-        import pdb
-        pdb.set_trace()
         # noise:
         for kk in range(self.noiseFuncs):
             cube[kk] = cube[kk] * noise[0] * (1 + 10.0 / np.sqrt(noise[0]))  # noise must be positive
@@ -545,7 +543,7 @@ class LineModel:
 
         # loop over number of spectral lines:
         for i in range(self.nfit):
-            a0 = herm[0][0]
+            a0 = herm[i][0]
             a_max = (a0 + noise[0]) * 1.1
             f_simplex = generalizedHypercubeToHermiteSampleFunction(a_max, self.hermFuncs[i])
 
@@ -554,7 +552,7 @@ class LineModel:
             # map hypercube to constrained simplex:
             hermCoefs = f_simplex(cubeCoords)
 
-            for j in range(self.hermFuncs):
+            for j in range(self.hermFuncs[i]):
                 cube[cind+j] = hermCoefs[j]
 
             # increase count by number of Hermite polynomials considered.
