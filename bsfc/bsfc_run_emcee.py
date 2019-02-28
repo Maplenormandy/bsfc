@@ -77,7 +77,7 @@ if loaded==True:
     # the following will be empty at this stage for MultiNest
     chain = mf.fits[tbin][chbin].samples
     
-    if chain==None: 
+    if chain==None or nsteps==1: 
         plot_posterior=False
     else: 
         plot_posterior=True
@@ -112,7 +112,8 @@ if loaded==True:
             
         # if thinning is done, divide nsteps by ``thin''
         chain=chain.reshape((-1, nsteps, chain.shape[-1]))
-        bsfc_autocorr.plot_convergence(chain, dim=1, nsteps=nsteps)
+        if nsteps > 1:
+            bsfc_autocorr.plot_convergence(chain, dim=1, nsteps=nsteps)
         
         #plt.show(block=True)
     else:

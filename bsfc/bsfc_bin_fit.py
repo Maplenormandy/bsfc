@@ -1,7 +1,7 @@
 ''' Bayesian Spectral Fitting Code (BSFC)
 by N. Cao & F. Sciortino
 
-This script contains the BinFit class, where methods for spectral fitting are defined. 
+This script contains the BinFit class, where methods for spectral fitting are defined.
 
 '''
 
@@ -22,7 +22,6 @@ from bsfc_line_model import *
 # packages that require extra installation/care:
 import emcee
 import gptools
-
 
 # =====================================================
 
@@ -51,7 +50,7 @@ class BinFit:
         self.good = False
 
         # number of Hermite polynomial terms:
-        hermFuncs = [n_hermite]*len(linesFit)
+        hermFuncs = [3]*len(linesFit)
         hermFuncs[0] = n_hermite
 
         self.lineModel = LineModel(lam, self.lamNorm, specBr, sig, lineData, linesFit, hermFuncs)
@@ -97,14 +96,14 @@ class BinFit:
             Number of temperatures used in PT-MCMC. This is a rather arbitrary number. Note that in emcee
             the temperature ladder is implemented such that each temperature is larger by a factor of \sqrt{2}.
         Tmax : float, optional
-            Maximum temperature allowed for emcee PTSampler. If ``ntemps`` is not given, this argument 
-            controls the number of temperatures.  Temperatures are chosen according to the spacing criteria until 
+            Maximum temperature allowed for emcee PTSampler. If ``ntemps`` is not given, this argument
+            controls the number of temperatures.  Temperatures are chosen according to the spacing criteria until
             the maximum temperature exceeds ``Tmax`. Default is to set ``ntemps`` and leave Tmax=None.
         betas : array, optional
-            Array giving the inverse temperatures, :math:`\\beta=1/T`, used in the ladder. The default is chosen 
+            Array giving the inverse temperatures, :math:`\\beta=1/T`, used in the ladder. The default is chosen
             so that a Gaussian posterior in the given number of dimensions will have a 0.25 tswap acceptance rate.
         thin: int, optional
-            thinning factor (choose 1 to avoid thinning)        
+            thinning factor (choose 1 to avoid thinning)
         burn : int, optional
             Burn-in of chains. Default is 1000
         '''
@@ -129,17 +128,17 @@ class BinFit:
         else:
             # testing purposes ONLY
             #betas=np.asarray([1.0,0.9,0.8,0.7,0.6, 0.5])
-            
-            # use PT-MCMC 
+
+            # use PT-MCMC
             sampler = emcee.PTSampler(ntemps, nwalkers, ndim, _LnLike_Wrapper(self), _LnPrior_Wrapper(self),
                                       threads=emcee_threads, Tmax=Tmax, betas=betas)
-            
+
             # if Tmax is not None, ntemps was set internally in PTSampler
             ntemps = sampler.ntemps
 
             # pos has shape (ntemps, nwalkers, ndim)
             pos = [[theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)] for t in range(ntemps)]
-            
+
             # burn-in 'burn' iterations
             for p, lnprob, lnlike in sampler.sample(pos, iterations=burn):
                 pass
@@ -206,7 +205,8 @@ class BinFit:
             self.theta_ml = self.result_ml['x']
 
             # if MCMC is requested, use result from non-linear optimization as an MCMC start
-            if mcmc:
+            # If nsteps=1, assume this is a debug run and don't sample
+            if mcmc and nsteps>1:
                 self.samples, sampler = self.mcmcSample(self.theta_ml, emcee_threads, nsteps=nsteps, PT=PT)
                 #sampler = self.mcmcSample(self.theta_ml, emcee_threads, nsteps=nsteps, PT=PT)
                 #self.samples = sampler.chain
@@ -270,13 +270,13 @@ class BinFit:
         ndim = self.lineModel.thetaLength()
 
         try:
-            import pymultinest 
+            import pymultinest
         except:
             print "********************"
             print "Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH."
             print "MultiNest must also be on your LD_LIBRARY_PATH"
             raise ValueError("Abort BSFC fit")
-        
+
         pymultinest.run(
             self.lineModel.hypercube_lnlike,   # log-likelihood
             self.lineModel.hypercube_lnprior_simplex, #self.lineModel.hypercube_lnprior_simplex,   # log-prior
@@ -317,13 +317,13 @@ class BinFit:
         '''
 
         try:
-            import pymultinest 
+            import pymultinest
         except:
             print "********************"
             print "Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH."
             print "MultiNest must also be on your LD_LIBRARY_PATH"
             raise ValueError("Abort BSFC fit")
-        
+
         # after MultiNest run, read results
         a = pymultinest.Analyzer(
             n_params= self.lineModel.thetaLength(),
@@ -381,7 +381,7 @@ class BinFit:
 
 
 ### =============================
-# 
+#
 #           Wrappers
 #
 ### =============================

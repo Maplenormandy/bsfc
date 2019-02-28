@@ -76,6 +76,69 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
     
     return hypercubeToHermiteSample
 
+# TODO unhardcode these paths
+prior_bound_means = np.load(r'/home/normandy/git/bsfc/data/prior_bound_means.npz')
+prior_bound_matrices = np.load(r'/home/normandy/git/bsfc/data/prior_bound_matrices.npz')
+prior_bound_zeros = np.load(r'/home/normandy/git/bsfc/data/prior_bound_zeros.npz')
+prior_bound_axes = np.load(r'/home/normandy/git/bsfc/data/prior_bound_axes.npz')
+prior_bound_inv = {}
+for key in prior_bound_matrices:
+    transMatrix = prior_bound_matrices[key]
+    prior_bound_inv[key] = np.linalg.inv(transMatrix)
+
+def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite):
+    """
+    Similar to the non-generalized version, adds the constraint
+    a0 < a0_max
+    
+    but constrains the values of an/a0 in a manner that I will explain more fully later.
+    n_hermite is the number of hermite polynomials in the fit.
+    """
+    
+    if n_hermite < 3 or n_hermite > 9:
+        raise NotImplementedError('Number of hermite polynomials must be between 3 and 9 inclusive')
+    
+    arr_name = 'arr_' + str(n_hermite-3)
+    mean = prior_bound_means[arr_name]
+    transMatrix = prior_bound_matrices[arr_name]
+    zero = prior_bound_zeros[arr_name]
+    axes = prior_bound_axes[arr_name]
+    axes = np.maximum(axes, [2.0]*len(axes))
+    
+    def hypercubeToHermiteSample(z):
+        y = 2.0*z[1:]-1.0
+        signY = np.sign(np.sign(y) + 1e-2)
+        r = np.diag(axes*signY, k=-1)
+        r[0,:] = 1.0
+            
+        x = zero + hypercubeToSimplex(np.abs(y), r)
+        return np.dot(transMatrix, x) + mean
+        
+    return hypercubeToHermiteSample
+        
+def generalizedHypercubeConstraintFunction(cind, n_hermite, bound=1.0):
+    """
+    TODO: Documentation
+    """
+    if n_hermite < 3 or n_hermite > 9:
+        raise NotImplementedError('Number of hermite polynomials must be between 3 and 9 inclusive')
+    
+    arr_name = 'arr_' + str(n_hermite-3)
+    mean = prior_bound_means[arr_name]
+    invMatrix = prior_bound_inv[arr_name]
+    zero = prior_bound_zeros[arr_name]
+    axes = prior_bound_axes[arr_name]
+    axes = np.maximum(axes, [2.0]*len(axes))
+    
+    hypercubeConstraint = lambda theta: (bound - np.sum(
+        np.abs(
+            np.dot(invMatrix,
+                   theta[cind+1:cind+n_hermite]/(theta[cind]+1e-4) - mean) - zero
+                   ) / axes
+                   ))
+        
+    return hypercubeConstraint
+
 # %% Plot an example of the simplex function
 
 """
