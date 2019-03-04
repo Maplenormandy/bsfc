@@ -29,7 +29,7 @@ class BinFit:
     """
     Performs a nonlinear fit and MCMC error estimate of given binned data
     """
-    def __init__(self, lam, specBr, sig, lineData, linesFit, n_hermite):
+    def __init__(self, lam, specBr, sig, whitefield, lineData, linesFit, n_hermite):
         self.lam = lam
         self.specBr = specBr
         self.sig = sig
@@ -53,7 +53,7 @@ class BinFit:
         hermFuncs = [3]*len(linesFit)
         hermFuncs[0] = n_hermite
 
-        self.lineModel = LineModel(lam, self.lamNorm, specBr, sig, lineData, linesFit, hermFuncs)
+        self.lineModel = LineModel(lam, self.lamNorm, specBr, sig, whitefield, lineData, linesFit, hermFuncs)
 
 
     def optimizeFit(self, theta0):

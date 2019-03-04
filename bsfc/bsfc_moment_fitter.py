@@ -187,7 +187,9 @@ class MomentFitter:
         # Indices are [lambda, time, channel]
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
+        self.whitefield = self.specBr_all / self.sig_all**2
 
+        """
         if branchB:
             # Hack for now; usually the POS variable is in LYA1 on branch B
             pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
@@ -196,6 +198,7 @@ class MomentFitter:
             pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
 
         self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
+        """
 
         # Maximum number of channels, time bins
         self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
@@ -348,8 +351,9 @@ class MomentFitter:
         lam = self.lam_all[w0:w1,tbin,chbin]
         specBr = self.specBr_all[w0:w1,tbin,chbin]
         sig = self.sig_all[w0:w1,tbin,chbin]
+        whitefield = self.whitefield[w0:w1,tbin,chbin]
 
-        bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)), n_hermite=n_hermite)
+        bf = BinFit(lam, specBr, sig, whitefield, self.lines, range(len(self.lines.names)), n_hermite=n_hermite)
 
         self.fits[tbin][chbin] = bf
 

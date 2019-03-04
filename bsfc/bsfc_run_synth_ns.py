@@ -27,12 +27,10 @@ import corner
 import bsfc_main
 import sys
 import time as time_
-import multiprocessing
 import os
 import shutil
 import scipy
-from helpers import bsfc_cmod_shots
-from helpers import bsfc_autocorr
+from syn_tests.bsfc_synthetic_profile_test import SyntheticGenerator
 
 import argparse
 
@@ -42,19 +40,19 @@ from bsfc_moment_fitter import *
 sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 
 parser = argparse.ArgumentParser()
-parser.add_argument("shot", type=int, help="shot number to run analysis on")
+#parser.add_argument("shot", type=int, help="shot number to run analysis on")
 parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
 
 args = parser.parse_args()
 
 # first command line argument gives shot number
-shot = args.shot
+#shot = args.shot
+
+shot = 1150903021
 
 # Start counting time:
 start_time=time_.time()
 
-# get key info for requested shot:
-primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
 if 'BSFC_ROOT' not in os.environ:
     # make sure that correct directory is pointed at
@@ -62,7 +60,8 @@ if 'BSFC_ROOT' not in os.environ:
 
 # location of MultiNest chains
 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-
+tbin = 16
+chbin = 40
 
 # try loading result
 if args.force:
@@ -79,7 +78,7 @@ if args.force:
 
 else:
     try:
-        with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'rb') as f:
+        with open('../bsfc_fits/mf_synth_%d.pkl'%(shot),'rb') as f:
             mf=pkl.load(f)
         loaded = True; print "Loaded previous result"
     except:
@@ -87,7 +86,9 @@ else:
 
 if not loaded:
     # if this wasn't run before, initialize the moment fitting class
-    mf = MomentFitter(primary_impurity, primary_line, shot, tht=0)
+    mf = MomentFitter('Ar', 'w', shot, tht=2)
+    sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
+    sg.generateSyntheticSpectrum(mf, chbin)
 
     # check that empty directory exists for MultiNest output:
     chains_dir = os.path.dirname(basename)
@@ -115,7 +116,7 @@ if loaded==False:
                     sampling_efficiency=0.3, verbose=True)
 
     # save fits for future use
-    with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as f:
+    with open('../bsfc_fits/mf_synth_%d.pkl'%(shot),'wb') as f:
         pkl.dump(mf, f)
 
 if loaded==True:
@@ -137,6 +138,9 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
+    
+    sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
+    true_meas = sg.calculateTrueMeasurements(mf, chbin)
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
@@ -148,6 +152,9 @@ if loaded==True:
     print "Counts = ", moms[0], "+/-", moms_std[0]
     print "v = ", moms[1], "+/-", moms_std[1]
     print "Ti = ", moms[2], "+/-", moms_std[2]
+    
+    print "(true) v = ", true_meas[1]
+    print "(true) Ti = ", true_meas[2]
 
 
 # Import mpi4py here to output timing only once

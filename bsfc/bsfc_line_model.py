@@ -27,7 +27,7 @@ class LineModel:
     Models a spectra. Uses 2nd order Legendre fitting on background noise,
     and n-th order Hermite on the lines
     """
-    def __init__(self, lam, lamNorm, specBr, sig, lineData, linesFit, hermFuncs):
+    def __init__(self, lam, lamNorm, specBr, sig, whitefield, lineData, linesFit, hermFuncs):
         self.lam = lam
         self.specBr = specBr
         self.sig = sig
@@ -38,6 +38,7 @@ class LineModel:
         self.linesLam = self.lineData.lam[self.linesFit]
         self.linesnames = self.lineData.names[self.linesFit]
         self.linesSqrtMRatio = self.lineData.sqrt_m_ratio[self.linesFit]
+        self.whitefield = whitefield
 
         # Normalized lambda, for evaluating background noise
         self.lamNorm = lamNorm
@@ -357,7 +358,7 @@ class LineModel:
 
         # get chi2 by comparing model prediction and experimental signals
         pred = self.modelPredict(theta)
-        return -np.sum((self.specBr-pred)**2/self.sig**2)
+        return -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield)
 
 
 
@@ -582,6 +583,6 @@ class LineModel:
         theta = [cube[i] for i in range(0, ndim)]
 
         pred = self.modelPredict(theta)
-        ll = -np.sum((self.specBr-pred)**2/self.sig**2)
+        ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield)
 
         return ll
