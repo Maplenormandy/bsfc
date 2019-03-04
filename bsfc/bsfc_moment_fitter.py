@@ -189,16 +189,17 @@ class MomentFitter:
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
         self.whitefield = self.specBr_all / self.sig_all**2
 
-        """
-        if branchB:
-            # Hack for now; usually the POS variable is in LYA1 on branch B
-            pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
-        else:
-            # Otherwise, load the POS variable as normal
-            pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
-
-        self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
-        """
+        try:
+            if branchB:
+                # Hack for now; usually the POS variable is in LYA1 on branch B
+                pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
+            else:
+                # Otherwise, load the POS variable as normal
+                pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
+    
+            self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
+        except:
+            print "Warning, unable to load pos vector"
 
         # Maximum number of channels, time bins
         self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
