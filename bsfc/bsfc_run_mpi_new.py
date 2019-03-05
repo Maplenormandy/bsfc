@@ -25,10 +25,13 @@ import multiprocessing
 import os
 import shutil
 import scipy
+import glob
 from helpers import bsfc_cmod_shots
 from helpers import bsfc_autocorr
 
 from bsfc_moment_fitter import *
+import bsfc_clean_moments 
+import bsfc_slider
 
 # MPI parallelization
 from mpi4py import MPI
@@ -70,12 +73,12 @@ else:
 if size==1:
     # if only 1 core is being used, assume that script is being used for plotting
 
-    with open('./bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'rb') as f:
+    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'rb') as f:
             gathered_moments=pkl.load(f)
 
-    # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
-    moments_vals, moments_stds, time_sel = clean_moments(mf.time, mf.maxChan, t_min,t_max,
-                                                         gathered_moments, BR_THRESH=2.0, BR_STD_THRESH=0.1)
+    # clean up Hirex-Sr signals -- BR_THRESH mightmust be adjusted to eliminate outliers!
+    moments_vals, moments_stds, time_sel = bsfc_clean_moments.clean_moments(mf.time, mf.maxChan, t_min,t_max,
+                                                         gathered_moments, BR_THRESH=2e3, BR_STD_THRESH=2e3) #0.1)
     # BSFC slider visualization
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='vel')
@@ -101,6 +104,7 @@ else:
     
     # delete and re-create directory for MultiNest output
     if rank==0:
+        '''
         if os.path.exists(chains_dir):
             if len(os.listdir(chains_dir))==0:
                 # if directory exists and is empty, everything's ready
@@ -112,7 +116,15 @@ else:
         else:
             # if directory does not exist, create it
             os.mkdir(chains_dir)
-
+        '''
+        # Remove all the chains files
+        fileList = glob.glob(basename+'*')
+        for filePath in fileList:
+            try:
+                os.remove(filePath)
+            except:
+                pass
+            
     comm.Barrier()
     # map range of channels and compute each
     map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(mf.maxChan)))
@@ -132,10 +144,10 @@ else:
 
         if resume:
             # create checkpoint directory if it doesn't exist yet
-            if not os.path.exists('checkpoints'):
+            if not os.path.exists('checkpoints') and rank==0:
                 os.makedirs('checkpoints')
 
-            if not os.path.exists('checkpoints/%d_tmin%f_tmax%f'%(shot,t_min,t_max)):
+            if not os.path.exists('checkpoints/%d_tmin%f_tmax%f'%(shot,t_min,t_max)) and rank==0:
                 os.makedirs('checkpoints/%d_tmin%f_tmax%f'%(shot,t_min,t_max))
 
             try:
@@ -146,14 +158,17 @@ else:
                 print "Loaded fit moments from ", resfile
 
             except:
-                # create new fit      
-                mf.fitSingleBin(tbin=binn[0], chbin=binn[1],NS=True, n_hermite=3, n_live_points=400,
+                # create new fit
+                mf.fitSingleBin(tbin=binn[0], chbin=binn[1],NS=True, n_hermite=3, n_live_points=200,
                                 sampling_efficiency=0.3, verbose=verbose)
                 
                 if mf.fits[binn[0]][binn[1]].good ==True:
 
                     # load MultiNest output
-                    mf.fits[binn[0]][binn[1]].NS_analysis(basename)
+                    if rank==0:
+                        mf.fits[binn[0]][binn[1]].NS_analysis(basename)
+                    mf = comm.bcast(mf, root = 0)
+                    
                     samples = mf.fits[binn[0]][binn[1]].samples
                     sample_weights = mf.fits[binn[0]][binn[1]].sample_weights
                     
@@ -186,7 +201,10 @@ else:
        
             if mf.fits[binn[0]][binn[1]].good ==True:
                 # load MultiNest output
-                mf.fits[binn[0]][binn[1]].NS_analysis(basename)
+                if rank==0:
+                    mf.fits[binn[0]][binn[1]].NS_analysis(basename)
+                mf = comm.bcast(mf, root = 0)
+                
                 samples = mf.fits[binn[0]][binn[1]].samples
                 sample_weights = mf.fits[binn[0]][binn[1]].sample_weights
                 
@@ -223,8 +241,8 @@ else:
         print "*********** Completed fits *************"
     
         # save fits for future use
-        with open('./bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'wb') as f:
-            pkl.dump(gathered_moments, f, protocol=pkl.HIGHEST_PROTOCOL)
+        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'wb') as f:
+            pkl.dump(gathered_moments, f)
 
         if resume:
             # eliminate checkpoint directory if this was created

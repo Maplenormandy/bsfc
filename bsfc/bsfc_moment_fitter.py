@@ -330,7 +330,8 @@ class MomentFitter:
 
         
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
-                     NS=False,n_hermite=3, n_live_points=400, sampling_efficiency=0.3, verbose=True):
+                     NS=False,n_hermite=3, n_live_points=400, sampling_efficiency=0.3,
+                     const_eff=True, verbose=True):
         ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
@@ -352,7 +353,7 @@ class MomentFitter:
         bf = BinFit(lam, specBr, sig, self.lines, range(len(self.lines.names)), n_hermite=n_hermite)
 
         self.fits[tbin][chbin] = bf
-
+        
         #print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
         if NS==False:
             # MCMC fit
@@ -360,8 +361,9 @@ class MomentFitter:
         else:
             #print "Using Nested Sampling!"
             basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-            good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,sampling_efficiency=sampling_efficiency,
-                            basename=basename, verbose=verbose)
+            good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,
+                            sampling_efficiency=sampling_efficiency,
+                            basename=basename, verbose=verbose, const_eff=const_eff)
 
         #if not good:
         #    print "not worth fitting"

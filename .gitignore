@@ -2,7 +2,7 @@
 *~
 
 # Do not save MultiNest chains
-mn_chains/*
+*mn_chains/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
