@@ -27,41 +27,32 @@ import corner
 import bsfc_main
 import sys
 import time as time_
-import multiprocessing
 import os
 import shutil
 import scipy
-from helpers import bsfc_cmod_shots
-from helpers import bsfc_autocorr
-
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
+from syn_tests.bsfc_synthetic_profile_test import SyntheticGenerator
 
 import argparse
+
 from bsfc_moment_fitter import *
 
-n_hermite=3
-
 # To be removed before public release:
-if '/home/sciortino/usr/pythonmodules/PyMultiNest' not in sys.path:
-    sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
+sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 
 parser = argparse.ArgumentParser()
-parser.add_argument("shot", type=int, help="shot number to run analysis on")
+#parser.add_argument("shot", type=int, help="shot number to run analysis on")
 parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
 
 args = parser.parse_args()
 
 # first command line argument gives shot number
-shot = args.shot
+#shot = args.shot
+
+shot = 1150903021
 
 # Start counting time:
 start_time=time_.time()
 
-# get key info for requested shot:
-primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
 if 'BSFC_ROOT' not in os.environ:
     # make sure that correct directory is pointed at
@@ -69,35 +60,39 @@ if 'BSFC_ROOT' not in os.environ:
 
 # location of MultiNest chains
 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-chains_dir = os.path.dirname(basename)
+tbin = 16
+chbin = 40
 
-
-if rank==0:
-    # try loading result
-    if args.force:
-        # Force us to not load the pickle
-        loaded = False
-        # Remove all the chains
-        import glob
-        fileList = glob.glob(basename+'*')
-        for filePath in fileList:
-            try:
-                os.remove(filePath)
-            except:
-                pass
-    else:
+# try loading result
+if args.force:
+    # Force us to not load the pickle
+    loaded = False
+    # Remove all the chains
+    import glob
+    fileList = glob.glob(basename+'*')
+    for filePath in fileList:
         try:
-            with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'rb') as f:
-                mf=pkl.load(f)
-            loaded = True; print "Loaded previous result"
+            os.remove(filePath)
         except:
-            loaded = False
+            pass
 
-    if not loaded:
-        # if this wasn't run before, initialize the moment fitting class
-        mf = MomentFitter(primary_impurity, primary_line, shot, tht=0)
+else:
+    try:
+        with open('../bsfc_fits/mf_synth_%d.pkl'%(shot),'rb') as f:
+            mf=pkl.load(f)
+        loaded = True; print "Loaded previous result"
+    except:
+        loaded = False
 
-    '''
+if not loaded:
+    # if this wasn't run before, initialize the moment fitting class
+    mf = MomentFitter('Ar', 'w', shot, tht=2)
+    sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
+    sg.generateSyntheticSpectrum(mf, chbin)
+
+    # check that empty directory exists for MultiNest output:
+    chains_dir = os.path.dirname(basename)
+
     # delete and re-create directory for MultiNest output
     if os.path.exists(chains_dir):
         if len(os.listdir(chains_dir))==0:
@@ -110,32 +105,22 @@ if rank==0:
     else:
         # if directory does not exist, create it
         os.mkdir(chains_dir)
-    '''
-else:
-    mf=None
-    loaded=None
-        
-# broadcast r object to all cores
-mf = comm.bcast(mf, root = 0)
-loaded = comm.bcast(loaded, root = 0)
+
 
 # ==================================
 
 if loaded==False:
 
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=1000,
-                    sampling_efficiency=0.3,verbose=True,const_eff=True,
-                    n_hermite=n_hermite)
-    
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True, n_hermite=5, n_live_points=400,
+                    sampling_efficiency=0.3, verbose=True)
+
     # save fits for future use
-    if rank==0:
-        with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as f:
-            pkl.dump(mf, f)
+    with open('../bsfc_fits/mf_synth_%d.pkl'%(shot),'wb') as f:
+        pkl.dump(mf, f)
 
 if loaded==True:
-    # DO NOT try to load and plot with multiple workers (i.e. using mpirun)!
-    
+
     # load MultiNest output
     mf.fits[tbin][chbin].NS_analysis(basename)
 
@@ -153,6 +138,9 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
+    
+    sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
+    true_meas = sg.calculateTrueMeasurements(mf, chbin)
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
@@ -160,14 +148,13 @@ if loaded==True:
     moms = np.average(measurements, 0, weights=sample_weights)
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
+
     print "Counts = ", moms[0], "+/-", moms_std[0]
     print "v = ", moms[1], "+/-", moms_std[1]
     print "Ti = ", moms[2], "+/-", moms_std[2]
-<<<<<<< HEAD
-    print "ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]
-    print "# Hermite polynomials: ", n_hermite
     
-=======
+    print "(true) v = ", true_meas[1]
+    print "(true) Ti = ", true_meas[2]
 
 
 # Import mpi4py here to output timing only once
@@ -175,7 +162,6 @@ if loaded==True:
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
->>>>>>> c8096d20c1ef49c3089afc2f5743e5db42ad6234
 
 if rank==0:
     # end time count
