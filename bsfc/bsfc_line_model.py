@@ -358,7 +358,13 @@ class LineModel:
 
         # get chi2 by comparing model prediction and experimental signals
         pred = self.modelPredict(theta)
-        return -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield)
+
+        ll_sig = -0.5 * np.sum(np.log(np.abs(pred)*self.whitefield))
+        ll_cnst = -len(pred) * 0.5 * np.log(2.0 * np.pi)
+        ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield * 0.5)
+
+        return ll + ll_sig + ll_cnst
+        #return -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield)
 
 
 
@@ -583,6 +589,8 @@ class LineModel:
         theta = [cube[i] for i in range(0, ndim)]
 
         pred = self.modelPredict(theta)
-        ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield)
+        ll_sig = -0.5 * np.sum(np.log(np.abs(pred)*self.whitefield))
+        ll_cnst = -len(pred) * 0.5 * np.log(2.0 * np.pi)
+        ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield * 0.5)
 
-        return ll
+        return ll + ll_sig + ll_cnst

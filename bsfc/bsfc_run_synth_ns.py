@@ -61,7 +61,7 @@ if 'BSFC_ROOT' not in os.environ:
 # location of MultiNest chains
 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 tbin = 16
-chbin = 40
+chbin = 35
 
 # try loading result
 if args.force:
@@ -138,7 +138,7 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
-    
+
     sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
     true_meas = sg.calculateTrueMeasurements(mf, chbin)
 
@@ -152,7 +152,7 @@ if loaded==True:
     print "Counts = ", moms[0], "+/-", moms_std[0]
     print "v = ", moms[1], "+/-", moms_std[1]
     print "Ti = ", moms[2], "+/-", moms_std[2]
-    
+
     print "(true) v = ", true_meas[1]
     print "(true) Ti = ", true_meas[2]
 
