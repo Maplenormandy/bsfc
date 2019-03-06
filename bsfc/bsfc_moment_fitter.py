@@ -1,19 +1,17 @@
 ''' Bayesian Spectral Fitting Code (BSFC)
 by N. Cao & F. Sciortino
 
-This script contains the MomentFitter class. This loads experimental data and stores the final spectral fit. 
+This script contains the MomentFitter class. This loads experimental data and stores the final spectral fit.
 
 '''
 import numpy as np
-from numpy.polynomial.hermite_e import hermeval, hermemulx
-import scipy.optimize as op
 from collections import namedtuple
 import pdb
 import multiprocessing
 import itertools
 import os
-import sys
-import warnings
+#import sys
+#import warnings
 import matplotlib.pyplot as plt
 plt.ion()
 import shutil
@@ -187,7 +185,9 @@ class MomentFitter:
         # Indices are [lambda, time, channel]
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
+        oldset = np.seterr(divide='ignore') #temporarily ignore divide by 0 warnings
         self.whitefield = self.specBr_all / self.sig_all**2
+        np.seterr(**oldset)
 
         try:
             if branchB:
@@ -196,7 +196,7 @@ class MomentFitter:
             else:
                 # Otherwise, load the POS variable as normal
                 pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
-    
+
             self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
         except:
             print "Warning, unable to load pos vector"
@@ -332,7 +332,7 @@ class MomentFitter:
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-        
+
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
                      NS=False,n_hermite=3, n_live_points=400, sampling_efficiency=0.3,
                      const_eff=True, verbose=True):
@@ -340,7 +340,7 @@ class MomentFitter:
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
         default in MultiNest if MPI libraries are available.
-        
+
         If NS==False, emcee is used. Either an affine-invariant Ensemble Sampler or
         Parallel-Tempering MCMC are used. Both require specification of a certain number of
         steps and a number of threads for parallelization. It is recommended to keep this to 1
@@ -355,10 +355,19 @@ class MomentFitter:
         sig = self.sig_all[w0:w1,tbin,chbin]
         whitefield = self.whitefield[w0:w1,tbin,chbin]
 
+        # Fix NaN whitefield values by taking the average of the two neighbors
+        nans = np.isnan(whitefield)
+        if np.any(nans):
+            notnan = np.logical_not(nans)
+            whitefield[nans] = np.interp(lam[nans], lam[notnan], whitefield[notnan])
+            print whitefield
+            pass
+
+
         bf = BinFit(lam, specBr, sig, whitefield, self.lines, range(len(self.lines.names)), n_hermite=n_hermite)
 
         self.fits[tbin][chbin] = bf
-        
+
         #print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
         if NS==False:
             # MCMC fit
