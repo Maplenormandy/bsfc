@@ -13,18 +13,21 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 plt.ion()
 
+import corner
+
 # %%
 
 shot = 1150903021
 n_hermite = 3
 
+data2 = np.load('../bsfc_fits/synth_data/mf_synth_%d_nl_nh%d.npz'%(shot,3))
 data3 = np.load('../bsfc_fits/synth_data/mf_synth_%d_nh%d.npz'%(shot,3))
 data4 = np.load('../bsfc_fits/synth_data/mf_synth_%d_nh%d.npz'%(shot,4))
 data5 = np.load('../bsfc_fits/synth_data/mf_synth_%d_nh%d.npz'%(shot,5))
 
 # %%
 
-data = data3
+data = data2
 
 plt.figure()
 gs1 = mpl.gridspec.GridSpec(3, 1)
@@ -56,6 +59,7 @@ plt.figure()
 plt.errorbar(bins, data3['lnev'], yerr=data3['lnev_std'], c='b')
 plt.errorbar(bins, data4['lnev'], yerr=data4['lnev_std'], c='g')
 plt.errorbar(bins, data5['lnev'], yerr=data5['lnev_std'], c='r')
+plt.errorbar(bins, data2['lnev'], yerr=data2['lnev_std'], c='m')
 
 # %%
 
@@ -73,3 +77,8 @@ ws = np.cumsum(weights[vsorted])
 median = np.interp(0.5, ws, vs)
 
 plt.axvline(median, c='g', ls='--')
+
+# %%
+
+corner.corner(bin_data['samples'], weights=bin_data['sample_weights'])
+plt.show()

@@ -30,7 +30,7 @@ import gptools
 LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split())
 
 class MomentFitter:
-    def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None, experiment='CMOD', instrument='Hirex-Sr'):
+    def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None, nofit=[], experiment='CMOD', instrument='Hirex-Sr'):
         ''' Class to store experimental data and inferred spectral fits.
 
         Parameters:
@@ -66,7 +66,7 @@ class MomentFitter:
 
         if experiment=='CMOD':
             if instrument=='Hirex-Sr':
-                self.load_hirex_data(primary_impurity, primary_line, shot, tht, lam_bounds)
+                self.load_hirex_data(primary_impurity, primary_line, shot, tht, lam_bounds, nofit)
             else:
                 raise ValueError('Instruments other than Hirex-Sr not yet implemented for CMOD!')
         elif  experiment=='D3D':
@@ -77,7 +77,7 @@ class MomentFitter:
         else:
             raise ValueError('Experiments other than CMOD not yet implemented!')
 
-    def load_hirex_data(self, primary_impurity, primary_line, shot, tht, lam_bounds, hirexsr_file='../data/hirexsr_wavelengths.csv'):
+    def load_hirex_data(self, primary_impurity, primary_line, shot, tht, lam_bounds, nofit, hirexsr_file='../data/hirexsr_wavelengths.csv'):
         '''
         Function to load Hirex-Sr data for CMOD. Assumes that rest wavelengths, ionization stages and
         atomic line names are given in a file provided as input.
@@ -122,6 +122,7 @@ class MomentFitter:
 
         # Populate the line data
         lineInd = np.logical_and(lineLam>lam_bounds[0], lineLam<lam_bounds[1])
+        lineInd = np.logical_and(lineInd, np.in1d(lineName, nofit, invert=True))
         #satelliteLines = np.array(['s' not in l for l in lineName])
         #lineInd = np.logical_and(satelliteLines, lineInd)
         ln = lineName[lineInd]

@@ -39,6 +39,7 @@ sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("n_hermite", type=int, help="number of hermite functions")
+parser.add_argument('-n', "--noline", action="store_true", help="Whether or not to remove the wn5 line")
 #parser.add_argument("shot", type=int, help="shot number to run analysis on")
 #parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
 
@@ -62,7 +63,11 @@ if 'BSFC_ROOT' not in os.environ:
 tbin = 16
 n_hermite = args.n_hermite
 
-basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nh%d-.'%(n_hermite))
+if args.noline:
+    print "Fitting without wn5"
+    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nl_nh%d-.'%(n_hermite))
+else:
+    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nl_nh%d-.'%(n_hermite))
 
 def removeFiles(basename):
     import glob
@@ -75,7 +80,12 @@ def removeFiles(basename):
 
 
 # if this wasn't run before, initialize the moment fitting class
-mf = MomentFitter('Ar', 'w', shot, tht=2)
+
+if args.noline:
+    mf = MomentFitter('Ar', 'w', shot, tht=2, nofit=['wn5'])
+    mf2 = MomentFitter('Ar', 'w', shot, tht=2)
+else:
+    mf = MomentFitter('Ar', 'w', shot, tht=2)
 sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
 
 meas_avg = np.zeros((3, mf.maxChan))
@@ -85,16 +95,29 @@ lnev = np.zeros(mf.maxChan)
 lnev_std = np.zeros(mf.maxChan)
 
 
+
 for chbin in range(mf.maxChan):
     print "Fitting chbin", chbin
     removeFiles(basename)
 
-    sg.generateSyntheticSpectrum(mf, chbin)
-    if not mf.fits[tbin][chbin].good:
-        meas_avg[:,chbin] = np.nan
-        meas_true[:,chbin] = np.nan
-        lnev[chbin] = np.nan
-        continue
+    if args.noline:
+        sg.generateSyntheticSpectrum(mf2, chbin)
+        
+        if not mf2.fits[tbin][chbin].good:
+            meas_avg[:,chbin] = np.nan
+            meas_true[:,chbin] = np.nan
+            lnev[chbin] = np.nan
+            continue
+        
+        mf.specBr_all = mf2.specBr_all
+        mf.sig_all = mf2.sig_all
+    else:
+        sg.generateSyntheticSpectrum(mf, chbin)
+        if not mf.fits[tbin][chbin].good:
+            meas_avg[:,chbin] = np.nan
+            meas_true[:,chbin] = np.nan
+            lnev[chbin] = np.nan
+            continue
 
     mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True, n_hermite=n_hermite, n_live_points=400,
                     sampling_efficiency=0.3, verbose=True, basename=basename)
@@ -109,15 +132,23 @@ for chbin in range(mf.maxChan):
     moms = np.average(measurements, 0, weights=sample_weights)
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
-    np.savez_compressed('../bsfc_fits/synth_data/mf_synth_%d_nh%d_ch%d.npz'%(shot,n_hermite,chbin),
-            samples=samples, sample_weights=sample_weights, measurements=measurements)
+    if args.noline:
+        np.savez_compressed('../bsfc_fits/synth_data/mf_synth_%d_nl_nh%d_ch%d.npz'%(shot,n_hermite,chbin),
+                samples=samples, sample_weights=sample_weights, measurements=measurements)
+    else:
+        np.savez_compressed('../bsfc_fits/synth_data/mf_synth_%d_nh%d_ch%d.npz'%(shot,n_hermite,chbin),
+                samples=samples, sample_weights=sample_weights, measurements=measurements)
     meas_true[:,chbin] = true_meas
     meas_avg[:,chbin] = moms
     meas_std[:,chbin] = moms_std
     lnev[chbin], lnev_std[chbin] = mf.fits[tbin][chbin].lnev
     
-    np.savez('../bsfc_fits/synth_data/mf_synth_%d_nh%d.npz'%(shot,n_hermite),
-        meas_avg=meas_avg, meas_std=meas_std, meas_true=meas_true, lnev=lnev, lnev_std=lnev_std)
+    if args.noline:
+        np.savez('../bsfc_fits/synth_data/mf_synth_%d_nl_nh%d.npz'%(shot,n_hermite),
+            meas_avg=meas_avg, meas_std=meas_std, meas_true=meas_true, lnev=lnev, lnev_std=lnev_std)
+    else:
+        np.savez('../bsfc_fits/synth_data/mf_synth_%d_nh%d.npz'%(shot,n_hermite),
+            meas_avg=meas_avg, meas_std=meas_std, meas_true=meas_true, lnev=lnev, lnev_std=lnev_std)
 
     # end time count
     elapsed_time=time_.time()-start_time

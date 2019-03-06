@@ -337,11 +337,11 @@ class BinFit:
         stats = a.get_stats()
         self.multinest_stats = stats
 
-        #self.modes=stats['modes'][0]
-        #self.maximum= self.modes['maximum']
-        #self.maximum_a_posterior= self.modes['maximum a posterior']
-        #self.mean=np.asarray(self.modes['mean'])
-        #self.sigma=np.asarray(self.modes['sigma'])
+        self.modes=stats['modes'][0]
+        self.maximum= self.modes['maximum']
+        self.maximum_a_posterior= self.modes['maximum a posterior']
+        self.mean=np.asarray(self.modes['mean'])
+        self.sigma=np.asarray(self.modes['sigma'])
 
         # get log-evidence estimate and uncertainty (from INS, if this is used)
         self.lnev = (stats['global evidence'], stats['global evidence error'])
