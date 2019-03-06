@@ -60,6 +60,12 @@ def get_shot_info(shot):
         t_min=0.93; t_max=0.99 #counter-current rotation SOC
         #t_min=0.57; t_max=0.63 #co-current rotation LOC
         tht = 0
+    elif shot==1150903021:
+        primary_impurity = 'Ar'
+        primary_line = 'w'
+        tbin = 16; chbin = 35
+        t_min=0.93; t_max=0.99
+        tht = 2
     else:
         # define more lines!
         raise Exception('Times of interest not set for this shot!')

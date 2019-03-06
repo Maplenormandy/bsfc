@@ -114,7 +114,7 @@ if rank==0:
 else:
     mf=None
     loaded=None
-        
+
 # broadcast r object to all cores
 mf = comm.bcast(mf, root = 0)
 loaded = comm.bcast(loaded, root = 0)
@@ -127,7 +127,7 @@ if loaded==False:
     mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=200,
                     sampling_efficiency=0.3,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
-    
+
     # save fits for future use
     if rank==0:
         with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as f:
@@ -135,7 +135,7 @@ if loaded==False:
 
 if loaded==True:
     # DO NOT try to load and plot with multiple workers (i.e. using mpirun)!
-    
+
     # load MultiNest output
     mf.fits[tbin][chbin].NS_analysis(basename)
 
