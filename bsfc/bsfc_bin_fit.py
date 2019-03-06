@@ -238,8 +238,8 @@ class BinFit:
             return True
 
 
-    def NSfit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3, INS=True, const_eff=True,
-              basename=None, verbose=True):
+    def NSfit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3,
+              INS=True, const_eff=True,basename=None, verbose=True):
         ''' Fit with Nested Sampling (MultiNest algorithm).
         For Nested Sampling, the prior and likelihood are not simply combined into a posterior
         (which is the only function passed to EMCEE), but they are used differently to explore the
@@ -256,7 +256,7 @@ class BinFit:
             Sets the enlargement factor for ellipsoidal fits in MultiNest. Default is 0.3 (appropriate for
             model selection).
         INS : bool, optional
-            Setting to activate Importance Nested Sampling in MultiNest. Refer to Feroz et al. 2014.
+            Setting to activate Importance Nested Sampling in MultiNest. Refer to [Feroz et al., MNRAS 2014].
         basename : str, optional
             Location where MultiNest output is written.
         verbose: bool, optional
@@ -343,7 +343,7 @@ class BinFit:
         #self.mean=np.asarray(self.modes['mean'])
         #self.sigma=np.asarray(self.modes['sigma'])
 
-        # get log-evidence estimate and uncertainty
+        # get log-evidence estimate and uncertainty (from INS, if this is used)
         self.lnev = (stats['global evidence'], stats['global evidence error'])
 
 
