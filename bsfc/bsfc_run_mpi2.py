@@ -54,6 +54,9 @@ resume=True
 # indicate whether to output verbose text 
 verbose = True
 
+# to run one case at a time with MultiNest (still parallelized), set run_in_series = True
+run_in_series = True #False
+
 if not verbose:
     import warnings
     warnings.filterwarnings("ignore")
@@ -78,7 +81,7 @@ else:
     mf = None
 
     
-if size==2:
+if size==20:
     # if only 1 core is being used, assume that script is being used for plotting
 
     with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'rb') as f:
@@ -98,7 +101,16 @@ if size==2:
 else:
     # Run MPI job:
 
-    # broadcast r object to all cores
+    if rank==0 and NS:
+        if 'BSFC_ROOT' not in os.environ:
+            # make sure that correct directory is pointed at
+            os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
+            
+        chains_dir = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains')
+        if not os.path.exists(chains_dir):
+            os.mkdir(chains_dir)
+            
+    # broadcast mf object to all cores (this also acts for synchronization)
     mf = comm.bcast(mf, root = 0)  
     
     tidx_min = np.argmin(np.abs(mf.time - t_min))
@@ -129,16 +141,35 @@ else:
 
     # define spectral_fit function based on whether emcee or MultiNest should be run
     if NS:
+
         def spectral_fit(shot,t_min,t_max,tb,cb,verbose,rank):
+    
+            # set up directory for MultiNest to run
+            basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/mn_chains%s/c-.'%rank )
+            chains_dir = os.path.dirname(basename)
+            
+            if not os.path.exists(chains_dir):
+                # if chains directory for this worker/rank does not exist, create it
+                os.mkdir(chains_dir)
+            else:
+                # if chains directory exists, make sure it's empty
+                fileList = glob.glob(basename+'*')
+                for filePath in fileList:
+                    try:
+                        os.remove(filePath)
+                    except:
+                        pass
+        
             # individual fit with MultiNest
             command = ['python','launch_NSfit.py',str(shot),str(t_min), str(t_max),
                        str(int(tb)),str(int(cb)),str(int(verbose)),str(int(rank))]
-                       #'{:d} {:.2f} {:.2f}'.format(shot,t_min,t_max),
-                       #'{:d} {:d} {:d} {:d}'.format(tb,ch,verbose,rank)]
+
+            if run_in_series: command = ['mpirun'] + command
         
-            # Run without MPI:
+            print command
+            # Run externally:
             out = subprocess.check_output(command, stderr=subprocess.STDOUT)
-            
+            if verbose: print out
     else:
         # emcee requires a wrapper for multiprocessing to pickle the function
         spectral_fit = _fitTimeWindowWrapper(mf,nsteps=nsteps)
