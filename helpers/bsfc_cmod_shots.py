@@ -63,7 +63,7 @@ def get_shot_info(shot):
     elif shot==1150903021:
         primary_impurity = 'Ar'
         primary_line = 'w'
-        tbin = 16; chbin = 35
+        tbin = 16; chbin = 6
         t_min=0.93; t_max=0.99
         tht = 2
     else:

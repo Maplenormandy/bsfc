@@ -376,7 +376,7 @@ class MomentFitter:
             # Using nested sampling
             if basename==None:
                 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-                
+
             good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,
                             sampling_efficiency=sampling_efficiency,
                             basename=basename, verbose=verbose, const_eff=const_eff)

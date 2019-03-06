@@ -121,6 +121,13 @@ class LineModel:
         hncnstr = lambda theta, n, m: theta[n] - np.abs(10*theta[n+m])
 
         cind = self.noiseFuncs+2
+        
+        # Add constraint for noise
+        constraints.append({
+            'type': 'ineq',
+            'fun': h0cnstr,
+            'args': [0]
+            })
 
         if self.simpleConstraints:
             for i in range(self.nfit):
