@@ -124,7 +124,7 @@ loaded = comm.bcast(loaded, root = 0)
 if loaded==False:
 
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=1000,
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=200,
                     sampling_efficiency=0.3,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
     
@@ -163,11 +163,9 @@ if loaded==True:
     print "Counts = ", moms[0], "+/-", moms_std[0]
     print "v = ", moms[1], "+/-", moms_std[1]
     print "Ti = ", moms[2], "+/-", moms_std[2]
-<<<<<<< HEAD
     print "ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]
     print "# Hermite polynomials: ", n_hermite
-    
-=======
+
 
 
 # Import mpi4py here to output timing only once
@@ -175,7 +173,6 @@ if loaded==True:
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
->>>>>>> c8096d20c1ef49c3089afc2f5743e5db42ad6234
 
 if rank==0:
     # end time count

@@ -335,7 +335,7 @@ class MomentFitter:
         
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
                      NS=False,n_hermite=3, n_live_points=400, sampling_efficiency=0.3,
-                     const_eff=True, verbose=True):
+                     const_eff=True, verbose=True, basename=None):
         ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
         with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
@@ -364,8 +364,10 @@ class MomentFitter:
             # MCMC fit
             good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads, PT=PT)
         else:
-            #print "Using Nested Sampling!"
-            basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+            # Using nested sampling
+            if basename==None:
+                basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
+                
             good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,
                             sampling_efficiency=sampling_efficiency,
                             basename=basename, verbose=verbose, const_eff=const_eff)
