@@ -114,7 +114,7 @@ if rank==0:
 else:
     mf=None
     loaded=None
-        
+
 # broadcast r object to all cores
 mf = comm.bcast(mf, root = 0)
 loaded = comm.bcast(loaded, root = 0)
@@ -127,7 +127,7 @@ if loaded==False:
     mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=1000,
                     sampling_efficiency=0.3,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
-    
+
     # save fits for future use
     if rank==0:
         with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'wb') as f:
@@ -135,7 +135,7 @@ if loaded==False:
 
 if loaded==True:
     # DO NOT try to load and plot with multiple workers (i.e. using mpirun)!
-    
+
     # load MultiNest output
     mf.fits[tbin][chbin].NS_analysis(basename)
 
@@ -163,11 +163,9 @@ if loaded==True:
     print "Counts = ", moms[0], "+/-", moms_std[0]
     print "v = ", moms[1], "+/-", moms_std[1]
     print "Ti = ", moms[2], "+/-", moms_std[2]
-<<<<<<< HEAD
     print "ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]
     print "# Hermite polynomials: ", n_hermite
-    
-=======
+
 
 
 # Import mpi4py here to output timing only once
@@ -175,7 +173,6 @@ if loaded==True:
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
->>>>>>> c8096d20c1ef49c3089afc2f5743e5db42ad6234
 
 if rank==0:
     # end time count
