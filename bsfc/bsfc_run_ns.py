@@ -124,7 +124,7 @@ loaded = comm.bcast(loaded, root = 0)
 if loaded==False:
 
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=1000,
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=200,
                     sampling_efficiency=0.3,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
 
