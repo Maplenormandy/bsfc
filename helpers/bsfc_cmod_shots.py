@@ -66,6 +66,12 @@ def get_shot_info(shot):
         tbin = 16; chbin = 6
         t_min=0.93; t_max=0.99
         tht = 2
+    elif shot==1160920007:
+        primary_impurity = 'Ar'
+        primary_line = 'lya1'
+        tbin = 16; chbin = 4
+        t_min=0.81; t_max=0.84
+        tht = 0
     else:
         # define more lines!
         raise Exception('Times of interest not set for this shot!')

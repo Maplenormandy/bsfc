@@ -503,7 +503,13 @@ class MomentFitter:
 
             # plot some samples: noise floor in black, spectral lines all in different colors
             for samp in range(100):
-                theta = bf.samples[np.random.randint(len(bf.samples))]
+                if not self.NS:
+                    theta = bf.samples[np.random.randint(len(bf.samples))]
+                else:
+                    # With nested sampling, sample the samples according to the weights
+                    sampleIndex = np.searchsorted(bf.cum_sample_weights, np.random.rand())
+                    theta = bf.samples[sampleIndex]
+                    
                 noise = bf.lineModel.modelNoise(theta)
                 a0.plot(bf.lam, noise, c='k', alpha=0.08)
 

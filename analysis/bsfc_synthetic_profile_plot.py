@@ -44,8 +44,8 @@ ax0.errorbar(bins, data['meas_avg'][0,:]*brightChange, marker='.', yerr=data['me
 ax1.plot(bins, data['meas_true'][1,:], marker='.')
 ax1.errorbar(bins, data['meas_avg'][1,:], marker='.', yerr=data['meas_std'][1,:])
 
-ax2.plot(bins, data['meas_true'][2,:]-0.62, marker='.')
-ax2.errorbar(bins, data['meas_avg'][2,:]-0.62, marker='.', yerr=data['meas_std'][2,:])
+ax2.plot(bins, data['meas_true'][2,:]-0.5, marker='.')
+ax2.errorbar(bins, data['meas_avg'][2,:]-0.5, marker='.', yerr=data['meas_std'][2,:])
 
 ax0.set_ylabel('Brightness [a.u.]')
 ax1.set_ylabel('Velocity [km/s]')

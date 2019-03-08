@@ -331,6 +331,8 @@ class BinFit:
 
         self.samples = data[:,2:]
         self.sample_weights = data[:,0]
+        # Used for sampling
+        self.cum_sample_weights = np.cumsum(self.sample_weights)
         self.sample_n2ll = data[:,1]
 
         # save statistics
