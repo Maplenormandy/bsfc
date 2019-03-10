@@ -191,10 +191,12 @@ else:
             
         if not os.path.exists(checkpoints_dir+case_dir):
             os.makedirs(checkpoints_dir+case_dir)
-            
+
+        #import pdb
+        #pdb.set_trace()
         try:
             # if fit has already been created, re-load it from checkpoint directory
-            with open(resdir,'rb') as f:
+            with open(resfile,'rb') as f:
                 res[j] = pkl.load(f)
             print "Loaded fit moments from ", resfile
                 
