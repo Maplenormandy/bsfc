@@ -30,7 +30,7 @@ import time as time_
 import os
 import shutil
 import scipy
-from syn_tests.bsfc_synthetic_profile_test import SyntheticGenerator
+from analysis.bsfc_synthetic_generator import SyntheticGenerator
 
 import argparse
 
@@ -48,7 +48,8 @@ args = parser.parse_args()
 # first command line argument gives shot number
 #shot = args.shot
 
-shot = 1150903021
+shot = 1160920007
+tht = 0
 
 # Start counting time:
 start_time=time_.time()
@@ -61,7 +62,7 @@ if 'BSFC_ROOT' not in os.environ:
 # location of MultiNest chains
 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 tbin = 16
-chbin = 35
+chbin = 8
 
 # try loading result
 if args.force:
@@ -86,8 +87,8 @@ else:
 
 if not loaded:
     # if this wasn't run before, initialize the moment fitting class
-    mf = MomentFitter('Ar', 'w', shot, tht=2)
-    sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
+    mf = MomentFitter('Ar', 'lya1', shot, tht=tht)
+    sg = SyntheticGenerator(shot, tht, False, 'lya1', tbin)
     sg.generateSyntheticSpectrum(mf, chbin)
 
     # check that empty directory exists for MultiNest output:
@@ -139,7 +140,7 @@ if loaded==True:
         plot_chains=False,
     )
 
-    sg = SyntheticGenerator(1150903021, 2, True, 'z', tbin)
+    sg = SyntheticGenerator(shot, tht, False, 'lya1', tbin)
     true_meas = sg.calculateTrueMeasurements(mf, chbin)
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)

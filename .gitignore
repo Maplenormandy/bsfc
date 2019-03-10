@@ -10,6 +10,7 @@ __pycache__/
 *$py.class
 *.pkl
 *.out
+*.npz
 
 # C extensions
 *.so

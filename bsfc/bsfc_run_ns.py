@@ -95,7 +95,7 @@ if rank==0:
 
     if not loaded:
         # if this wasn't run before, initialize the moment fitting class
-        mf = MomentFitter(primary_impurity, primary_line, shot, tht=0)
+        mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
 
     '''
     # delete and re-create directory for MultiNest output
@@ -124,7 +124,7 @@ loaded = comm.bcast(loaded, root = 0)
 if loaded==False:
 
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=200,
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=500,
                     sampling_efficiency=0.3,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
 
@@ -142,6 +142,7 @@ if loaded==True:
     samples = mf.fits[tbin][chbin].samples
     sample_weights = mf.fits[tbin][chbin].sample_weights
 
+    
     # corner plot
     f = gptools.plot_sampler(
         samples,
@@ -153,6 +154,7 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
+    
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
