@@ -289,7 +289,7 @@ class LineModel:
         w = self.linesLam[line]**2 / self.lineData.m_kev[self.linesFit][line]
         ti = moments[2]*1e-6/moments[0] / w
         if thaco:
-            counts = m0/scale[line]
+            counts = m0 #Note: this used to incorrectly be m0/scale[line]...
         else:
             counts = m0
 
