@@ -2,7 +2,7 @@
 Bayesian Spectral Fitting Code(s)
 
 Under active development. 
-N.Cao & F.Sciortino
+N.M.Cao & F.Sciortino
  
  -----------------------------------------
  
