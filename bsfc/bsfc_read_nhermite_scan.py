@@ -27,13 +27,19 @@ from helpers import bsfc_autocorr
 
 from bsfc_moment_fitter import *
 
+font = {'family' : 'serif',
+        'serif': ['Computer Modern'],
+        'size'   : 9}
+import matplotlib as mpl
+mpl.rc('font', **font)
+
 
 # ===========
 # Scan parameters
 shot = 1160506007 #1101014019  #1101014019
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
-nh_max = 9
+nh_max = 5
 # ============
 
 # get key info for requested shot:
@@ -54,13 +60,15 @@ v = []; v_unc = []
 Ti = []; Ti_unc = []
 lnev=[]; lnev_unc =[]
 lnev_vns=[]; lnev_vns_unc=[] # from vanilla NS
-#for nh in range(nh_min, nh_max+1):
-nh=3
-#nlp = [50,100,200,600,1000,1400,1800,2300,3000,5000]
-nlp = [2**i for i in range(6, 13)]
 
-for n_live_points in nlp:
-    nn=n_live_points #nsteps
+nn = 400
+for nh in range(nh_min, nh_max+1):
+    #nh=3
+    #nlp = [50,100,200,600,1000,1400,1800,2300,3000,5000]
+    #nlp = [2**i for i in range(6, 13)]
+    
+    #for n_live_points in nlp:
+    #nn=n_live_points #nsteps
          
     # save each fit independently
     print "Loading from ", '../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn)
@@ -111,7 +119,10 @@ plt.ylabel('ln(ev)', fontsize=14)
 plt.xlim([nh_min-1, nh_max+1])
 plt.grid()
 '''
-f, axs = plt.subplots(2, 2, sharex=True)
+
+aspectRatio=1.1
+f, axs = plt.subplots(2, 2, sharex=True, figsize=(3.375, 3.375*aspectRatio))
+
 ax1=axs[0,0]; ax2=axs[0,1]; ax3=axs[1,0]; ax4=axs[1,1]
 ax1.errorbar(nlp, lnev, lnev_unc, fmt='.')
 ax1.set_ylabel(r'$\mathcal{Z}$', fontsize=14)

@@ -13,14 +13,12 @@ cb = int(sys.argv[5])
 n_hermite=int(sys.argv[6])
 verbose = bool(sys.argv[7])
 rank=int(sys.argv[8])
+basename=str(sys.argv[9])
 
 # load moment fitter setup 
 with open('../bsfc_fits/mf_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'rb') as f:
     mf=pkl.load(f)
 
-# set up directory for MultiNest to run
-basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/mn_chains%s/c-.'%rank )
-                    
 # do fit in the directory of 'basename'
 mf.fitSingleBin(tbin=tb, chbin=cb,NS=True, n_hermite=n_hermite,
                 n_live_points=400,sampling_efficiency=0.3,

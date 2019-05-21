@@ -34,7 +34,7 @@ shot = 1160506007 #1101014019 #1160506007
 NS=True   #if NS==True, then nsteps is useless. 
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
-nh_max = 9
+nh_max = 5
 # ============
 
 # Use as many cores as are available (this only works on a single machine/node!)
@@ -59,11 +59,12 @@ basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 
 
 # ==================================
-nh=3
-nlp = [2**i for i in range(6, 13)] # up to 4096, good to plot on log-2 scale
+#nh=3
+#nlp = [2**i for i in range(6, 13)] # up to 4096, good to plot on log-2 scale
+n_live_points=400
 
-for n_live_points in nlp:
-    #for nh in range(nh_min, nh_max+1):
+#for n_live_points in nlp:
+for nh in range(nh_min, nh_max+1):
     # Start counting time:
     start_time=time_.time()
 
