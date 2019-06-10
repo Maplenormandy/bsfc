@@ -88,7 +88,7 @@ def get_shot_info(shot):
     elif str(shot).startswith('1140729'): #1140729021 or shot==1140729023 or shot==1140729030:
         primary_impurity = 'Ca'
         primary_line = 'w'
-        tbin=155; chbin=15  #tbin=155 is t=1.43
+        tbin=155; chbin=1  #tbin=155 is t=1.43
         #t_min=0.98; t_max=1.2 #1.15
         t_min=1.38; t_max = 1.499
         tht=9

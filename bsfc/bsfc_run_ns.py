@@ -153,6 +153,7 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
+    plt.tight_layout()
     
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)

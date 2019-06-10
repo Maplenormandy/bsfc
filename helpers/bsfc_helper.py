@@ -674,3 +674,85 @@ def remove_all(v):
             remove_all(vv)
     except TypeError:
         v.remove()
+
+
+
+# ==============
+def get_robust_weighted_stats(samples, weights=None):
+    '''
+    Obtain robust weighted statistics for a set of samples and respective weights.
+    This function gives a generalization of the meanw and stdw functions in profiletools. 
+
+    Parameters:
+    ------------------------
+    samples : array-like
+        The vector to find robust weighted statistics for. Statistics will be taken along axis=0. 
+        TODO: generalize to arbitrary axis. 
+    weights : array-like, optional
+        Weights to use for obtain robust statistics. If left to None, these are set to be 
+        uniform, thus giving a non-weighted set of statistics.    
+
+    sciortino, May 2019
+    '''
+
+    if weights is None:
+        # untested, but should work (even non-normalized should work, I think...)
+        weights = np.ones_like(samples[:,1])/len(samples[:,1])
+
+    median=[]; q01=[]; q10=[]; q25=[]; q75=[]; q90=[]; q99=[]
+    sigma = []; sigma1_range=[]; sigma2_range=[]; sigma3_range=[]; sigma5_range=[]
+
+    # Compute robust statistics
+    for i in range(samples.shape[1]): # loop over radial points, for D,V stats
+        bb = list(zip(weights, samples[:,i]))
+        bb.sort(key=lambda x: x[1])
+        bb = np.array(bb)
+        bb[:,0] = bb[:,0].cumsum()  #substitute weights with cumulative weights 
+        
+        sig5 = 0.5 + 0.9999994 / 2.
+        sig3 = 0.5 + 0.9973 / 2.
+        sig2 = 0.5 + 0.95 / 2.
+        sig1 = 0.5 + 0.6826 / 2.
+        
+        # evaluate parameter at chosen probability value (normalized cumulative weight)
+        bbi = lambda x: np.interp(x, bb[:,0], bb[:,1], left=bb[0,1], right=bb[-1,1])
+        
+        median.append( bbi(0.5) )
+        q75.append( bbi(0.75) )
+        q25.append( bbi(0.25) )
+        q99.append( bbi(0.99) )
+        q01.append( bbi(0.01) )
+        q90.append( bbi(0.9) )
+        q10.append( bbi(0.1) )
+        
+        low1 = bbi(1 - sig1)
+        high1 = bbi(sig1)
+        low2 = bbi(1 - sig2)
+        high2 = bbi(sig2)
+        low3 = bbi(1 - sig3)
+        high3 = bbi(sig3)
+        low5 = bbi(1 - sig5)
+        high5 = bbi(sig5)
+        
+        sigma.append( (high1 - low1) / 2. )
+        sigma1_range.append( [low1, high1] )
+        sigma2_range.append( [low2, high2] )
+        sigma3_range.append( [low3, high3] )
+        sigma5_range.append( [low5, high5] )
+    
+    # make all robust stats numpy arrays for convenience
+    median=np.array(median)
+    q01=np.array(q01)
+    q10 = np.array(q10)
+    q25 = np.array(q25)
+    q75 = np.array(q75)
+    q90 = np.array(q90)
+    q99 = np.array(q99)
+    sigma = np.array(sigma)
+    sigma1_range = np.array(sigma1_range)
+    sigma2_range = np.array(sigma2_range)
+    sigma3_range = np.array(sigma3_range)
+    sigma5_range = np.array(sigma5_range)
+    sigmas = (sigma1_range, sigma2_range, sigma3_range, sigma5_range)
+
+    return median, q01, q10, q25, q75, q90, q99, sigmas
