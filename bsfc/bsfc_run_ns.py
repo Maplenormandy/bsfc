@@ -95,7 +95,7 @@ if rank==0:
 
     if not loaded:
         # if this wasn't run before, initialize the moment fitting class
-        mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
+        mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht, nofit=['lyas1', 'lyas2', 'lyas3'])
 
     '''
     # delete and re-create directory for MultiNest output
@@ -142,7 +142,7 @@ if loaded==True:
     samples = mf.fits[tbin][chbin].samples
     sample_weights = mf.fits[tbin][chbin].sample_weights
 
-    
+
     # corner plot
     f = gptools.plot_sampler(
         samples,
@@ -154,7 +154,7 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
-    
+
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 

@@ -13,6 +13,7 @@ import os
 #import sys
 #import warnings
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 plt.ion()
 import shutil
 
@@ -114,7 +115,7 @@ class MomentFitter:
                 elif primary_line == 'z':
                     raise NotImplementedError("Not implemented yet (needs line tying)")
                 elif primary_line == 'lya1':
-                    lam_bounds = (3.725, 3.742)
+                    lam_bounds = (3.725, 3.745)
                 else:
                     raise NotImplementedError("Line is not yet implemented")
 
@@ -479,7 +480,7 @@ class MomentFitter:
                     self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
     #####
-    def plotSingleBinFit(self, tbin, chbin):
+    def plotSingleBinFit(self, tbin, chbin, forPaper=True):
         ''' Function designed to plot spectrum from a single time and a single channel bin.
         This allows visualization and comparison of the results of nonlinear optimization,
         MCMC sampling or Nested Sampling.
@@ -490,7 +491,16 @@ class MomentFitter:
         if bf == None:
             return
 
-        f0, (a0, a1) = plt.subplots(2, 1, sharex=True, gridspec_kw = {'height_ratios': [4,1]})
+        if forPaper:
+            font = {'family' : 'serif',
+                    'serif': ['Times New Roman'],
+                    'size'   : 8}
+            
+            mpl.rc('font', **font)
+
+            f0, (a0, a1) = plt.subplots(2, 1, sharex=True, gridspec_kw = {'height_ratios': [4,1]}, figsize=(3.375, 3.375*0.8))
+        else:
+            f0, (a0, a1) = plt.subplots(2, 1, sharex=True, gridspec_kw = {'height_ratios': [4,1]})
         a0.errorbar(bf.lam, bf.specBr, yerr=bf.sig, c='m', fmt='.')
 
         if bf.good:
@@ -520,7 +530,12 @@ class MomentFitter:
             # add average inferred noise
             noise = bf.lineModel.modelNoise(bf.theta_avg)
             a0.plot(bf.lam, noise, c='k', label='Inferred noise')
-            a0.set_title('tbin='+str(tbin)+', chbin='+str(chbin))
+            
+            if not forPaper:
+                a0.set_title('tbin='+str(tbin)+', chbin='+str(chbin))
+            else:
+                a1.set_xlabel('Wavelength [ang]')
+                a0.set_ylabel('Brightness [a.u.]')
 
             # plot all fitted spectral lines, one in each color
             for i in range(len(self.lines.names)):
@@ -535,6 +550,12 @@ class MomentFitter:
                 a1.axvline(self.lines.lam[i], c='b', ls='--')
                 a0.axvline(self.lines.lam[i], c='b', ls='--')
 
+        if forPaper:
+            a1.yaxis.set_major_locator(mpl.ticker.MultipleLocator(2))
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=0.05)
         plt.show()
 
 

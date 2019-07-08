@@ -32,13 +32,16 @@ import argparse
 
 from bsfc_moment_fitter import MomentFitter
 
+from helpers import bsfc_cmod_shots
+
 # To be removed before public release:
 sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 
 parser = argparse.ArgumentParser()
+parser.add_argument("shot", type=int, help="shot number to run analysis on")
 parser.add_argument("n_hermite", type=int, help="number of hermite functions")
+parser.add_argument("tbin", type=int, help="tbin of fit")
 parser.add_argument('-n', "--noline", action="store_true", help="Whether or not to remove the wn5 line")
-#parser.add_argument("shot", type=int, help="shot number to run analysis on")
 #parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
 
 args = parser.parse_args()
@@ -46,8 +49,11 @@ args = parser.parse_args()
 # first command line argument gives shot number
 #shot = args.shot
 
-shot = 1160506007
-tht = 0
+shot = args.shot
+
+primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
+
+tbin = args.tbin
 
 
 # Start counting time:
@@ -59,14 +65,13 @@ if 'BSFC_ROOT' not in os.environ:
     os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
 
 # location of MultiNest chains
-tbin = 10
 n_hermite = args.n_hermite
 
 if args.noline:
     print "Fitting without wn5"
-    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nl_nh%d-.'%(n_hermite))
+    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nl_nh%d_t%d-.'%(n_hermite, tbin))
 else:
-    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nh%d-.'%(n_hermite))
+    basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/nh%d_t%d-.'%(n_hermite, tbin))
 
 def removeFiles(basename):
     import glob
@@ -81,16 +86,16 @@ def removeFiles(basename):
 # if this wasn't run before, initialize the moment fitting class
 
 if args.noline:
-    mf = MomentFitter('Ar', 'w', shot, tht=tht, nofit=['wn5'])
+    mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht, nofit=['wn5', 'lyas1', 'lyas2', 'lyas3', 'lyas4'])
 else:
-    mf = MomentFitter('Ar', 'w', shot, tht=tht)
+    mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
 
 try:
     if args.noline:
-        data = np.load('../bsfc_fits/fit_data/mf_%d_nl_nh%d.npz'%(shot,3))
+        data = np.load('../bsfc_fits/fit_data/mf_%d_nl_nh%d_t%d.npz'%(shot,3,tbin))
     else:
-        data = np.load('../bsfc_fits/fit_data/mf_%d_nh%d.npz'%(shot,3))
-        
+        data = np.load('../bsfc_fits/fit_data/mf_%d_nh%d_t%d.npz'%(shot,3,tbin))
+
     meas_avg = data['meas_avg']
     meas_std = data['meas_std']
     meas_true = np.zeros((3, mf.maxChan))
@@ -107,11 +112,11 @@ except:
 
 for chbin in range(mf.maxChan):
     print "Fitting chbin", chbin
-    
+
     if lnev[chbin] != 0.0:
         print "Already fit, skipping"
         continue
-    
+
     removeFiles(basename)
 
     # First try nonlinear fitting to see if the bin is worth fitting
@@ -136,20 +141,20 @@ for chbin in range(mf.maxChan):
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
     if args.noline:
-        np.savez_compressed('../bsfc_fits/fit_data/mf_%d_nl_nh%d_ch%d.npz'%(shot,n_hermite,chbin),
+        np.savez_compressed('../bsfc_fits/fit_data/mf_%d_nl_nh%d_t%d_ch%d.npz'%(shot,n_hermite,tbin,chbin),
                 samples=samples, sample_weights=sample_weights, measurements=measurements)
     else:
-        np.savez_compressed('../bsfc_fits/fit_data/mf_%d_nh%d_ch%d.npz'%(shot,n_hermite,chbin),
+        np.savez_compressed('../bsfc_fits/fit_data/mf_%d_nh%d_t%d_ch%d.npz'%(shot,n_hermite,tbin,chbin),
                 samples=samples, sample_weights=sample_weights, measurements=measurements)
     meas_avg[:,chbin] = moms
     meas_std[:,chbin] = moms_std
     lnev[chbin], lnev_std[chbin] = mf.fits[tbin][chbin].lnev
 
     if args.noline:
-        np.savez('../bsfc_fits/fit_data/mf_%d_nl_nh%d.npz'%(shot,n_hermite),
+        np.savez('../bsfc_fits/fit_data/mf_%d_nl_nh%d_t%d.npz'%(shot,n_hermite,tbin),
             meas_avg=meas_avg, meas_std=meas_std, lnev=lnev, lnev_std=lnev_std)
     else:
-        np.savez('../bsfc_fits/fit_data/mf_%d_nh%d.npz'%(shot,n_hermite),
+        np.savez('../bsfc_fits/fit_data/mf_%d_nh%d_t%d.npz'%(shot,n_hermite,tbin),
             meas_avg=meas_avg, meas_std=meas_std, lnev=lnev, lnev_std=lnev_std)
 
     # end time count
