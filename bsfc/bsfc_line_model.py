@@ -27,7 +27,12 @@ class LineModel:
     Models a spectra. Uses 2nd order Legendre fitting on background noise,
     and n-th order Hermite on the lines
     """
-    def __init__(self, lam, lamNorm, specBr, sig, whitefield, lineData, linesFit, hermFuncs):
+    def __init__(self, lam, lamNorm, specBr, sig, whitefield, lineData, linesFit, hermFuncs, scaleFree=True, sqrtPrior=False):
+        """
+        Note scaleFree uses scale-free priors (~1/s) on the scale parameters
+        if scaleFree=True, sqrtPrior uses the square root prior (~1/sqrt(s)) on Poisson processes instead of the scale-free prior
+        Note that these two parameters have only been implemented for the nested sampling routines.
+        """
         self.lam = lam
         self.specBr = specBr
         self.sig = sig
@@ -62,6 +67,9 @@ class LineModel:
         #self.hermFuncs[0] = 9
 
         self.simpleConstraints = False
+
+        self.scaleFree = scaleFree
+        self.sqrtPrior = sqrtPrior
 
     """
     Helper functions for theta (i.e. the model parameters).
@@ -121,7 +129,7 @@ class LineModel:
         hncnstr = lambda theta, n, m: theta[n] - np.abs(10*theta[n+m])
 
         cind = self.noiseFuncs+2
-        
+
         # Add constraint for noise
         constraints.append({
             'type': 'ineq',
@@ -542,24 +550,47 @@ class LineModel:
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
 
-        # noise:
-        for kk in range(self.noiseFuncs):
-            cube[kk] = cube[kk] * noise[0] * (1 + 10.0 / np.sqrt(noise[0]))  # noise must be positive
+        # noise params
+        if self.scaleFree:
+            if self.sqrtPrior:
+                # In this case, sqrt(rate) is uniformly distributed
+                cube[0] = ((cube[0]-0.5)+np.sqrt(noise[0]))**2
+            else:
+                # Otherwise log(rate) is uniformly distributed
+                cube[0] = np.exp((cube[0]-0.5)+np.log(noise[0]))
+
+            for kk in range(self.noiseFuncs):
+                if kk == 0:
+                    continue
+                else:
+                    cube[kk] = (cube[kk]-0.5)*2.0 * cube[0]
+        else:
+            for kk in range(self.noiseFuncs):
+                cube[kk] = cube[kk] * noise[0] * (1 + 10.0 / np.sqrt(noise[0]))  # noise must be positive
 
         # center wavelength (in 1e-4 A units)
         cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1
 
         # scale (in 1e-4 A units)
-        cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*20 + 1 # scale must be positive (>1)
+        if self.scaleFree:
+            #cube[self.noiseFuncs+1] = np.exp((cube[self.noiseFuncs+1]-0.5)*0.5+np.log(scale[0]))
+            cube[self.noiseFuncs+1] = np.exp((cube[self.noiseFuncs+1])*4.0)
+        else:
+            cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*20 + 1 # scale must be positive (>1)
 
+        #cube[self.noiseFuncs+1] = cube[self.noiseFuncs+1]*20 + 1 # scale must be positive (>1)
         # Hermite coefficients:
         cind = self.noiseFuncs+2
 
         # loop over number of spectral lines:
         for i in range(self.nfit):
-            a0 = herm[i][0]
-            a_max = (a0 + noise[0]) * 1.1
-            f_simplex = generalizedHypercubeToHermiteSampleFunction(a_max, self.hermFuncs[i])
+            if self.scaleFree:
+                a0 = herm[i][0]
+                f_simplex = generalizedHypercubeToHermiteSampleFunction(a0, self.hermFuncs[i], scaleFree=self.scaleFree, sqrtPrior=self.sqrtPrior)
+            else:
+                a0 = herm[i][0]
+                a_max = (a0 + noise[0]) * 1.1
+                f_simplex = generalizedHypercubeToHermiteSampleFunction(a_max, self.hermFuncs[i], scaleFree=self.scaleFree, sqrtPrior=self.sqrtPrior)
 
             cubeCoords = np.array([cube[cind+j] for j in range(self.hermFuncs[i])])
 

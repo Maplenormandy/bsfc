@@ -86,7 +86,7 @@ for key in prior_bound_matrices:
     transMatrix = prior_bound_matrices[key]
     prior_bound_inv[key] = np.linalg.inv(transMatrix)
 
-def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite):
+def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite, scaleFree=True, sqrtPrior=True):
     """
     Similar to the non-generalized version, adds the constraint
     a0 < a0_max
@@ -112,7 +112,19 @@ def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite):
         r = r[1:,:]
 
         x = zero + hypercubeToSimplex(np.abs(y), r)
-        theta = np.concatenate([[1.0], np.dot(transMatrix, x) + mean]) * a0_max * z[0]
+        if scaleFree:
+            if sqrtPrior:
+                ap = np.sqrt(a0_max)
+                if ap < 3:
+                    a0 = (z[0]*4)**2
+                else:
+                    a0 = ((z[0] - 0.75)*4 + ap)**2
+            else:
+                a0 = np.exp((z[0] - 0.9)*10 + np.log(a0_max))
+
+            theta = np.concatenate([[1.0], np.dot(transMatrix, x) + mean]) * a0
+        else:
+            theta = np.concatenate([[1.0], np.dot(transMatrix, x) + mean]) * a0_max * z[0]
         return theta
 
     return hypercubeToHermiteSample
