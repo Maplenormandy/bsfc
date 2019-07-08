@@ -9,8 +9,7 @@ or with MPI, using
 mpirun python bsfc_run_ns.py <SHOT>
 whereby the maximum number of workers will be automatically identified.
 
-After completion of a MultiNest execution, running again this script (without mpirun!) will
-pull up some useful plots.
+After completion of a MultiNest execution, running again this script (without mpirun!) will pull up some useful plots.
 
 @author: sciortino
 """
@@ -42,7 +41,7 @@ size = comm.Get_size()
 import argparse
 from bsfc_moment_fitter import *
 
-n_hermite=3
+n_hermite=4
 
 # To be removed before public release:
 if '/home/sciortino/usr/pythonmodules/PyMultiNest' not in sys.path:
@@ -154,6 +153,7 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
+    plt.tight_layout()
 
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)

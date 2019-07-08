@@ -48,6 +48,7 @@ moments_vals, moments_stds, time_sel = clean_moments(mf.time, mf.maxChan, t_min,
 # BSFC slider visualization
 bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel-t_min, q='br')
 
+# load THACO results
 with open('./hirex_sig_%d.pkl'%shot,'rb') as f:
     hsig = pkl.load(f)
 

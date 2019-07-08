@@ -2,7 +2,7 @@
 by N. Cao & F. Sciortino
 
 This script reads the results of bsfc_scan_nhermite.py and plots relevant quantities to select
-optimal number of Hermite polynomials. 
+optimal number of Hermite polynomials.
 '''
 import numpy as np
 import matplotlib as mpl
@@ -29,17 +29,17 @@ from helpers import bsfc_autocorr
 
 
 font = {'family' : 'serif',
-        'serif': ['Times New Roman'],
-        'size'   : 8}
-
+        'serif': ['Computer Modern'],
+        'size'   : 9}
 mpl.rc('font', **font)
+
 
 # ===========
 # Scan parameters
 shot = 1101014019 #1160506007  #1101014019
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
-nh_max = 9
+nh_max = 5
 # ============
 
 # get key info for requested shot:
@@ -60,30 +60,30 @@ v = []; v_unc = []
 Ti = []; Ti_unc = []
 lnev=[]; lnev_unc =[]
 lnev_vns=[]; lnev_vns_unc=[] # from vanilla NS
-#for nh in range(nh_min, nh_max+1):
-nh=3
-#nlp = [50,100,200,600,1000,1400,1800,2300,3000,5000]
-nlp = [2**i for i in range(6, 13)]
-n_live_points = 500
-
+nn = 500
 for nh in range(nh_min, nh_max+1):
-    nn=n_live_points #nsteps
-         
+    #nh=3
+    #nlp = [50,100,200,600,1000,1400,1800,2300,3000,5000]
+    #nlp = [2**i for i in range(6, 13)]
+
+    #for n_live_points in nlp:
+    #nn=n_live_points #nsteps
+
     # save each fit independently
     print "Loading from ", '../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn)
     with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
-    
+
     if mf.NS==False:
         chain = mf.fits[tbin][chbin].samples
-        
+
         moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
         means, stds = np.mean(moments_vals, axis=0), np.std(moments_vals, axis=0)
     else:
-        # load MultiNest output        
+        # load MultiNest output
         samples = mf.fits[tbin][chbin].samples
         sample_weights = mf.fits[tbin][chbin].sample_weights
-        
+
         measurements = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, 1, samples)
         means = np.average(measurements, 0, weights=sample_weights)
         stds = np.sqrt(np.average((measurements-means)**2, 0, weights=sample_weights))
@@ -92,7 +92,7 @@ for nh in range(nh_min, nh_max+1):
     lnev.append(lnev_); lnev_unc.append(lnev_unc_)
     lnev_vns.append(mf.fits[tbin][chbin].multinest_stats['nested sampling global log-evidence'])
     lnev_vns_unc.append(mf.fits[tbin][chbin].multinest_stats['nested sampling global log-evidence error'])
-    
+
     print " ++++++++++++++++++++++++++"
     print "nh = ", nh
     print "lnev = ", lnev[-1], "+/-", lnev_unc[-1]
@@ -102,7 +102,7 @@ for nh in range(nh_min, nh_max+1):
     br.append(means[0]); br_unc.append(stds[0])
     v.append(means[1]); v_unc.append(stds[1])
     Ti.append(means[2]); Ti_unc.append(stds[2])
-    
+
 
 #times = [109.133455991745, 127.3736081123352, 157.27472591400146, 174.1919960975647, 183.1180350780487, 237.6917450428009, 291.2915561199188]
 times = [106.88230395317078, 106.53741407394409, 112.50855994224548, 132.0632438659668, 156.06387996673584, 178.10949397087097, 173.91060090065002]
@@ -112,7 +112,7 @@ times = [106.88230395317078, 106.53741407394409, 112.50855994224548, 132.0632438
 #for nh in range(nh_min, nh_max+1):
 #    lnev_arr.append(lnev[nh])
 #    lnev_unc_arr.append(lnev_unc[nh])
-    
+
 
 nh = range(nh_min,nh_max+1)
 # %%
@@ -157,7 +157,10 @@ plt.setp(ax[3].get_xticklabels(), visible=False)
 #ax[4].grid()
 
 '''
-f, axs = plt.subplots(2, 2, sharex=True)
+
+aspectRatio=1.1
+f, axs = plt.subplots(2, 2, sharex=True, figsize=(3.375, 3.375*aspectRatio))
+
 ax1=axs[0,0]; ax2=axs[0,1]; ax3=axs[1,0]; ax4=axs[1,1]
 ax1.errorbar(nlp, lnev, lnev_unc, fmt='.')
 ax1.set_ylabel(r'$\mathcal{Z}$', fontsize=14)
@@ -188,17 +191,17 @@ nh=3
 
 with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
-    
+
 if mf.NS==False:
     chain = mf.fits[tbin][chbin].samples
-    
+
     moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
     means, stds = np.mean(moments_vals, axis=0), np.std(moments_vals, axis=0)
 else:
-    # load MultiNest output        
+    # load MultiNest output
     samples = mf.fits[tbin][chbin].samples
     sample_weights = mf.fits[tbin][chbin].sample_weights
-    
+
     measurements = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, 1, samples)
     means = np.average(measurements, 0, weights=sample_weights)
     stds = np.sqrt(np.average((measurements-means)**2, 0, weights=sample_weights))

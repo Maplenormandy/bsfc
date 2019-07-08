@@ -9,13 +9,16 @@ To visualize results, after the above mpirun, run
 python  <SHOT> 
 i.e. the same, without the 'mpirun' command. 
 
------- UPDATE -----
-Note that currently it is better to run with python bsfc_run_mpi2.py SHOT. MPI running is 
+------ UPDATES -----
+- 5/16/19: currently it is better to run with python bsfc_run_mpi2.py SHOT. MPI running is 
 automatically done for every individual fit, i.e. we do not have a high-throughput parallelization 
 (not sure why it doesn't work). 
 Also, don't run this on more than 1 case at a time! Currently, this is set up to only have 1 MultiNest 
 chains directory, so if this gets deleted by one run, the other one gets angry...
  
+- 5/21/19: updated to run in a different chains directory for MultiNest for each case, so that multiple
+cases can be analyzed at once. 
+
 @author: sciortino
 """
 
@@ -116,8 +119,17 @@ else:
         if 'BSFC_ROOT' not in os.environ:
             # make sure that correct directory is pointed at
             os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
+
+        # create new chains directory
+        chains_dirs = [f for f in os.listdir('.') if f.startswith('mn_chains')]
+        nn=0
+        while True:
+            if 'mn_chains_'+str(chr(nn+97)).upper() in chains_dirs:
+                nn+=1
+            else:
+                chains_dir = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains_'+str(chr(nn+97)).upper())
+                break
             
-        chains_dir = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains')
         if not os.path.exists(chains_dir):
             os.mkdir(chains_dir)
             
@@ -156,15 +168,15 @@ else:
         def spectral_fit(shot,t_min,t_max,tb,cb,n_hermite,verbose,rank):
     
             # set up directory for MultiNest to run
-            basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/mn_chains%s/c-.'%rank )
-            chains_dir = os.path.dirname(basename)
+            basename_inner = os.path.abspath(chains_dir+'/mn_chains_%s/c-.'%rank )
+            chains_dir_inner = os.path.dirname(basename_inner)
             
-            if not os.path.exists(chains_dir):
+            if not os.path.exists(chains_dir_inner):
                 # if chains directory for this worker/rank does not exist, create it
-                os.mkdir(chains_dir)
+                os.mkdir(chains_dir_inner)
             else:
                 # if chains directory exists, make sure it's empty
-                fileList = glob.glob(basename+'*')
+                fileList = glob.glob(basename_inner+'*')
                 for filePath in fileList:
                     try:
                         os.remove(filePath)
@@ -172,8 +184,8 @@ else:
                         pass
         
             # individual fit with MultiNest
-            command = ['python','launch_NSfit.py',str(shot),str(t_min), str(t_max),
-                       str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),str(int(rank))]
+            command = ['python','launch_NSfit_new.py',str(shot),str(t_min), str(t_max),
+                       str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),str(int(rank)), basename_inner]
 
             if run_in_series: command = ['mpirun'] + command
         
@@ -261,6 +273,9 @@ else:
         #if resume:
         #    # eliminate checkpoint directory if this was created
         #    shutil.rmtree('checkpoints/%d_tmin%f_tmax%f'%(shot,t_min,t_max))
+
+        # remove chains directory
+        shutil.rmtree(chains_dir)
         
         # end time count
         elapsed_time = MPI.Wtime() - t_start
