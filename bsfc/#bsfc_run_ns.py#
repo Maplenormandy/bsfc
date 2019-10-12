@@ -9,8 +9,7 @@ or with MPI, using
 mpirun python bsfc_run_ns.py <SHOT>
 whereby the maximum number of workers will be automatically identified.
 
-After completion of a MultiNest execution, running again this script (without mpirun!) will
-pull up some useful plots.
+After completion of a MultiNest execution, running again this script (without mpirun!) will pull up some useful plots.
 
 @author: sciortino
 """
@@ -42,7 +41,7 @@ size = comm.Get_size()
 import argparse
 from bsfc_moment_fitter import *
 
-n_hermite=3
+n_hermite=4
 
 # To be removed before public release:
 if '/home/sciortino/usr/pythonmodules/PyMultiNest' not in sys.path:
@@ -70,8 +69,7 @@ if 'BSFC_ROOT' not in os.environ:
 # location of MultiNest chains
 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 chains_dir = os.path.dirname(basename)
-if not os.path.exists(chains_dir):
-    os.mkdir(chains_dir)
+
 
 if rank==0:
     # try loading result
@@ -96,7 +94,7 @@ if rank==0:
 
     if not loaded:
         # if this wasn't run before, initialize the moment fitting class
-        mf = MomentFitter(primary_impurity, primary_line, shot, tht=0)
+        mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
 
     '''
     # delete and re-create directory for MultiNest output
@@ -125,7 +123,7 @@ loaded = comm.bcast(loaded, root = 0)
 if loaded==False:
 
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=200,
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=500,
                     sampling_efficiency=0.3,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
 
@@ -143,6 +141,7 @@ if loaded==True:
     samples = mf.fits[tbin][chbin].samples
     sample_weights = mf.fits[tbin][chbin].sample_weights
 
+    
     # corner plot
     f = gptools.plot_sampler(
         samples,
@@ -154,6 +153,8 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
+    plt.tight_layout()
+    
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
@@ -180,3 +181,6 @@ if rank==0:
     elapsed_time=time_.time()-start_time
     print 'Time to run: ' + str(elapsed_time) + " s"
 
+
+#
+plt.show(block=True)

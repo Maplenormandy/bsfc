@@ -23,10 +23,19 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
 import itertools
 import pdb
+import IPython
 
-mpl.rcParams['errorbar.capsize'] = 3
+color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+style_vals = ['.', '--', '-.', ':']
+ls_vals = []
+for s in style_vals:
+    for c in color_vals:
+        ls_vals.append(c + s)
+ls_cycle = itertools.cycle(ls_vals)
+    
+#mpl.rcParams['errorbar.capsize'] = 3
 
-def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False, **kwargs):
+def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False, axs=None, **kwargs):
     """Make a plot to explore multidimensional data.
     
     x : array of float, (`M`,)
@@ -47,28 +56,32 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
         The labels for each curve in `z`.
     plot_sum : bool, optional
         If True, will also plot the sum over all `P` cases. Default is False.
+    axs : figure AND axes instances - (f,a_plot, a_slider)
+         Possibly passed to overplot on the same slider plot. Use figure handle
+         and axes returned from a first slider_plot run. 
     """
     if labels is None:
         labels = ['' for v in z]
-    f = plt.figure()
-    gs = mplgs.GridSpec(2, 1, height_ratios=[10, 1])
-    a_plot = f.add_subplot(gs[0, :])
-    a_slider = f.add_subplot(gs[1, :])
-    
+
+    if axs is None:
+        f = plt.figure()
+        gs = mplgs.GridSpec(2, 1, height_ratios=[10, 1])
+        a_plot = f.add_subplot(gs[0, :])
+        a_slider = f.add_subplot(gs[1, :])
+    else:
+        f = axs[0]
+        a_plot = axs[1]
+        a_slider = axs[2]
+        
     a_plot.set_xlabel(xlabel)
     a_plot.set_ylabel(zlabel)
     
-    color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-    style_vals = ['.', '--', '-.', ':']
-    ls_vals = []
-    for s in style_vals:
-        for c in color_vals:
-            ls_vals.append(c + s)
-    ls_cycle = itertools.cycle(ls_vals)
     
     err_list = []
     for v, v_unc, l_ in zip(z, z_unc, labels):
         x_error = np.zeros_like(x)
+        
+        #IPython.embed()
         h_err = a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], xerr = x_error, fmt=ls_cycle.next(), label=l_, **kwargs)
         err_list.append(h_err)
 
@@ -78,7 +91,9 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     leg=a_plot.legend(loc='best')
     leg.draggable(True)
     title = f.suptitle('')
-    
+
+    #return f, a_plot, a_slider
+
     def adjustErrbarxy(errobj, x, y, x_error, y_error):
         ln, (errx_top, errx_bot, erry_top, erry_bot), (barsx, barsy) = errobj
 

@@ -10,9 +10,8 @@ python  <SHOT>
 i.e. the same, without the 'mpirun' command. 
 
 ------ UPDATES -----
-- 5/16/19: currently it is better to run with python bsfc_run_mpi2.py SHOT. MPI running is 
-automatically done for every individual fit, i.e. we do not have a high-throughput parallelization 
-(not sure why it doesn't work). 
+- 5/16/19: currently it is better to run with python bsfc_run_mpi*.py SHOT. MPI running is 
+automatically done for every individual fit, i.e. we do not have a high-throughput parallelization  (not sure why it doesn't work). 
 Also, don't run this on more than 1 case at a time! Currently, this is set up to only have 1 MultiNest 
 chains directory, so if this gets deleted by one run, the other one gets angry...
  
