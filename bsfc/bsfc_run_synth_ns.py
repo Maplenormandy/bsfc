@@ -35,6 +35,7 @@ from analysis.bsfc_synthetic_generator import SyntheticGenerator
 import argparse
 
 from bsfc_moment_fitter import *
+from helpers import bsfc_cmod_shots
 
 # To be removed before public release:
 sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
@@ -49,7 +50,7 @@ args = parser.parse_args()
 #shot = args.shot
 
 shot = 1160920007
-tht = 0
+primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
 # Start counting time:
 start_time=time_.time()
@@ -61,8 +62,6 @@ if 'BSFC_ROOT' not in os.environ:
 
 # location of MultiNest chains
 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
-tbin = 16
-chbin = 8
 
 # try loading result
 if args.force:
@@ -87,8 +86,8 @@ else:
 
 if not loaded:
     # if this wasn't run before, initialize the moment fitting class
-    mf = MomentFitter('Ar', 'lya1', shot, tht=tht)
-    sg = SyntheticGenerator(shot, tht, False, 'lya1', tbin)
+    mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
+    sg = SyntheticGenerator(shot, tht, False, primary_line, tbin)
     sg.generateSyntheticSpectrum(mf, chbin)
 
     # check that empty directory exists for MultiNest output:
@@ -140,7 +139,7 @@ if loaded==True:
         plot_chains=False,
     )
 
-    sg = SyntheticGenerator(shot, tht, False, 'lya1', tbin)
+    sg = SyntheticGenerator(shot, tht, False, primary_line, tbin)
     true_meas = sg.calculateTrueMeasurements(mf, chbin)
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)

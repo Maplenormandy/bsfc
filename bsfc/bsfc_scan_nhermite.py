@@ -1,15 +1,15 @@
 ''' Bayesian Spectral Fitting Code (BSFC)
 by N. Cao & F. Sciortino
 
-This script runs a scan for the number of Hermite polynomials using PTMCMC. 
+This script runs a scan for the number of Hermite polynomials using PTMCMC.
 '''
-import numpy as np
+#import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
 import cPickle as pkl
-import pdb
-import corner
+#import pdb
+#import corner
 #import scipy
 import sys
 import time as time_
@@ -17,10 +17,14 @@ import multiprocessing
 import os
 import shutil
 
-from helpers import bsfc_cmod_shots
-from helpers import bsfc_autocorr
+sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 
-from bsfc_moment_fitter import *
+from bsfc_moment_fitter import MomentFitter
+
+from helpers import bsfc_cmod_shots
+#from helpers import bsfc_autocorr
+
+
 
 # Import mpi4py here to output timing only once
 from mpi4py import MPI
@@ -30,8 +34,8 @@ size = comm.Get_size()
 
 # ===========
 # Scan parameters
-shot = 1160506007 #1101014019 #1160506007
-NS=True   #if NS==True, then nsteps is useless. 
+shot = 1101014019 #1101014019 #1160506007
+NS=True   #if NS==True, then nsteps is useless.
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
 nh_max = 5
@@ -46,7 +50,7 @@ else:
 
 if rank==0:
     print "Analyzing shot ", shot
-    
+
 # get key info for requested shot:
 primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
@@ -61,7 +65,7 @@ basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 # ==================================
 #nh=3
 #nlp = [2**i for i in range(6, 13)] # up to 4096, good to plot on log-2 scale
-n_live_points=400
+n_live_points=500
 
 #for n_live_points in nlp:
 for nh in range(nh_min, nh_max+1):
@@ -87,7 +91,7 @@ for nh in range(nh_min, nh_max+1):
         else:
             # if directory does not exist, create it
             os.mkdir(chains_dir)
-        
+
     # actual fit. Silence warnings to avoid the RunTimeWarnings
     #with warnings.catch_warnings():
     #    warnings.simplefilter("ignore")
@@ -99,7 +103,7 @@ for nh in range(nh_min, nh_max+1):
 
     if rank==0 and NS:
         mf.fits[tbin][chbin].NS_analysis(basename)
-        
+
     # save each fit independently
     if rank==0:
         if NS:
@@ -108,11 +112,13 @@ for nh in range(nh_min, nh_max+1):
             nn=nsteps
         with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'wb') as f:
             pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
-            
+
         del mf
-    
+
         # end time count
         elapsed_time=time_.time()-start_time
+        times.append(elapsed_time)
         print 'Time to run nh=%d: '%nh + str(elapsed_time) + " s"
 
 
+print times

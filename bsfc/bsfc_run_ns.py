@@ -41,7 +41,7 @@ size = comm.Get_size()
 import argparse
 from bsfc_moment_fitter import *
 
-n_hermite=4
+n_hermite=3
 
 # To be removed before public release:
 if '/home/sciortino/usr/pythonmodules/PyMultiNest' not in sys.path:
@@ -94,7 +94,7 @@ if rank==0:
 
     if not loaded:
         # if this wasn't run before, initialize the moment fitting class
-        mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
+        mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht, nofit=['lyas1', 'lyas2', 'lyas3'])
 
     '''
     # delete and re-create directory for MultiNest output
@@ -141,7 +141,7 @@ if loaded==True:
     samples = mf.fits[tbin][chbin].samples
     sample_weights = mf.fits[tbin][chbin].sample_weights
 
-    
+
     # corner plot
     f = gptools.plot_sampler(
         samples,
@@ -153,8 +153,7 @@ if loaded==True:
         plot_samples=False,
         plot_chains=False,
     )
-    plt.tight_layout()
-    
+
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
@@ -167,6 +166,8 @@ if loaded==True:
     print "Ti = ", moms[2], "+/-", moms_std[2]
     print "ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]
     print "# Hermite polynomials: ", n_hermite
+
+    plt.show()
 
 
 

@@ -32,7 +32,8 @@ def get_shot_info(shot):
     elif shot==1101014019:       # EDA H-mode FS
         primary_impurity = 'Ca'
         primary_line = 'w'
-        tbin=128; chbin=11
+        # used to be 128, changed it to 125
+        tbin=125; chbin=11
         #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
         #tbin=111; chbin=15   #problematic
         t_min=1.24; t_max=1.4
@@ -63,7 +64,7 @@ def get_shot_info(shot):
     elif shot==1160506007:
         primary_impurity = 'Ar'
         primary_line = 'w'
-        tbin = 46; chbin = 27
+        tbin = 46; chbin = 40
         t_min=0.93; t_max=0.99 #counter-current rotation SOC
         #t_min=0.57; t_max=0.63 #co-current rotation LOC
         tht = 0
@@ -76,7 +77,7 @@ def get_shot_info(shot):
     elif shot==1160920007:
         primary_impurity = 'Ar'
         primary_line = 'lya1'
-        tbin = 16; chbin = 4
+        tbin = 12; chbin = 4
         t_min=0.81; t_max=0.84
         tht = 0
     elif shot==1101014006:     # L-mode FS
