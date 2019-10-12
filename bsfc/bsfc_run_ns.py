@@ -181,3 +181,5 @@ if rank==0:
     elapsed_time=time_.time()-start_time
     print 'Time to run: ' + str(elapsed_time) + " s"
 
+
+#plt.show(block=True)
