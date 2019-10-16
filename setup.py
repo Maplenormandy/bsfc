@@ -8,7 +8,7 @@ with open("README.md", "r") as ff:
 
 setuptools.setup(
     name = "bsfc",
-    version = "1.0.0",
+    version = "1.0.1",
     author = "Francesco Sciortino and Norman Cao",
     author_email = "sciortino@psfc.mit.edu",
     description = "Bayesian Spectral Fitting Code (BSFC)",

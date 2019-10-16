@@ -1,8 +1,6 @@
 # BSFC Package
 
-Bayesian Spectral Fitting Code
+Bayesian Spectral Fitting Code (BSFC)
 F.Sciortino & N.Cao
 
 See README.txt for details, including installation and running.
-
-Oct 12, 2019
