@@ -9,3 +9,7 @@ To install, git clone this repo or run
 ```
 pip install bsfc
 ```
+
+If you find this code useful, please cite:
+Cao & Sciortino, IEEE Trans. Plasma Science, 0093-3813, 2019 
+https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8879689&tag=1
