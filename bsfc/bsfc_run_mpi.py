@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-MPI high-throughput parallelization of BSFC fitting. 
-Run 
-mpirun python <SHOT> <NUMBER OF STEPS> 
-where <SHOT> is the CMOD shot number and the second argument is the number of steps
-that MCMC analysis should run (burn in and thinning are already hard-coded). 
+Run a series of spectral fits for a tokamak discharge in a chosen time range.
+To run, use  
+>> python <SHOT> 
+where <SHOT> is the CMOD shot number of interest. If using nested sampling (NS) and if MultiNest was 
+installed with MPI, then this automatically defaults to parallelizing over live point evaluations. 
+This is NOT a high-throughput parallelization, but it works well. 
 
-To visualize results, after the above mpirun, run
-python  <SHOT> <NUMBER OF STEPS> 
-i.e. the same, without the 'mpirun' command. 
+To use a high-throughput parallelization, i.e. parallelized over all time and spatial bins, run this script
+with 
+>> mpirun python <SHOT>
+i.e. the same as above, but invoking the `mpirun` command. 
+
+To visualize results, after running, use
+python  <SHOT> 
+i.e. the same, always without the 'mpirun' command. If results are stored and found, this will try to plot them. 
 
 @author: sciortino
 """
@@ -20,20 +26,19 @@ plt.ion()
 import cPickle as pkl
 import pdb
 import sys
-import pdb
 import itertools
 import os
 import shutil
-
-# make it possible to use other packages within the BSFC distribution:
-#from os import path
-#sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+import scipy
+import glob
+import subprocess
 
 #import bsfc_main
+from bsfc_moment_fitter import *
+from helpers import bsfc_clean_moments 
 from helpers import bsfc_slider
-from helpers.bsfc_clean_moments import clean_moments
 from helpers import bsfc_cmod_shots
-import bsfc_bin_fit
+from bsfc_bin_fit import _fitTimeWindowWrapper
 
 # MPI parallelization
 from mpi4py import MPI
@@ -43,23 +48,30 @@ size = comm.Get_size()
 
 # first command line argument gives shot number
 shot = int(sys.argv[1])
-
-# second command line argument gives number of MCMC steps 
-nsteps = int(sys.argv[2])
+try:
+    plot = bool(int(sys.argv[2]))
+except:
+    plot = False
     
-try:
-    # third command-line argument specified whether to attempt checkpointing for every bin fit
-    resume=bool(int(sys.argv[3]))
-except:
-    resume=True
+# select whether to use nested sampling
+NS=True
 
-try:
-    # fourth argument indicates whether to use quiet mode (requires specifying third argument)
-    quiet_mode = bool(int(sys.argv[4]))
-except:
-    quiet_mode = False
+# fix number of steps for MCMC (only used if NS=False)
+nsteps = 10000
 
-if quiet_mode:
+# choose number of Hermite polynomial terms
+chosen_n_hermite=3
+
+# set resume=False if reloading previous fits should NOT be attempted
+resume=True
+
+# indicate whether to output verbose text 
+verbose = True
+
+# to run one case at a time with MultiNest (still parallelized), set run_in_series = True
+run_in_series = True #False
+
+if not verbose:
     import warnings
     warnings.filterwarnings("ignore")
 
@@ -76,19 +88,22 @@ primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.g
 
 # Always create new object by default when running with MPI
 if rank==0:
-    mf = bsfc_main.MomentFitter(primary_impurity, primary_line, shot, tht=tht)
+    mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
+    with open('../bsfc_fits/mf_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'wb') as f:
+        pkl.dump(mf,f)
 else:
     mf = None
 
-if size==1:
+    
+if plot: 
     # if only 1 core is being used, assume that script is being used for plotting
 
-    with open('./bsfc_fits/moments_%d_%dsteps_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'rb') as f:
-            gathered_moments=pkl.load(f)
+    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'rb') as f:
+        gathered_moments=pkl.load(f)
 
     # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
-    moments_vals, moments_stds, time_sel = clean_moments(mf.time, mf.maxChan, t_min,t_max,
-                                                         gathered_moments, BR_THRESH=2.0, BR_STD_THRESH=0.1)
+    moments_vals, moments_stds, time_sel = bsfc_clean_moments.clean_moments(
+        mf.time, mf.maxChan, t_min,t_max,gathered_moments, BR_THRESH=2e8, BR_STD_THRESH=2e8)
     
     # BSFC slider visualization
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
@@ -100,15 +115,30 @@ if size==1:
 else:
     # Run MPI job:
 
-    # broadcast r object to all cores
+    if rank==0 and NS:
+        if 'BSFC_ROOT' not in os.environ:
+            # make sure that correct directory is pointed at
+            os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
+
+        # create new chains directory
+        chains_dirs = [f for f in os.listdir('.') if f.startswith('mn_chains')]
+        nn=0
+        while True:
+            if 'mn_chains_'+str(chr(nn+97)).upper() in chains_dirs:
+                nn+=1
+            else:
+                chains_dir = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains_'+str(chr(nn+97)).upper())
+                break
+            
+        if not os.path.exists(chains_dir):
+            os.mkdir(chains_dir)
+            
+    # broadcast mf object to all cores (this also acts for synchronization)
     mf = comm.bcast(mf, root = 0)  
     
     tidx_min = np.argmin(np.abs(mf.time - t_min))
     tidx_max = np.argmin(np.abs(mf.time - t_max))
     time_sel= mf.time[tidx_min: tidx_max]
-    
-    # requires a wrapper for multiprocessing to pickle the function
-    ff = bsfc_bin_fit._fitTimeWindowWrapper(mf,nsteps=nsteps)
 
     # map range of channels and compute each
     map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(mf.maxChan)))
@@ -132,52 +162,98 @@ else:
     # now, fill up result array for each worker:
     res = np.asarray([ None for yy in range(len(assigned_bins)) ])
 
+    # define spectral_fit function based on whether emcee or MultiNest should be run
+    if NS:
+
+        def spectral_fit(shot,t_min,t_max,tb,cb,n_hermite,verbose,rank):
+    
+            # set up directory for MultiNest to run
+            basename_inner = os.path.abspath(chains_dir+'/mn_chains_%s/c-.'%rank )
+            chains_dir_inner = os.path.dirname(basename_inner)
+            
+            if not os.path.exists(chains_dir_inner):
+                # if chains directory for this worker/rank does not exist, create it
+                os.mkdir(chains_dir_inner)
+            else:
+                # if chains directory exists, make sure it's empty
+                fileList = glob.glob(basename_inner+'*')
+                for filePath in fileList:
+                    try:
+                        os.remove(filePath)
+                    except:
+                        pass
+        
+            # individual fit with MultiNest
+            command = ['python','launch_NSfit.py',str(shot),str(t_min), str(t_max),
+                       str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),str(int(rank)), basename_inner]
+
+            if run_in_series: command = ['mpirun'] + command
+        
+            print command
+            # Run externally:
+            out = subprocess.check_output(command, stderr=subprocess.STDOUT)
+            if verbose: print out
+    else:
+        # emcee requires a wrapper for multiprocessing to pickle the function
+        spectral_fit = _fitTimeWindowWrapper(mf,nsteps=nsteps)
+                    
+
+    
     # ===============================
-    # Actual evaluation for each worker
+    # Fitting for each worker
     for j, binn in enumerate(assigned_bins):
+        
+        checkpoints_dir ='checkpoints/'
+        case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}/'.format(shot,t_min,t_max)
+        file_name = 'moments_{:d}_bin{:d}_{:d}.pkl'.format(shot,binn[0],binn[1])
+        resfile = checkpoints_dir + case_dir + file_name
+        
+        # create checkpoint directory if it doesn't exist yet
+        if not os.path.exists(checkpoints_dir):
+            os.makedirs(checkpoints_dir)
+            
+        if not os.path.exists(checkpoints_dir+case_dir):
+            os.makedirs(checkpoints_dir+case_dir)
 
-        if resume:
-            # create checkpoint directory if it doesn't exist yet
-            if not os.path.exists('checkpoints'):
-                os.makedirs('checkpoints')
+        #import pdb
+        #pdb.set_trace()
+        try:
+            # if fit has already been created, re-load it from checkpoint directory
+            with open(resfile,'rb') as f:
+                res[j] = pkl.load(f)
+            print "Loaded fit moments from ", resfile
+                
+        except:
+            # if fit cannot be loaded, run fitting now:
+            if NS:
+                print "Fitting bin [%d,%d] ...."%(binn[0],binn[1])
+                spectral_fit(shot,t_min,t_max,binn[0],binn[1],chosen_n_hermite,verbose,rank)
 
-            if not os.path.exists('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max)):
-                os.makedirs('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max))
-
-            try:
-                # if fit has already been created, re-load it from checkpoint directory
-                resdir ='./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl'%(shot,                                                                                             nsteps,t_min,t_max,shot,nsteps,binn[0],binn[1])
-                with open(resdir,'rb') as f:
-                          res[j] = pkl.load(f)
-                print "Loaded fit moments from ", resdir
-
-            except:
-                # create new fit      
-                mf.fits[binn[0]][binn[1]] = ff(binn)
+                # load result in memory
+                with open(resfile,'rb') as f:
+                    res[j] = pkl.load(f)
+                
+            else:
+                # emcee
+                spectral_fit(binn) #saves result in mf.fits[binn[0]][binn[1]]
+                
+                # process results to get physical measurements
                 if mf.fits[binn[0]][binn[1]].good ==True:
                     chain = mf.fits[binn[0]][binn[1]].samples
-                    moments_vals = np.apply_along_axis(mf.fits[binn[0]][binn[1]].lineModel.modelMeasurements, axis=1, arr=chain)
-
+                
+                    # emcee samples are all equally weighed
+                    moments_vals = np.apply_along_axis(mf.fits[binn[0]][binn[1]].lineModel.modelMeasurements,
+                                                       axis=1, arr=chain)
                     res[j] = [np.mean(moments_vals, axis=0), np.std(moments_vals, axis=0)]
+                    
                 else:
                     res[j] =[np.asarray([np.nan, np.nan, np.nan]), np.asarray([np.nan, np.nan, np.nan])]
-
-                with open('./checkpoints/%d_%dsteps_tmin%f_tmax%f/moments_%d_%d_bin%d_%d.pkl'%(shot,
-                                                                                               nsteps,t_min,t_max,shot,nsteps, binn[0], binn[1]),'wb') as f:
-                    pkl.dump(res[j],f)
-
-        else:
-                
-            mf.fits[binn[0]][binn[1]] = ff(binn)
-            if mf.fits[binn[0]][binn[1]].good ==True:
-                chain = mf.fits[binn[0]][binn[1]].samples
-                moments_vals = np.apply_along_axis(mf.fits[binn[0]][binn[1]].lineModel.modelMeasurements, axis=1, arr=chain)
-           
-                res[j] = [np.mean(moments_vals, axis=0), np.std(moments_vals, axis=0)]
-            else:
-                res[j] = [np.asarray([np.nan, np.nan, np.nan]), np.asarray([np.nan, np.nan, np.nan])]
             
-            pdb.set_trace()
+            # save measurement results to checkpoint file 
+            with open(resfile,'wb') as f:
+                pkl.dump(res[j],f)
+
+            
     # ===============================
 
     # collect results on rank=0 process:
@@ -191,14 +267,18 @@ else:
         print "*********** Completed fits *************"
     
         # save fits for future use
-        with open('./bsfc_fits/moments_%d_%dsteps_tmin%f_tmax%f.pkl'%(shot,nsteps,t_min,t_max),'wb') as f:
-            pkl.dump(gathered_moments, f, protocol=pkl.HIGHEST_PROTOCOL)
+        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'wb') as f:
+            pkl.dump(gathered_moments, f)
 
-        if resume:
-            # eliminate checkpoint directory if this was created
-            shutil.rmtree('checkpoints/%d_%dsteps_tmin%f_tmax%f'%(shot,nsteps,t_min,t_max))
+        #if resume:
+        #    # eliminate checkpoint directory if this was created
+        #    shutil.rmtree('checkpoints/%d_tmin%f_tmax%f'%(shot,t_min,t_max))
+
+        # remove chains directory
+        shutil.rmtree(chains_dir)
         
         # end time count
         elapsed_time = MPI.Wtime() - t_start
         
         print 'Time to run: ' + str(elapsed_time) + " s"
+        print 'Completed BSFC analysis for shot ', shot

@@ -103,8 +103,10 @@ class MomentFitter:
 
         if lam_bounds == None:
             if primary_impurity == 'Ca':
-                if primary_line == 'w':
+                if primary_line == 'w':    # w-line at 3.177 mA
                     lam_bounds = (3.172, 3.188)
+                elif primary_line == 'z':   # z-line at 3.211 mA
+                    lam_bounds = (3.205, 3.215)
                 elif primary_line == 'lya1':
                     lam_bounds = (3.010, 3.027)
                 elif primary_line == 'z':

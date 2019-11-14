@@ -428,10 +428,11 @@ class _TimeBinFitWrapper(object):
     specific time bin. This is needed since instance methods are not pickeable.
 
     """
-    def __init__(self, mf, nsteps, tbin):
+    def __init__(self, mf, nsteps, tbin, n_hermite):
         self.mf = mf
         self.nsteps = nsteps
         self.tbin = tbin
+        self.n_hermite = n_hermite
 
     def __call__(self, chbin):
 
@@ -441,8 +442,8 @@ class _TimeBinFitWrapper(object):
         sig = self.mf.sig_all[w0:w1,self.tbin,chbin]
 
         #
-        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
-
+        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))   #needs to be updated for more recent BinFit call!
+         
         print "Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps
         good = bf.MCMCfit(nsteps=self.nsteps)
         if not good:
@@ -470,7 +471,7 @@ class _ChBinFitWrapper(object):
         sig = self.mf.sig_all[w0:w1,tbin,self.chbin]
 
         # create bin-fit
-        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
+        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names))) #needs to be updated for more recent BinFit call!
 
         print "Now fitting tbin=", tbin, ',chbin=', self.chbin, "with nsteps=", self.nsteps
         good = bf.MCMCfit(nsteps=self.nsteps)
@@ -498,7 +499,7 @@ class _fitTimeWindowWrapper(object):
         sig = self.mf.sig_all[w0:w1,tbin,chbin]
 
         # create bin-fit
-        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))
+        bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))  #needs to be updated for more recent BinFit call!
 
         print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps
         try:
