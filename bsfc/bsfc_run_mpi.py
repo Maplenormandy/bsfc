@@ -59,6 +59,9 @@ NS=True
 # fix number of steps for MCMC (only used if NS=False)
 nsteps = 10000
 
+# choose number of Hermite polynomial terms
+chosen_n_hermite=3
+
 # set resume=False if reloading previous fits should NOT be attempted
 resume=True
 
@@ -224,7 +227,7 @@ else:
             # if fit cannot be loaded, run fitting now:
             if NS:
                 print "Fitting bin [%d,%d] ...."%(binn[0],binn[1])
-                spectral_fit(shot,t_min,t_max,binn[0],binn[1],3,verbose,rank)
+                spectral_fit(shot,t_min,t_max,binn[0],binn[1],chosen_n_hermite,verbose,rank)
 
                 # load result in memory
                 with open(resfile,'rb') as f:
