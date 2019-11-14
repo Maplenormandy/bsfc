@@ -14,7 +14,7 @@ After completion of a MultiNest execution, running again this script (without mp
 @author: sciortino
 """
 
-from mpi4py import MPI
+#from mpi4py import MPI
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,10 +33,11 @@ import scipy
 from helpers import bsfc_cmod_shots
 from helpers import bsfc_autocorr
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
+#from mpi4py import MPI
+#comm = MPI.COMM_WORLD
+#rank = comm.Get_rank()
+#size = comm.Get_size()
+rank = 0
 
 import argparse
 from bsfc_moment_fitter import *
@@ -115,8 +116,8 @@ else:
     loaded=None
 
 # broadcast r object to all cores
-mf = comm.bcast(mf, root = 0)
-loaded = comm.bcast(loaded, root = 0)
+#mf = comm.bcast(mf, root = 0)
+#loaded = comm.bcast(loaded, root = 0)
 
 # ==================================
 
@@ -173,9 +174,9 @@ if loaded==True:
 
 # Import mpi4py here to output timing only once
 #from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
+#comm = MPI.COMM_WORLD
+#rank = comm.Get_rank()
+#size = comm.Get_size()
 
 if rank==0:
     # end time count
@@ -183,4 +184,4 @@ if rank==0:
     print 'Time to run: ' + str(elapsed_time) + " s"
 
 
-#plt.show(block=True)
+plt.show(block=True)

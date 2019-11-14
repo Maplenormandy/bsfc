@@ -82,8 +82,8 @@ def get_shot_info(shot):
         tht = 0
     elif shot==1101014006:     # L-mode FS
         primary_impurity = 'Ca'
-        #primary_line = 'w'
-        primary_line = 'z'
+        primary_line = 'w'
+        #primary_line = 'z'
         tbin=116; chbin=18
         t_min=1.155; t_max=1.265
         tht=0

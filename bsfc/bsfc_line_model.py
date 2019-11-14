@@ -101,7 +101,7 @@ class LineModel:
         herm = [None]*self.nfit
         cind = self.noiseFuncs+2
         for i in range(self.nfit):
-            herm[i] = theta[cind:cind+self.hermFuncs[i]]
+            herm[i] = np.array(theta[cind:cind+self.hermFuncs[i]])
             cind = cind + self.hermFuncs[i]
 
         if self.jlinePresent:
@@ -171,17 +171,18 @@ class LineModel:
                 cind = cind + self.hermFuncs[i]
         else:
             for i in range(self.nfit):
-                constraints.append({
-                    'type': 'ineq',
-                    'fun': h0cnstr,
-                    'args': [cind]
-                    })
+                if self.hermFuncs[i] != 0:
+                    constraints.append({
+                        'type': 'ineq',
+                        'fun': h0cnstr,
+                        'args': [cind]
+                        })
 
-                constraints.append({
-                    'type': 'ineq',
-                    'fun': generalizedHypercubeConstraintFunction(cind, self.hermFuncs[i], 0.75),
-                    'args': []
-                    })
+                    constraints.append({
+                        'type': 'ineq',
+                        'fun': generalizedHypercubeConstraintFunction(cind, self.hermFuncs[i], 0.75),
+                        'args': []
+                        })
 
                 cind = cind + self.hermFuncs[i]
 
@@ -337,8 +338,10 @@ class LineModel:
             l0 = np.searchsorted(self.lam, self.linesLam[i])
 
             if i == 0:
-                lamFit = self.lam[l0-4:l0+5]
-                specFit = self.specBr[l0-4:l0+5]-noise0
+                l_lower = np.max((0, l0-4))
+                l_upper = np.min((len(self.lam)-1, l0+5))
+                lamFit = self.lam[l_lower:l_upper]
+                specFit = self.specBr[l_lower:l_upper]-noise0
 
                 center = np.average(lamFit, weights=specFit)
                 scale = np.sqrt(np.average((lamFit-center)**2, weights=specFit))*1e4
@@ -600,6 +603,9 @@ class LineModel:
 
         # loop over number of spectral lines:
         for i in range(self.nfit):
+            if self.hermFuncs[i] == 0:
+                continue
+
             if self.scaleFree:
                 a0 = herm[i][0]
                 f_simplex = generalizedHypercubeToHermiteSampleFunction(a0, self.hermFuncs[i], scaleFree=self.scaleFree, sqrtPrior=self.sqrtPrior)
