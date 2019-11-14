@@ -112,7 +112,7 @@ if not loaded:
 if loaded==False:
 
     # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True, n_hermite=5, n_live_points=400,
+    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True, n_hermite=3, n_live_points=400,
                     sampling_efficiency=0.3, verbose=True)
 
     # save fits for future use

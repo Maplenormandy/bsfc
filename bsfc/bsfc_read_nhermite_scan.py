@@ -27,19 +27,21 @@ from bsfc_moment_fitter import MomentFitter
 from helpers import bsfc_cmod_shots
 from helpers import bsfc_autocorr
 
+import gptools
+
 
 font = {'family' : 'serif',
         'serif': ['Computer Modern'],
-        'size'   : 9}
+        'size'   : 8}
 mpl.rc('font', **font)
 
 
 # ===========
 # Scan parameters
-shot = 1101014019 #1160506007  #1101014019
+shot = 1160506007 #1101014019 #1160506007  #1101014019
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
-nh_max = 5
+nh_max = 9
 # ============
 
 # get key info for requested shot:
@@ -70,8 +72,8 @@ for nh in range(nh_min, nh_max+1):
     #nn=n_live_points #nsteps
 
     # save each fit independently
-    print "Loading from ", '../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn)
-    with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
+    print "Loading from ", '../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn)
+    with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
 
     if mf.NS==False:
@@ -105,7 +107,9 @@ for nh in range(nh_min, nh_max+1):
 
 
 #times = [109.133455991745, 127.3736081123352, 157.27472591400146, 174.1919960975647, 183.1180350780487, 237.6917450428009, 291.2915561199188]
-times = [106.88230395317078, 106.53741407394409, 112.50855994224548, 132.0632438659668, 156.06387996673584, 178.10949397087097, 173.91060090065002]
+#times = [106.88230395317078, 106.53741407394409, 112.50855994224548, 132.0632438659668, 156.06387996673584, 178.10949397087097, 173.91060090065002]
+#times = [134.54520916938782, 147.2477958202362, 165.08653497695923, 178.43171787261963, 208.95905590057373, 227.8000979423523, 295.3363480567932]
+times = [138.8696210384369, 157.01426005363464, 178.54218196868896, 203.29988193511963, 217.57927799224854, 253.7655689716339, 282.0700430870056]
 
 # Plot lnev scaling
 
@@ -144,17 +148,19 @@ plt.setp(ax[2].get_xticklabels(), visible=False)
 plt.setp(ax[3].get_xticklabels(), visible=False)
 #ax[0].yaxis.set_major_locator(mpl.ticker.MultipleLocator(50))
 
-#ax[0].set_ylim([4525,4750])
-#ax[1].set_ylim([1.1,3.9])
-#ax[2].set_ylim([1.61,1.89])
-#ax[3].set_ylim([55, 345])
-#ax[4].set_ylim([-195, -166])
+ax[0].set_ylim([6295,6420])
+ax[1].set_ylim([1.1,3.9])
+ax[2].set_ylim([1.61,1.89])
+ax[3].set_ylim([55, 345])
+ax[4].set_ylim([-195, -171])
 
 #ax[0].grid()
 #ax[1].grid()
 #ax[2].grid()
 #ax[3].grid()
 #ax[4].grid()
+
+plt.savefig('/home/normandy/Pictures/BSFC/newfigs/figure2.eps')
 
 '''
 
@@ -189,7 +195,7 @@ plt.tight_layout()
 
 nh=3
 
-with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
+with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
 
 if mf.NS==False:
@@ -218,22 +224,24 @@ plt.figure(figsize=(3.375*2.5,3.375*2.5))
 
 font = {'family' : 'serif',
         'serif': ['Times New Roman'],
-        'size'   : 16}
-mpl.rc('font', **font)
+        'size'   : 15}
+#mpl.rc('font', **font)
 
-toplot = np.array([samples[:,3+nh], measurements[:,1], measurements[:,2]]).T
+toplot = np.array([np.log10(samples[:,3+nh]/samples[:,3]), measurements[:,1], measurements[:,2]]).T
 
-f = gptools.plot_sampler(
-    toplot, # index 0 is weights, index 1 is -2*loglikelihood, then samples
-    weights=sample_weights,
-    labels=['Satellite Br. [a.u.]', 'Velocity [km/s]', 'Temperature [keV]'],
-    chain_alpha=1.0,
-    cutoff_weight=0.01,
-    cmap='plasma',
-    #suptitle='Posterior distribution of $D$ and $V$',
-    plot_samples=False,
-    plot_chains=False,
-    xticklabel_angle=45,
-    #yticklabel_angle=30
-    ticklabel_fontsize=16,
-)
+#f = gptools.plot_sampler(
+#    toplot, # index 0 is weights, index 1 is -2*loglikelihood, then samples
+#    weights=sample_weights,
+#    labels=['log${}_{10}$ Br. Ratio', 'Velocity [km/s]', 'Temperature [keV]'],
+#    chain_alpha=1.0,
+#    cutoff_weight=0.01,
+#    cmap='plasma',
+#    #suptitle='Posterior distribution of $D$ and $V$',
+#    plot_samples=False,
+#    plot_chains=False,
+#    xticklabel_angle=45,
+#    #yticklabel_angle=30
+#    ticklabel_fontsize=16,
+#)
+#
+#plt.savefig('/home/normandy/Pictures/BSFC/newfigs/figure3.png')

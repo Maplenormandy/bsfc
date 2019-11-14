@@ -14,31 +14,37 @@ import matplotlib as mpl
 plt.ion()
 
 import corner
+import gptools
 
 
 
 
 font = {'family' : 'serif',
         'serif': ['Times New Roman'],
-        'size'   : 16}
+        'size'   : 8}
 
 mpl.rc('font', **font)
 
 # %%
 
 shot = 1160506007
+#shot = 1101014019
 n_hermite = 2
 
-data2 = np.load('../bsfc_fits/fit_data/mf_%d_nl_nh%d.npz'%(shot,3))
-data3 = np.load('../bsfc_fits/fit_data/mf_%d_nh%d.npz'%(shot,3))
-#data4 = np.load('../bsfc_fits/fit_data/mf_%d_nh%d.npz'%(shot,4))
+#tbin = 125
+#tbin = 12
+tbin=46
+
+data2 = np.load('../bsfc_fits/fit_data/mf_%d_nl_nh%d_t%d.npz'%(shot,3,tbin))
+data3 = np.load('../bsfc_fits/fit_data/mf_%d_nh%d_t%d.npz'%(shot,3,tbin))
+data4 = np.load('../bsfc_fits/fit_data/mf_%d_nh%d_t%d.npz'%(shot,4,tbin))
 #data5 = np.load('../bsfc_fits/fit_data/mf_%d_nh%d.npz'%(shot,5))
 
 # %%
 
 specTree = MDSplus.Tree('spectroscopy', shot)
-momNode = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1')
-#momNode = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HELIKE.MOMENTS.W')
+#momNode = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1')
+momNode = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HELIKE.MOMENTS.W')
 
 momsRaw = momNode.getNode('mom').data()
 momsErr = momNode.getNode('err').data()
@@ -46,8 +52,6 @@ momsErr = momNode.getNode('err').data()
 # %%
 
 maxChan = data2['meas_avg'].shape[1]
-tbin = 125
-#tbin = 12
 
 lamw = 3.94912
 #lamw = 3.73114
@@ -77,30 +81,30 @@ bins = np.array(range(data['meas_avg'].shape[1]))
 for chbin in bins:
     if np.isnan(gdata[0,chbin]):
         continue
-    
+
     bin_data = np.load('../bsfc_fits/fit_data/mf_%d_nh%d_ch%d.npz'%(shot,3,chbin))
 
     meas = bin_data['measurements']
     weights = bin_data['sample_weights']
     scales = bin_data['samples'][:,2]
     meas[:,0] = meas[:,0] * scales
-    
+
     gdata[0,chbin] = np.average(meas[:,0], weights=weights)
     gstd[0,chbin] = np.sqrt(np.average((meas[:,0] - gdata[0,chbin])**2, weights=weights))
 """
 
-#gdata[:,8] = np.nan
-#moms[0,8] = np.nan
-#v_thaco[8] = np.nan
-#t_thaco[8] = np.nan
+gdata[:,8] = np.nan
+moms[0,8] = np.nan
+v_thaco[8] = np.nan
+t_thaco[8] = np.nan
 
-#gdata[:,24] = np.nan
-#moms[0,24] = np.nan
-#v_thaco[24] = np.nan
-#t_thaco[24] = np.nan
+gdata[:,24] = np.nan
+moms[0,24] = np.nan
+v_thaco[24] = np.nan
+t_thaco[24] = np.nan
 
 brightChange = 1.0
-lbin = 0
+lbin = 26
 
 brightChange = np.nanmean(moms[0,lbin:]) / np.nanmean(gdata[0,lbin:])
 
@@ -134,18 +138,19 @@ ax2.set_ylabel('Temperature [keV]')
 #ax0.set_ylim([-0.1, 1.9])
 #ax1.set_ylim([-32, 12])
 #ax2.set_ylim([-0.1,2.2])
+#
+#
+#ax0.set_xlim([24, 56])
+ax0.set_ylim([1.25, 2.1])
+ax1.set_ylim([-3, 7])
+ax2.set_ylim([1.6,1.97])
+
+ax0.legend(loc='lower right')
 
 
-ax0.set_ylim([1.25, 1.9])
-ax1.set_ylim([-11, 1])
-ax2.set_ylim([1.6,1.93])
-
-ax0.legend(loc='lower left')
-
-
-ax0.set_ylim([-0.01, 0.14])
-ax1.set_ylim([-8, 38])
-ax2.set_ylim([0.0,2.8])
+#ax0.set_ylim([-0.01, 0.14])
+#ax1.set_ylim([-8, 38])
+#ax2.set_ylim([0.0,2.8])
 
 
 ax0.set_xlim([lbin-1, len(bins)])
@@ -157,15 +162,18 @@ plt.xlabel('Spatial Channel #')
 plt.tight_layout()
 plt.tight_layout()
 
+plt.savefig('/home/normandy/Pictures/figure6.eps')
+
 # %%
 
 plt.figure()
 plt.errorbar(bins, data3['lnev'], yerr=data3['lnev_std'], c='b')
-#plt.errorbar(bins, data4['lnev'], yerr=data4['lnev_std'], c='g')
+plt.errorbar(bins, data4['lnev'], yerr=data4['lnev_std'], c='g')
 #plt.errorbar(bins, data5['lnev'], yerr=data5['lnev_std'], c='r')
 plt.errorbar(bins, data2['lnev'], yerr=data2['lnev_std'], c='m')
 
 # %%
+"""
 
 chbin = 36
 n_hermite = 3
@@ -177,9 +185,10 @@ scales = bin_data['samples'][:,2]
 
 toplot = np.array([bin_data['samples'][:,3+n_hermite], meas[:,1], meas[:,2]]).T
 
-corner.corner(bin_data['samples'], weights=bin_data['sample_weights'], range=[0.99]*bin_data['samples'].shape[1])
+#corner.corner(bin_data['samples'], weights=bin_data['sample_weights'], range=[0.99]*bin_data['samples'].shape[1])
 plt.show()
 
+"""
 """
 plt.hist(meas[:,1], weights=weights, bins=128)
 plt.axvline(np.average(meas[:,1], weights=weights), c='r', ls='--')
@@ -194,9 +203,10 @@ plt.axvline(median, c='g', ls='--')
 
 # %%
 
-plt.figure(figsize=(3.375*2.5,3.375*2.5))
+#plt.figure(figsize=(3.375*2.5,3.375*2.5))
 #plt.close('all')
 
+"""
 f = gptools.plot_sampler(
     toplot, # index 0 is weights, index 1 is -2*loglikelihood, then samples
     weights=bin_data['sample_weights'],
@@ -211,6 +221,7 @@ f = gptools.plot_sampler(
     #yticklabel_angle=30
     ticklabel_fontsize=16,
 )
+"""
 
 # %%
 
@@ -237,7 +248,7 @@ def modelMoments(lm, theta, line=0, order=-1):
     m2 = normFactor*hermxx[0]*scale[line]**2
 
     return np.array([m0, m1*1e3, m2*1e6])
-    
+
 def modelMeasurements(lm, theta, line=0, order=-1, thaco=True):
     """
     Calculate the counts, v, Ti predicted by the model

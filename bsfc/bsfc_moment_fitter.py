@@ -107,13 +107,15 @@ class MomentFitter:
                     lam_bounds = (3.172, 3.188)
                 elif primary_line == 'lya1':
                     lam_bounds = (3.010, 3.027)
+                elif primary_line == 'z':
+                    lam_bounds = (3.205, 3.215)
                 else:
                     raise NotImplementedError("Line is not yet implemented")
             elif primary_impurity == 'Ar':
                 if primary_line == 'w':
                     lam_bounds = (3.945, 3.954)
                 elif primary_line == 'z':
-                    raise NotImplementedError("Not implemented yet (needs line tying)")
+                    lam_bounds = (3.897, 3.998)
                 elif primary_line == 'lya1':
                     lam_bounds = (3.725, 3.745)
                 else:
@@ -495,7 +497,7 @@ class MomentFitter:
             font = {'family' : 'serif',
                     'serif': ['Times New Roman'],
                     'size'   : 8}
-            
+
             mpl.rc('font', **font)
 
             f0, (a0, a1) = plt.subplots(2, 1, sharex=True, gridspec_kw = {'height_ratios': [4,1]}, figsize=(3.375, 3.375*0.8))
@@ -512,29 +514,29 @@ class MomentFitter:
             a0.plot(bf.lam, pred, c='r')
 
             # plot some samples: noise floor in black, spectral lines all in different colors
-            for samp in range(100):
+            for samp in range(160):
                 if not self.NS:
                     theta = bf.samples[np.random.randint(len(bf.samples))]
                 else:
                     # With nested sampling, sample the samples according to the weights
                     sampleIndex = np.searchsorted(bf.cum_sample_weights, np.random.rand())
                     theta = bf.samples[sampleIndex]
-                    
+
                 noise = bf.lineModel.modelNoise(theta)
-                a0.plot(bf.lam, noise, c='k', alpha=0.08)
+                a0.plot(bf.lam, noise, c='k', alpha=0.04)
 
                 for i in range(len(self.lines.names)):
                     line = bf.lineModel.modelLine(theta, i)
-                    a0.plot(bf.lam, line+noise, c=color[i], alpha=0.08)
+                    a0.plot(bf.lam, line+noise, c=color[i], alpha=0.04)
 
             # add average inferred noise
             noise = bf.lineModel.modelNoise(bf.theta_avg)
             a0.plot(bf.lam, noise, c='k', label='Inferred noise')
-            
+
             if not forPaper:
                 a0.set_title('tbin='+str(tbin)+', chbin='+str(chbin))
             else:
-                a1.set_xlabel('Wavelength [ang]')
+                a1.set_xlabel('Wavelength [$\AA$]')
                 a0.set_ylabel('Brightness [a.u.]')
 
             # plot all fitted spectral lines, one in each color
@@ -556,6 +558,7 @@ class MomentFitter:
             plt.tight_layout()
             plt.tight_layout()
             plt.subplots_adjust(hspace=0.05)
+            plt.savefig('/home/normandy/Pictures/BSFC/newfigs/figure1_new.png')
         plt.show()
 
 

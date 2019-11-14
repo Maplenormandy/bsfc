@@ -66,6 +66,17 @@ class LineModel:
             self.hermFuncs = hermFuncs
         #self.hermFuncs[0] = 9
 
+        # Check if the j line is present, which necessitates a special treatment by tying it to the k line
+        self.jlinePresent = 'j' in self.linesnames
+        if self.jlinePresent:
+            self.jindex = np.argwhere(self.linesnames=='j')[0][0]
+            # Set it so there are no free hermite function coefficients for the j line
+            self.hermFuncs[self.jindex] = 0
+            if 'k' in self.linesnames:
+                self.kindex = np.argwhere(self.linesnames=='k')[0][0]
+            else:
+                raise ValueError("Need k line if fitting j line")
+
         self.simpleConstraints = False
 
         self.scaleFree = scaleFree
@@ -92,6 +103,10 @@ class LineModel:
         for i in range(self.nfit):
             herm[i] = theta[cind:cind+self.hermFuncs[i]]
             cind = cind + self.hermFuncs[i]
+
+        if self.jlinePresent:
+            # In case the j line is present, tie the j line hermite coefficients to the k line
+            herm[self.jindex] = 1.3576*herm[self.kindex]
 
         return noise, center, scale, herm
 
@@ -328,7 +343,8 @@ class LineModel:
                 center = np.average(lamFit, weights=specFit)
                 scale = np.sqrt(np.average((lamFit-center)**2, weights=specFit))*1e4
 
-            herm[i][0] = np.max(self.specBr[l0]-noise0, 0)
+            if self.hermFuncs[i] > 0:
+                herm[i][0] = np.max(self.specBr[l0]-noise0, 0)
 
         hermflat = np.concatenate(herm)
         if self.noiseFuncs == 3:

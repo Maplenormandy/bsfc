@@ -24,14 +24,24 @@ mpl.rc('font', **font)
 
 # %%
 
-shot = 1160506007
+#shot = 1160506007
+#shot = 1150903021
+shot = 1160920007
 
-line = ''
-#data1 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snl_nh%d.npz'%(shot,line,5))
-data2 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snl_nh%d.npz'%(shot,line,3))
-data3 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d.npz'%(shot,line,3))
+line = 'w'
+##data1 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snl_nh%d.npz'%(shot,line,5))
+#data2 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snl_nh%d.npz'%(shot,line,3))
+#data3 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d.npz'%(shot,line,3))
+##data4 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d.npz'%(shot,line,4))
+#data5 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d.npz'%(shot,line,5))
+
+# New Jeffreys priors
+data2 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%s_jef_nl_nh%d.npz'%(shot,line,3))
+data3 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%s_jef_nh%d.npz'%(shot,line,3))
 #data4 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d.npz'%(shot,line,4))
-data5 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d.npz'%(shot,line,5))
+#data5 = np.load('../bsfc_fits/synth_data/mf_synth_%d_%s_jef_nh%d.npz'%(shot,line,5))
+#data5 = np.load('../bsfc_fits/synth_data/mf_synth_%d_nl_nh%d.npz'%(shot,3))
+#data3 = np.load('../bsfc_fits/synth_data/mf_synth_%d_nh%d.npz'%(shot,3))
 
 # %%
 
@@ -46,14 +56,14 @@ bins = np.array(range(data['meas_avg'].shape[1]))
 for chbin in bins:
     if np.isnan(gdata[0,chbin]):
         continue
-    
+
     bin_data = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d_ch%d.npz'%(shot,line,3,chbin))
 
     meas = bin_data['measurements']
     weights = bin_data['sample_weights']
     scales = bin_data['samples'][:,2]
     meas[:,0] = meas[:,0] * scales
-    
+
     gdata[0,chbin] = np.average(meas[:,0], weights=weights)
     gstd[0,chbin] = np.sqrt(np.average((meas[:,0] - gdata[0,chbin])**2, weights=weights))
 """
@@ -78,8 +88,8 @@ ax0.errorbar(bins, gdata[0,:]*brightChange, marker='.', yerr=gstd[0,:]*brightCha
 ax1.plot(bins, data['meas_true'][1,:], marker='.')
 ax1.errorbar(bins, gdata[1,:], marker='.', yerr=gstd[1,:])
 
-ax2.plot(bins, data['meas_true'][2,:]-0.5, marker='.')
-ax2.errorbar(bins, gdata[2,:]-0.5, marker='.', yerr=gstd[2,:])
+ax2.plot(bins, data['meas_true'][2,:], marker='.')
+ax2.errorbar(bins, gdata[2,:], marker='.', yerr=gstd[2,:])
 
 ax0.set_ylabel('Brightness [a.u.]')
 ax1.set_ylabel('Velocity [km/s]')
@@ -87,16 +97,13 @@ ax2.set_ylabel('Temperature [keV]')
 
 plt.xlabel('Channel #')
 
-"""
-ax0.set_ylim([-0.05, 0.7])
-ax1.set_ylim([-0.5, 5.5])
-ax2.set_ylim([0.0,1.35])
-"""
-
+#ax0.set_ylim([-0.05, 0.7])
+#ax1.set_ylim([-0.5, 5.5])
+#ax2.set_ylim([0.0,1.35])
+#
 ax0.set_ylim([0.09, 0.45])
 ax1.set_ylim([-13, -3])
 ax2.set_ylim([0.8,2.1])
-
 
 ax0.set_xlim([0, len(bins)])
 
@@ -109,19 +116,22 @@ plt.xlabel('Spatial Channel #')
 plt.tight_layout()
 plt.tight_layout()
 
+plt.savefig('/home/normandy/Pictures/BSFC/newfigs/figure5.eps')
+
 # %%
 
 plt.figure()
 plt.errorbar(bins, data3['lnev'], yerr=data3['lnev_std'], c='b')
-#plt.errorbar(bins, data4['lnev'], yerr=data4['lnev_std'], c='g')
-plt.errorbar(bins, data5['lnev'], yerr=data5['lnev_std'], c='r')
+##plt.errorbar(bins, data4['lnev'], yerr=data4['lnev_std'], c='g')
+#plt.errorbar(bins, data5['lnev'], yerr=data5['lnev_std'], c='r')
 plt.errorbar(bins, data2['lnev'], yerr=data2['lnev_std'], c='m')
-#plt.errorbar(bins, data1['lnev'], yerr=data1['lnev_std'], c='y')
+##plt.errorbar(bins, data1['lnev'], yerr=data1['lnev_std'], c='y')
 
 # %%
 
+
 chbin = 30
-bin_data = np.load('../bsfc_fits/synth_data/mf_synth_%d_%snh%d_ch%d.npz'%(shot,line,3,chbin))
+#bin_data = np.load('../bsfc_fits/synth_data/mf_synth_%d_%s_jef_nh%d_ch%d.npz'%(shot,line,3,chbin))
 
 """
 plt.figure()
@@ -138,12 +148,12 @@ median = np.interp(0.5, ws, vs)
 plt.axvline(median, c='g', ls='--')
 """
 
-corner.corner(bin_data['samples'], weights=bin_data['sample_weights'], range=[0.99]*bin_data['samples'].shape[1])
-plt.plot()
+#corner.corner(bin_data['samples'], weights=bin_data['sample_weights'], range=[0.99]*bin_data['samples'].shape[1])
+#plt.plot()
 
 # %%
 
-toplot = np.array([bin_data['samples'][:,6], meas[:,2]]).T
+#toplot = np.array([bin_data['samples'][:,6], meas[:,2]]).T
 
-corner.corner(toplot, weights=bin_data['sample_weights'], range=[0.99,0.99])
+#corner.corner(toplot, weights=bin_data['sample_weights'], range=[0.99,0.99])
 plt.show()

@@ -76,13 +76,14 @@ class SyntheticGenerator:
         mf.fitSingleBin(self.tbin, chbin, nsteps=1, n_hermite=3)
         countsMultiplier = np.zeros(len(mf.lines.lam))
         bf = mf.fits[self.tbin][chbin]
-        
+
         if not bf.good:
             return
 
         for j in range(len(mf.lines.lam)):
             measurement_ml = bf.lineModel.modelMeasurements(bf.theta_ml, line=j)
             countsMultiplier[j] = measurement_ml[0]
+        #countsMultiplier[1] = countsMultiplier[0]*0.1
         print countsMultiplier
 
         noise, center, scale, herm = bf.lineModel.unpackTheta(bf.theta_ml)
@@ -119,7 +120,7 @@ class SyntheticGenerator:
 
         specBrSamp = np.random.poisson(lam=specBr*whitefield)/whitefield
         specBrSampSig = np.sqrt(specBrSamp*whitefield)/whitefield
-        
+
 
         mf.specBr_all[:,self.tbin,chbin] = specBrSamp
         mf.sig_all[:,self.tbin,chbin] = specBrSampSig

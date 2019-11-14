@@ -40,7 +40,7 @@ sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 parser = argparse.ArgumentParser()
 parser.add_argument("shot", type=int, help="shot number to run analysis on")
 parser.add_argument("n_hermite", type=int, help="number of hermite functions")
-parser.add_argument("tbin", type=int, help="tbin of fit")
+#parser.add_argument("tbin", type=int, help="tbin of fit")
 parser.add_argument('-n', "--noline", action="store_true", help="Whether or not to remove the wn5 line")
 #parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
 
@@ -53,7 +53,7 @@ shot = args.shot
 
 primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
 
-tbin = args.tbin
+#tbin = args.tbin
 
 
 # Start counting time:

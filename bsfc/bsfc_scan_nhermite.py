@@ -16,6 +16,7 @@ import time as time_
 import multiprocessing
 import os
 import shutil
+import glob
 
 sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
 
@@ -34,11 +35,11 @@ size = comm.Get_size()
 
 # ===========
 # Scan parameters
-shot = 1101014019 #1101014019 #1160506007
+shot = 1160506007 #1101014019 #1101014019 #1160506007
 NS=True   #if NS==True, then nsteps is useless.
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
-nh_max = 5
+nh_max = 9
 # ============
 
 # Use as many cores as are available (this only works on a single machine/node!)
@@ -66,6 +67,7 @@ basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 #nh=3
 #nlp = [2**i for i in range(6, 13)] # up to 4096, good to plot on log-2 scale
 n_live_points=500
+times = []
 
 #for n_live_points in nlp:
 for nh in range(nh_min, nh_max+1):
@@ -81,13 +83,13 @@ for nh in range(nh_min, nh_max+1):
 
         # delete and re-create directory for MultiNest output
         if os.path.exists(chains_dir):
-            if len(os.listdir(chains_dir))==0:
-                # if directory exists and is empty, everything's ready
-                pass
-            else:
-                # directory from previous run exists. Delete and re-create it
-                shutil.rmtree(chains_dir)
-                os.mkdir(chains_dir)
+            # Remove old chains
+            fileList = glob.glob(basename+'*')
+            for filePath in fileList:
+                try:
+                    os.remove(filePath)
+                except:
+                    pass
         else:
             # if directory does not exist, create it
             os.mkdir(chains_dir)
@@ -110,7 +112,7 @@ for nh in range(nh_min, nh_max+1):
             nn=n_live_points
         else:
             nn=nsteps
-        with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'wb') as f:
+        with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'wb') as f:
             pkl.dump(mf, f, protocol=pkl.HIGHEST_PROTOCOL)
 
         del mf

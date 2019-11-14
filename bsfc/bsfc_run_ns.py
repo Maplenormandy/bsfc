@@ -143,16 +143,16 @@ if loaded==True:
 
 
     # corner plot
-    f = gptools.plot_sampler(
-        samples,
-        weights=sample_weights,
-        labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
-        chain_alpha=1.0,
-        cutoff_weight=0.01,
-        cmap='plasma',
-        plot_samples=False,
-        plot_chains=False,
-    )
+    #f = gptools.plot_sampler(
+    #    samples,
+    #    weights=sample_weights,
+    #    labels=mf.fits[tbin][chbin].lineModel.thetaLabels(),
+    #    chain_alpha=1.0,
+    #    cutoff_weight=0.01,
+    #    cmap='plasma',
+    #    plot_samples=False,
+    #    plot_chains=False,
+    #)
 
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)

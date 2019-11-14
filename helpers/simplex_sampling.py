@@ -120,7 +120,7 @@ def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite, scaleFree=Tru
                 else:
                     a0 = ((z[0] - 0.75)*4 + ap)**2
             else:
-                a0 = np.exp((z[0] - 0.9)*10 + np.log(a0_max))
+                a0 = np.exp((z[0] - 0.7)*15 + np.log(np.max((np.nan_to_num(a0_max), 1e-3))))
 
             theta = np.concatenate([[1.0], np.dot(transMatrix, x) + mean]) * a0
         else:
