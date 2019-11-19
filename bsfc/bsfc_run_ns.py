@@ -23,7 +23,6 @@ plt.ion()
 import cPickle as pkl
 import pdb
 import corner
-import bsfc_main
 import sys
 import time as time_
 import multiprocessing
@@ -50,12 +49,13 @@ if '/home/sciortino/usr/pythonmodules/PyMultiNest' not in sys.path:
 
 parser = argparse.ArgumentParser()
 parser.add_argument("shot", type=int, help="shot number to run analysis on")
+parser.add_argument("-l", "--line_name", help="name of atomic line of interest for post-fitting analysis. For the primary line, just leave to None")
 parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
 
 args = parser.parse_args()
 
 # first command line argument gives shot number
-shot = args.shot
+shot = args.shot 
 
 # Start counting time:
 start_time=time_.time()
@@ -158,7 +158,24 @@ if loaded==True:
 
     mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
-    measurements = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, 1, samples)
+    #from IPython import embed
+    #embed()
+    
+    # ---------
+    # allow user to get info about lines other than the primary line
+    if args.line_name is None:
+        # if user didn't request a specific line, assume that primary line is of interest
+        args.line_name = mf.primary_line
+        
+    try:
+        line_id = np.where(mf.fits[tbin][chbin].lineModel.linesnames==args.line_name)[0][0]
+    except:
+        raise ValueError('Requested line cannot be found in MultiNest output!')
+    
+    modelMeas = lambda x: mf.fits[tbin][chbin].lineModel.modelMeasurements(x, line=line_id)
+    # ---------
+    
+    measurements = np.apply_along_axis(modelMeas, 1, samples)
     moms = np.average(measurements, 0, weights=sample_weights)
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
@@ -168,7 +185,7 @@ if loaded==True:
     print "ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]
     print "# Hermite polynomials: ", n_hermite
 
-    plt.show()
+    #plt.show()
 
 
 
@@ -184,4 +201,4 @@ if rank==0:
     print 'Time to run: ' + str(elapsed_time) + " s"
 
 
-plt.show(block=True)
+#plt.show(block=True)

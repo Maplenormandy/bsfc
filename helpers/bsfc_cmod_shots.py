@@ -31,7 +31,7 @@ def get_shot_info(shot):
         tht=5
     elif shot==1101014019:       # EDA H-mode FS
         primary_impurity = 'Ca'
-        primary_line = 'w'
+        primary_line = 'z' # 'w'
         # used to be 128, changed it to 125
         tbin=125; chbin=11
         #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
@@ -41,7 +41,7 @@ def get_shot_info(shot):
         tht=0
     elif shot==1101014029:      # I-mode FS
         primary_impurity = 'Ca'
-        primary_line = 'w'
+        primary_line = 'z' #'w'
         tbin=120; chbin=7  #good
         #tbin=6; chbin=19   # apparently below noise level ?
         #tbin=9; chbin = 4    # very little signal, fit should be thrown out
@@ -49,7 +49,7 @@ def get_shot_info(shot):
         tht=0
     elif shot==1101014030:    # I-mode FS
         primary_impurity = 'Ca'
-        primary_line = 'w'
+        primary_line = 'z' # 'w'
         #tbin=128; chbin=31  # t=1.2695
         tbin=116; chbin=18  # t=1.2095, ~ peak signal
         t_min=1.185; t_max=1.3
@@ -84,9 +84,26 @@ def get_shot_info(shot):
         primary_impurity = 'Ca'
         primary_line = 'w'
         #primary_line = 'z'
-        tbin=116; chbin=18
+        #tbin=116; chbin=18
+        tbin=124; chbin=11
         t_min=1.155; t_max=1.265
         tht=0
+    elif shot==1101014011:     # L-mode FS
+        primary_impurity = 'Ca'
+        primary_line = 'w'
+        #primary_line = 'z'
+        #tbin=116; chbin=18
+        tbin=124; chbin=11
+        t_min=0.7; t_max=0.95
+        tht=0
+    elif shot==1101014012:     # L-mode FS
+        primary_impurity = 'Ca'
+        #primary_line = 'w'
+        primary_line = 'z'
+        #tbin=116; chbin=18
+        tbin=124; chbin=11
+        t_min=1.150; t_max=1.3
+        tht=0   
     elif str(shot).startswith('1140729'): #1140729021 or shot==1140729023 or shot==1140729030:
         primary_impurity = 'Ca'
         primary_line = 'w'

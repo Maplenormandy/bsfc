@@ -5,7 +5,7 @@ To run, use
 >> python <SHOT> 
 where <SHOT> is the CMOD shot number of interest. If using nested sampling (NS) and if MultiNest was 
 installed with MPI, then this automatically defaults to parallelizing over live point evaluations. 
-This is NOT a high-throughput parallelization, but it works well. 
+This is NOT a high-throughput parallelization, but it works well. See other options in script.
 
 To use a high-throughput parallelization, i.e. parallelized over all time and spatial bins, run this script
 with 
@@ -13,8 +13,8 @@ with
 i.e. the same as above, but invoking the `mpirun` command. 
 
 To visualize results, after running, use
-python  <SHOT> 
-i.e. the same, always without the 'mpirun' command. If results are stored and found, this will try to plot them. 
+python  <SHOT> -p
+without the 'mpirun' command. If results are stored and found, this will try to plot them. 
 
 @author: sciortino
 """
@@ -24,14 +24,8 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 import cPickle as pkl
-import pdb
-import sys
-import itertools
-import os
-import shutil
-import scipy
-import glob
-import subprocess
+import sys, itertools, os, shutil
+import scipy, glob, subprocess, argparse
 
 #import bsfc_main
 from bsfc_moment_fitter import *
@@ -46,65 +40,65 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-# first command line argument gives shot number
-shot = int(sys.argv[1])
-try:
-    plot = bool(int(sys.argv[2]))
-except:
-    plot = False
-    
-# select whether to use nested sampling
-NS=True
+# ---------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument("shot", type=int, help="shot number to run analysis on.")
 
-# fix number of steps for MCMC (only used if NS=False)
-nsteps = 10000
+# optional argument to plot
+parser.add_argument("-p", "--plot", action='store_true', help="Boolean to indicate whether to try to fetch previous results and plot. Only available if results were previously computed!")
 
-# choose number of Hermite polynomial terms
-chosen_n_hermite=3
+# optional arguments for fit procedure
+parser.add_argument("-n", "--chosen_n_hermite", type=int, default=3, help="Number of Hermite polynomial terms to include in each fit. Default is 3. ")
+parser.add_argument("-v", "--verbose", action='store_true', help="Enable output verbosity.")
+parser.add_argument("-ht","--high_throughput", action='store_true', help='Flag to prevent MultiNest from running with MPI (internally parallelizing over line points)')
 
-# set resume=False if reloading previous fits should NOT be attempted
-resume=True
+# optional arguments for emcee runs
+parser.add_argument("--emcee", action="store_true", help="Boolean to indicate whether to use emcee. Default is False, so that MultiNest is used instead.")
+parser.add_argument("--nsteps", type=int, help="Number of emcee steps. Only used if emcee is being used.")
+args = parser.parse_args()
+# ---------------------------------
 
-# indicate whether to output verbose text 
-verbose = True
+if args.emcee:
+    NS=False
+else:
+    NS=True
 
-# to run one case at a time with MultiNest (still parallelized), set run_in_series = True
-run_in_series = True #False
-
-if not verbose:
+if not args.verbose:
     import warnings
     warnings.filterwarnings("ignore")
 
 if rank == 0:
-    print "Analyzing shot ", shot
+    print "Analyzing shot ", args.shot
     
     # Start counting time:
     t_start=MPI.Wtime()
 
 # get key info for requested shot:
-primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(shot)
+primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(args.shot)
 
 # ==============
 
 # Always create new object by default when running with MPI
 if rank==0:
-    mf = MomentFitter(primary_impurity, primary_line, shot, tht=tht)
-    with open('../bsfc_fits/mf_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'wb') as f:
+    mf = MomentFitter(primary_impurity, primary_line, args.shot, tht=tht)
+    with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max,primary_line),'wb') as f:
         pkl.dump(mf,f)
 else:
     mf = None
-
+    chains_dir = None
     
-if plot: 
+if args.plot: 
     # if only 1 core is being used, assume that script is being used for plotting
 
-    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'rb') as f:
+    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max,primary_line),'rb') as f:
         gathered_moments=pkl.load(f)
 
     # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
     moments_vals, moments_stds, time_sel = bsfc_clean_moments.clean_moments(
         mf.time, mf.maxChan, t_min,t_max,gathered_moments, BR_THRESH=2e8, BR_STD_THRESH=2e8)
-    
+
+    #from IPython import embed
+    #embed()
     # BSFC slider visualization
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='vel')
@@ -121,7 +115,7 @@ else:
             os.environ["BSFC_ROOT"]='%s/bsfc'%str(os.path.expanduser('~'))
 
         # create new chains directory
-        chains_dirs = [f for f in os.listdir('.') if f.startswith('mn_chains')]
+        chains_dirs = [f for f in os.listdir('..') if f.startswith('mn_chains')]
         nn=0
         while True:
             if 'mn_chains_'+str(chr(nn+97)).upper() in chains_dirs:
@@ -129,12 +123,13 @@ else:
             else:
                 chains_dir = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains_'+str(chr(nn+97)).upper())
                 break
-            
+
         if not os.path.exists(chains_dir):
             os.mkdir(chains_dir)
             
     # broadcast mf object to all cores (this also acts for synchronization)
-    mf = comm.bcast(mf, root = 0)  
+    mf = comm.bcast(mf, root = 0)
+    chains_dir = comm.bcast(chains_dir, root=0)
     
     tidx_min = np.argmin(np.abs(mf.time - t_min))
     tidx_max = np.argmin(np.abs(mf.time - t_max))
@@ -184,18 +179,20 @@ else:
                         pass
         
             # individual fit with MultiNest
-            command = ['python','launch_NSfit.py',str(shot),str(t_min), str(t_max),
-                       str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),str(int(rank)), basename_inner]
+            command = ['python','launch_NSfit.py',str(shot),str(primary_line), str(t_min), str(t_max),
+                       str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),basename_inner]
 
-            if run_in_series: command = ['mpirun'] + command
+            if not args.high_throughput: command = ['mpirun'] + command
         
-            print command
+            # print out command to be run on screen
+            print ' '.join(command)
+            
             # Run externally:
             out = subprocess.check_output(command, stderr=subprocess.STDOUT)
             if verbose: print out
     else:
         # emcee requires a wrapper for multiprocessing to pickle the function
-        spectral_fit = _fitTimeWindowWrapper(mf,nsteps=nsteps)
+        spectral_fit = _fitTimeWindowWrapper(mf,nsteps=args.nsteps)
                     
 
     
@@ -204,8 +201,8 @@ else:
     for j, binn in enumerate(assigned_bins):
         
         checkpoints_dir ='checkpoints/'
-        case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}/'.format(shot,t_min,t_max)
-        file_name = 'moments_{:d}_bin{:d}_{:d}.pkl'.format(shot,binn[0],binn[1])
+        case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}/'.format(args.shot,t_min,t_max)
+        file_name = 'moments_{:d}_bin{:d}_{:d}_{:s}line.pkl'.format(args.shot,binn[0],binn[1],primary_line)
         resfile = checkpoints_dir + case_dir + file_name
         
         # create checkpoint directory if it doesn't exist yet
@@ -215,8 +212,6 @@ else:
         if not os.path.exists(checkpoints_dir+case_dir):
             os.makedirs(checkpoints_dir+case_dir)
 
-        #import pdb
-        #pdb.set_trace()
         try:
             # if fit has already been created, re-load it from checkpoint directory
             with open(resfile,'rb') as f:
@@ -227,7 +222,7 @@ else:
             # if fit cannot be loaded, run fitting now:
             if NS:
                 print "Fitting bin [%d,%d] ...."%(binn[0],binn[1])
-                spectral_fit(shot,t_min,t_max,binn[0],binn[1],chosen_n_hermite,verbose,rank)
+                spectral_fit(args.shot,t_min,t_max,binn[0],binn[1],args.chosen_n_hermite,args.verbose,rank)
 
                 # load result in memory
                 with open(resfile,'rb') as f:
@@ -267,12 +262,12 @@ else:
         print "*********** Completed fits *************"
     
         # save fits for future use
-        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f.pkl'%(shot,t_min,t_max),'wb') as f:
+        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max, primary_line),'wb') as f:
             pkl.dump(gathered_moments, f)
 
-        #if resume:
+        #if args.resume:
         #    # eliminate checkpoint directory if this was created
-        #    shutil.rmtree('checkpoints/%d_tmin%f_tmax%f'%(shot,t_min,t_max))
+        #    shutil.rmtree('checkpoints/%d_tmin%f_tmax%f'%(args.shot,t_min,t_max))
 
         # remove chains directory
         shutil.rmtree(chains_dir)
@@ -281,4 +276,4 @@ else:
         elapsed_time = MPI.Wtime() - t_start
         
         print 'Time to run: ' + str(elapsed_time) + " s"
-        print 'Completed BSFC analysis for shot ', shot
+        print 'Completed BSFC analysis for shot ', args.shot

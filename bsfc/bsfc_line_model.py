@@ -341,7 +341,7 @@ class LineModel:
                 l_lower = np.max((0, l0-4))
                 l_upper = np.min((len(self.lam)-1, l0+5))
                 lamFit = self.lam[l_lower:l_upper]
-                specFit = self.specBr[l_lower:l_upper]-noise0
+                specFit =  np.maximum( self.specBr[l_lower:l_upper]-noise0, 0) #element-wise
 
                 center = np.average(lamFit, weights=specFit)
                 scale = np.sqrt(np.average((lamFit-center)**2, weights=specFit))*1e4
@@ -569,6 +569,9 @@ class LineModel:
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
 
+        # FS: make sure that noise is a positive variable (it seems to swing a little near 0)
+        noise[0] = max([noise[0],1e-10])
+        
         # noise params
         if self.scaleFree:
             if self.sqrtPrior:

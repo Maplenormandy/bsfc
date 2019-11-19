@@ -95,7 +95,7 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     #return f, a_plot, a_slider
 
     def adjustErrbarxy(errobj, x, y, x_error, y_error):
-        ln, (errx_top, errx_bot, erry_top, erry_bot), (barsx, barsy) = errobj
+        ln, caplines, (barsx, barsy) = errobj
 
         ln.set_data(x,y)
         x_base = x
@@ -106,15 +106,20 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
         yerr_top = y_base + y_error
         yerr_bot = y_base - y_error
 
-        errx_top.set_xdata(xerr_top)
-        errx_bot.set_xdata(xerr_bot)
-        errx_top.set_ydata(y_base)
-        errx_bot.set_ydata(y_base)
+        try:
+            # it seems that depending on matplotlib version caplines might be filled or empty...
+            errx_top, errx_bot, erry_top, erry_bot = caplines
+            errx_top.set_xdata(xerr_top)
+            errx_bot.set_xdata(xerr_bot)
+            errx_top.set_ydata(y_base)
+            errx_bot.set_ydata(y_base)
 
-        erry_top.set_xdata(x_base)
-        erry_bot.set_xdata(x_base)
-        erry_top.set_ydata(yerr_top)
-        erry_bot.set_ydata(yerr_bot)
+            erry_top.set_xdata(x_base)
+            erry_bot.set_xdata(x_base)
+            erry_top.set_ydata(yerr_top)
+            erry_bot.set_ydata(yerr_bot)
+        except:
+            pass
 
         new_segments_x = [np.array([[xt, y], [xb,y]]) for xt, xb, y in zip(xerr_top, xerr_bot, y_base)]
         new_segments_y = [np.array([[x, yt], [x,yb]]) for x, yt, yb in zip(x_base, yerr_top, yerr_bot)]

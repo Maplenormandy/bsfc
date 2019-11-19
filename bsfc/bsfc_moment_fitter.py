@@ -484,7 +484,7 @@ class MomentFitter:
                     self.fitSingleBin(tbin, chbin, emcee_threads=emcee_threads)
 
     #####
-    def plotSingleBinFit(self, tbin, chbin, forPaper=True):
+    def plotSingleBinFit(self, tbin, chbin, forPaper=False):
         ''' Function designed to plot spectrum from a single time and a single channel bin.
         This allows visualization and comparison of the results of nonlinear optimization,
         MCMC sampling or Nested Sampling.
@@ -560,7 +560,7 @@ class MomentFitter:
             plt.tight_layout()
             plt.tight_layout()
             plt.subplots_adjust(hspace=0.05)
-            plt.savefig('/home/normandy/Pictures/BSFC/newfigs/figure1_new.png')
+            #plt.savefig(os.path.expanduser+'/Pictures/BSFC/newfigs/figure1_new.png')
         plt.show()
 
 
