@@ -31,29 +31,33 @@ def get_shot_info(shot):
         tht=5
     elif shot==1101014019:       # EDA H-mode FS
         primary_impurity = 'Ca'
-        primary_line = 'z' # 'w'
+        primary_line = 'w' #'z' # 'w'
         # used to be 128, changed it to 125
         tbin=125; chbin=11
         #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
         #tbin=111; chbin=15   #problematic
-        t_min=1.24; t_max=1.4
+        t_min = 0.83; t_max = 1.4 # entire LBO interval
+        #t_min=1.24; t_max=1.4
         #t_min=1.26; t_max=1.27
         tht=0
     elif shot==1101014029:      # I-mode FS
         primary_impurity = 'Ca'
-        primary_line = 'z' #'w'
+        primary_line = 'w' # 'z' #'w'
         tbin=120; chbin=7  #good
         #tbin=6; chbin=19   # apparently below noise level ?
         #tbin=9; chbin = 4    # very little signal, fit should be thrown out
-        t_min=1.18; t_max=1.3
+        #t_min=1.18; t_max=1.3
+        t_min=0.78; t_max=1.55 # entire LBO interval
         tht=0
     elif shot==1101014030:    # I-mode FS
-        primary_impurity = 'Ca'
-        primary_line = 'z' # 'w'
+        primary_impurity = 'Ar' #'Ca'
+        primary_line = 'z' #'all' #'z' # 'w'
         #tbin=128; chbin=31  # t=1.2695
-        tbin=116; chbin=18  # t=1.2095, ~ peak signal
-        t_min=1.185; t_max=1.3
-        tht=0
+        #tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
+        tbin = 5; chbin = 18
+        t_min=0.780; t_max = 1.5  # entire LBO interval
+        #t_min=1.185; t_max=1.3
+        tht=1   # for Ca: THT=0; for Ar: THT=1
     elif shot==1100305019:
         primary_impurity = 'Ca'
         primary_line = 'w'
@@ -81,28 +85,29 @@ def get_shot_info(shot):
         t_min=0.81; t_max=0.84
         tht = 0
     elif shot==1101014006:     # L-mode FS
-        primary_impurity = 'Ca'
-        primary_line = 'w'
-        #primary_line = 'z'
+        primary_impurity = 'Ar' #'Ca'
+        primary_line = 'zz' #'all' #'z' #'w'
         #tbin=116; chbin=18
-        tbin=124; chbin=11
-        t_min=1.155; t_max=1.265
-        tht=0
+        #tbin=124; chbin=11   # good for Ca
+        tbin=14; chbin=20   # for Ar
+        t_min = 0.75; t_max = 1.5  #entire LBO interval
+        #t_min=1.155; t_max=1.265
+        tht=2 #0   # for Ca: THT=0; for Ar: THT=2
     elif shot==1101014011:     # L-mode FS
         primary_impurity = 'Ca'
-        primary_line = 'w'
-        #primary_line = 'z'
+        primary_line = 'z' #'w'
         #tbin=116; chbin=18
         tbin=124; chbin=11
-        t_min=0.7; t_max=0.95
+        #t_min=0.7; t_max=0.95
+        t_min = 0.75; t_max = 1.5  #entire LBO interval
         tht=0
     elif shot==1101014012:     # L-mode FS
         primary_impurity = 'Ca'
-        #primary_line = 'w'
-        primary_line = 'z'
+        primary_line = 'w' # 'z'
         #tbin=116; chbin=18
         tbin=124; chbin=11
-        t_min=1.150; t_max=1.3
+        #t_min=1.150; t_max=1.3
+        t_min = 0.75; t_max = 1.5  #entire LBO interval
         tht=0   
     elif str(shot).startswith('1140729'): #1140729021 or shot==1140729023 or shot==1140729030:
         primary_impurity = 'Ca'

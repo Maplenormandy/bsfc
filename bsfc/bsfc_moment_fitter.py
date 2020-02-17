@@ -6,7 +6,6 @@ This script contains the MomentFitter class. This loads experimental data and st
 '''
 import numpy as np
 from collections import namedtuple
-import pdb
 import multiprocessing
 import itertools
 import os
@@ -16,7 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 plt.ion()
 import shutil
-
+from IPython import embed
 # packages that are specific to tokamak fits:
 import MDSplus
 
@@ -111,15 +110,25 @@ class MomentFitter:
                     lam_bounds = (3.010, 3.027)
                 elif primary_line == 'z':
                     lam_bounds = (3.205, 3.215)
+                elif primary_line == 'all':
+                    primary_line = 'w' # substitute to allow routine to recognize line name
+                    lam_bounds = (3.172, 3.215)
                 else:
                     raise NotImplementedError("Line is not yet implemented")
+
             elif primary_impurity == 'Ar':
                 if primary_line == 'w':
                     lam_bounds = (3.945, 3.954)
                 elif primary_line == 'z':
-                    lam_bounds = (3.897, 3.998)
+                    lam_bounds = (3.987,3.998) # (3.897, 3.998)
                 elif primary_line == 'lya1':
                     lam_bounds = (3.725, 3.745)
+                elif primary_line == 'zz': # stricter bounds near z (and j)
+                    primary_line = 'z'   # substitute to allow routine to recognize line name
+                    lam_bounds = (3.975,3.998) #(3.725, 3.998)
+                elif primary_line == 'zzz': # very strict bounds near z (and j)
+                    primary_line = 'z'   # substitute to allow routine to recognize line name
+                    lam_bounds = (3.992,3.998) #(3.725, 3.998)                    
                 else:
                     raise NotImplementedError("Line is not yet implemented")
 
@@ -165,7 +174,7 @@ class MomentFitter:
         branchB = False
         lamInRange = False
         try:
-            branchNode = specTree.getNode(rootPath+'.HELIKE')
+            branchNode = specTree.getNode(rootPath+'.HLIKE')  #HE-->H
             self.lam_all = branchNode.getNode('SPEC:LAM').data()
             if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
                 #print "Fitting on Branch A"
@@ -176,7 +185,7 @@ class MomentFitter:
 
         if not lamInRange:
             try:
-                branchNode = specTree.getNode(rootPath+'.HLIKE')
+                branchNode = specTree.getNode(rootPath+'.HELIKE')   #H-->He
                 self.lam_all = branchNode.getNode('SPEC:LAM').data()
                 if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
                     #print "Fitting on Branch B"
@@ -196,17 +205,23 @@ class MomentFitter:
         np.seterr(**oldset)
 
         try:
-            if branchB:
+            try: #if branchB:
                 # Hack for now; usually the POS variable is in LYA1 on branch B
                 pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
-            else:
+            except: #else:
                 # Otherwise, load the POS variable as normal
-                pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
+                try:
+                    pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
+                except:
+                    # it might be here? Works for 1101014030
+                    pos_tmp = branchNode.getNode('MOMENTS.Z:POS').data()
 
             self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
         except:
             print "Warning, unable to load pos vector"
 
+        #import pdb
+        #pdb.set_trace()
         # Maximum number of channels, time bins
         self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
         self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
@@ -214,10 +229,16 @@ class MomentFitter:
         # get time basis
         tmp=np.asarray(branchNode.getNode('SPEC:SIG').dim_of(1))
         mask = [tmp>-1]
-        self.time = tmp[mask]
-
+        self.time = tmp[tuple(mask)]
+        print('Available times for analysis:', self.time)
+        
+        #embed()
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
+
+
+
+        
     def load_D3D_cer(self, primary_impurity, primary_line, shot, tht, lam_bounds, cer_file='cer_wavelengths.csv'):
         '''
         Function to load CER data for D3D. Assumes that rest wavelengths, ionization stages and
@@ -326,7 +347,7 @@ class MomentFitter:
 
         pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data()
         self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
-
+        
         # Maximum number of channels, time bins
         self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
         self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
@@ -361,6 +382,7 @@ class MomentFitter:
         sig = self.sig_all[w0:w1,tbin,chbin]
         whitefield = self.whitefield[w0:w1,tbin,chbin]
 
+        #embed()
         # Fix NaN whitefield values by taking the average of the two neighbors
         nans = np.isnan(whitefield)
         if np.any(nans):
@@ -509,8 +531,10 @@ class MomentFitter:
 
         if bf.good:
             # color list, one color for each spectral line
+            #from matplotlib import cm 
             #color=cm.rainbow(np.linspace(0,1,len(self.lines.names)))
             color = ['b','g','c','m','y','k']
+
             # plot in red the overall reconstructed spectrum (sum of all spectral lines)
             pred = bf.lineModel.modelPredict(bf.theta_ml)
             a0.plot(bf.lam, pred, c='r')
@@ -536,10 +560,12 @@ class MomentFitter:
             a0.plot(bf.lam, noise, c='k', label='Inferred noise')
 
             if not forPaper:
-                a0.set_title('tbin='+str(tbin)+', chbin='+str(chbin))
+                a0.set_title('')
+                #a0.set_title('tbin='+str(tbin)+', chbin='+str(chbin))
             else:
                 a1.set_xlabel('Wavelength [$\AA$]')
                 a0.set_ylabel('Brightness [a.u.]')
+                a1.set_ylabel('Residual [a.u.]')
 
             # plot all fitted spectral lines, one in each color
             for i in range(len(self.lines.names)):
@@ -554,6 +580,11 @@ class MomentFitter:
                 a1.axvline(self.lines.lam[i], c='b', ls='--')
                 a0.axvline(self.lines.lam[i], c='b', ls='--')
 
+            a0.set_ylabel('signal [AU]')
+            a1.set_ylabel('res. [AU]')
+            a1.set_xlabel(r'$\lambda$ [A]')
+
+                          
         if forPaper:
             a1.yaxis.set_major_locator(mpl.ticker.MultipleLocator(2))
             plt.xticks(rotation=45)

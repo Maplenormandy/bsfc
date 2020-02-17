@@ -32,6 +32,13 @@ import scipy
 from helpers import bsfc_cmod_shots
 from helpers import bsfc_autocorr
 
+import matplotlib as mpl
+
+mpl.rcParams['axes.labelsize']=20
+mpl.rcParams['legend.fontsize']=20 #16
+mpl.rcParams['xtick.labelsize']=18 #14
+mpl.rcParams['ytick.labelsize']=18 #14
+
 #from mpi4py import MPI
 #comm = MPI.COMM_WORLD
 #rank = comm.Get_rank()
@@ -125,7 +132,7 @@ if loaded==False:
 
     # Do a single spectral fit with nested sampling
     mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=500,
-                    sampling_efficiency=0.3,verbose=True,const_eff=True,
+                    sampling_efficiency=0.05,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
 
     # save fits for future use
@@ -156,7 +163,7 @@ if loaded==True:
     #)
 
 
-    mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
+    mf.plotSingleBinFit(tbin=tbin, chbin=chbin) #, forPaper=True)
 
     #from IPython import embed
     #embed()
@@ -166,6 +173,9 @@ if loaded==True:
     if args.line_name is None:
         # if user didn't request a specific line, assume that primary line is of interest
         args.line_name = mf.primary_line
+
+    if args.line_name=='all':
+        args.line_name='w'
         
     try:
         line_id = np.where(mf.fits[tbin][chbin].lineModel.linesnames==args.line_name)[0][0]
@@ -202,3 +212,6 @@ if rank==0:
 
 
 #plt.show(block=True)
+
+
+#plt.subplots_adjust(hspace=0.1,right=0.99,left=0.15)
