@@ -28,16 +28,154 @@ import gptools
 
 LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split())
 
-def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w'):
+
+
+
+def hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity,
+                plot_pos=False, plot_on_tokamak=False, check_with_tree=False):
     '''
-    Get wavelength ranges for Hirex-Sr at C-Mod
+    Get the POS vector as defined in the THACO manual. 
+    Unlike in THACO, here we use POS vectors averaged over the wavelength range of the line of interest, rather than over the wavelength range that is fit (including various satellite lines). This reduces the averaging quite significantly. 
+
+    Plotting functions make use of the eqtools and TRIPPy packages.
+    '''
+    
+    specTree = MDSplus.Tree('spectroscopy', shot)
+    
+    if hirex_branch=='B':
+        # pos vectors for detector modules 1-3
+        pos1 = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD1:POS').data()
+        pos2 = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD2:POS').data()
+        pos3 = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD3:POS').data()
+        
+        # wavelengths for each module
+        lam1 = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD1:LAMBDA').data()
+        lam2 = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD2:LAMBDA').data()
+        lam3 = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD3:LAMBDA').data()
+        
+        pos_tot = np.hstack([pos1,pos2,pos3])
+        lam_tot = np.hstack([lam1,lam2,lam3])
+    else:
+        # 1 detector module
+        pos_tot = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD4:POS').data()
+    
+        # wavelength
+        lam_tot = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.CALIB.MOD4:LAMBDA').data()
+        
+        
+    branchNode = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS{:s}.{:s}LIKE'.format(
+        str(tht) if tht!=0 else '','HE' if hirex_branch=='B' else 'H'))
+        
+    # mapping from pixels to chords (wavelength x space pixels, but wavelength axis is just padding)
+    chmap = branchNode.getNode('BINNING:CHMAP').data()
+    pixels_to_chords = chmap[0,:]
+    
+    # find over which wavelengths the pos vector should be averaged at every time
+    # get lambda bounds for specific BSFC line for accurate impurity forward modeling:
+    lam_bounds = get_hirexsr_lam_bounds(primary_impurity, primary_line, reduced=True)
+
+    lam_all = branchNode.getNode('SPEC:LAM').data()
+
+    # exclude empty chords
+    mask = lam_all[0,0,:]!=-1
+    lam_masked = lam_all[:,:,mask]
+
+    # lambda vector does not change over time, so just use tbin=0
+    tbin=0
+    w0=[]; w1=[]
+    for chbin in np.arange(lam_masked.shape[2]):
+        bb = np.searchsorted(lam_masked[:,tbin,chbin], lam_bounds)
+        w0.append(bb[0])
+        w1.append(bb[1])
+        
+    # form chords
+    pos_ave = []
+    for chord in np.arange(lam_masked.shape[2]):
+        pos_ave.append( np.mean(pos_tot[w0[chord]:w1[chord], pixels_to_chords == chord,:], axis=(0,1) ))
+    pos_ave = np.array(pos_ave)
+
+
+    if plot_pos:
+        # show each component of the pos vector separately
+        fig,ax = plt.subplots(2,2)
+        axx = ax.flatten()
+        for i in [0,1,2,3]:
+            pcm = axx[i].pcolormesh(pos_tot[:,:,i].T)
+            axx[i].axis('equal')
+            fig.colorbar(pcm, ax=axx[i])
+            
+    if plot_on_tokamak:
+        import TRIPPy
+        import eqtools
+        
+        # visualize chords
+        efit_tree = eqtools.CModEFITTree(shot)
+        tokamak = TRIPPy.plasma.Tokamak(efit_tree)
+        
+        #pos_ave[:,0]*=1.2
+        # pos[:,3] indicate spacing between rays
+        rays = [TRIPPy.beam.pos2Ray(p, tokamak) for p in pos_ave]   #pos_old]
+        
+        t0=1.25
+        
+        weights = TRIPPy.invert.fluxFourierSens(
+            rays,
+            efit_tree.rz2psinorm,
+            tokamak.center,
+            t0,
+            np.linspace(0,1, 150),
+            ds=1e-5
+        )[0]
+        
+        from TRIPPy.plot.pyplot import plotTokamak, plotLine
+        
+        f = plt.figure()
+        a = f.add_subplot(1, 1, 1)
+        # Only plot the tokamak if an axis was not provided:
+        plotTokamak(tokamak)
+        
+        for r in rays:
+            plotLine(r, pargs='r')
+            
+            
+        i_flux = np.searchsorted(efit_tree.getTimeBase(), t0)
+
+        a.contour(
+            efit_tree.getRGrid(),
+            efit_tree.getZGrid(),
+            efit_tree.getFluxGrid()[i_flux, :, :],
+            80
+        )
+
+    if check_with_tree:
+        try:
+            pos_on_tree = branchNode.getNode('MOMENTS.{:s}:POS'.format(primary_line.upper())).data()
+        except:
+            pos_on_tree = branchNode.getNode('MOMENTS.LYA1:POS').data()
+        return pos_ave, pos_on_tree
+    else:
+        return pos_ave
+
+
+
+
+
+def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w', reduced=False):
+    '''
+    Get wavelength ranges for Hirex-Sr at C-Mod.
+    
+    reduced : bool, optional
+        Boolean specifying whether a reduced or full wavelength range near the indicated primary
+        line should be returned. The reduced range only gives the wavelengths where the line is normally 
+        observed. The extended range includes satellite lines that must be fitted together with the 
+        primary line. Use the reduced range to calculate the POS vector and the full range for fitting. 
     '''
 
     if primary_impurity == 'Ca':
         if primary_line == 'w':    # w-line at 3.177 mA
-            lam_bounds = (3.172, 3.188)
+            lam_bounds = (3.175, 3.181) if reduced else (3.172, 3.188)
         elif primary_line == 'z':   # z-line at 3.211 mA
-            lam_bounds = (3.205, 3.215)
+            lam_bounds = (3.208, 3.215) if reduced else (3.205, 3.215)
         elif primary_line == 'lya1':
             lam_bounds = (3.010, 3.027)
         elif primary_line == 'z':
@@ -50,9 +188,10 @@ def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w'):
 
     elif primary_impurity == 'Ar':
         if primary_line == 'w':
-            lam_bounds = (3.945, 3.954)
+            # not much of a reduction in lam space
+            lam_bounds = (3.946,3.952) if reduced else (3.945, 3.954)
         elif primary_line == 'z':
-            lam_bounds = (3.987,3.998) # (3.897, 3.998)
+            lam_bounds = (3.991,3.998) if reduced else (3.987,3.998) # (3.897, 3.998)
         elif primary_line == 'lya1':
             lam_bounds = (3.725, 3.745)
         elif primary_line == 'zz': # stricter bounds near z (and j)
@@ -110,7 +249,8 @@ class MomentFitter:
                 raise ValueError('Instruments other than Hirex-Sr not yet implemented for CMOD!')
         elif  experiment=='D3D':
             if instrument=='CER':
-                self.load_D3D_cer(primary_impurity, primary_line, shot, tht, lam_bounds)
+                raise ValueError('CER has not been implemented for D3D!')
+                #self.load_D3D_cer(primary_impurity, primary_line, shot, tht, lam_bounds)
             else:
                 raise ValueError('Instruments other than CER are not yet implemented for D3D!')
         else:
@@ -140,7 +280,7 @@ class MomentFitter:
             atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
         
         if lam_bounds == None:
-            lam_bounds = cmod_hirexsr_lam_bounds.get_hirexsr_lam_bounds(primary_impurity, primary_line)
+            lam_bounds = get_hirexsr_lam_bounds(primary_impurity, primary_line)
 
         self.lam_bounds = lam_bounds
 
@@ -166,13 +306,7 @@ class MomentFitter:
         pl_sorted = np.argsort(np.abs(self.lines.lam-self.lines.lam[self.pl]))
         for data in self.lines:
             data = data[pl_sorted]
-
-        '''
-        print 'Fitting:', [self.lines.symbol[i] +
-                ' ' + self.lines.names[i] + ' @ ' +
-                str(self.lines.lam[i]) for i in range(len(self.lines.names))]
-        '''
-
+        
         specTree = MDSplus.Tree('spectroscopy', shot)
 
         ana = '.ANALYSIS'
@@ -181,193 +315,48 @@ class MomentFitter:
 
         # Determine which, if any, detector has the desired lam_bounds
         rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
-        branchB = False
+        self.hirex_branch='A'
         lamInRange = False
+        
         try:
-            branchNode = specTree.getNode(rootPath+'.HLIKE')  #HE-->H
+            branchNode = specTree.getNode(rootPath+'.HLIKE')  
             self.lam_all = branchNode.getNode('SPEC:LAM').data()
             if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
-                #print "Fitting on Branch A"
                 lamInRange = True
-                branchB = False
+                self.hirex_branch = 'A'
         except:
-            pass
-
-        if not lamInRange:
             try:
-                branchNode = specTree.getNode(rootPath+'.HELIKE')   #H-->He
+                branchNode = specTree.getNode(rootPath+'.HELIKE')  
                 self.lam_all = branchNode.getNode('SPEC:LAM').data()
                 if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
-                    #print "Fitting on Branch B"
                     lamInRange = True
-                    branchB = True
+                    self.hirex_branch = 'B'
             except:
-                pass
-
-        if not lamInRange:
-            raise ValueError("Fit range does not appear to be on detector")
+                raise ValueError("Fit range does not appear to be on detector")
 
         # Indices are [lambda, time, channel]
         self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
         self.sig_all = branchNode.getNode('SPEC:SIG').data()
-        oldset = np.seterr(divide='ignore') #temporarily ignore divide by 0 warnings
-        self.whitefield = self.specBr_all / self.sig_all**2
-        np.seterr(**oldset)
+        with np.errstate(divide='ignore', invalid='ignore'):  #temporarily ignore divide by 0 warnings
+            self.whitefield = self.specBr_all / self.sig_all**2
 
-        try:
-            try: #if branchB:
-                # Hack for now; usually the POS variable is in LYA1 on branch B
-                pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
-            except: #else:
-                # Otherwise, load the POS variable as normal
-                try:
-                    pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
-                except:
-                    # it might be here? Works for 1101014030
-                    pos_tmp = branchNode.getNode('MOMENTS.Z:POS').data()
+        # load pos vector:
+        self.pos = hirexsr_pos(shot, self.hirex_branch, tht, primary_line, primary_impurity)
 
-            self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
-        except:
-            print "Warning, unable to load pos vector"
-
-        #import pdb
-        #pdb.set_trace()
         # Maximum number of channels, time bins
         self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
         self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
 
         # get time basis
         tmp=np.asarray(branchNode.getNode('SPEC:SIG').dim_of(1))
-        mask = [tmp>-1]
-        self.time = tmp[tuple(mask)]
-        print('Available times for analysis:', self.time)
+        
+        mask = tmp>-1
+        self.time = tmp[mask]
+        #print Available times for analysis:', self.time
         
         #embed()
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
-
-
-
-        
-    def load_D3D_cer(self, primary_impurity, primary_line, shot, tht, lam_bounds, cer_file='cer_wavelengths.csv'):
-        '''
-        Function to load CER data for D3D. Assumes that rest wavelengths, ionization stages and
-        atomic line names are given in a file provided as input.
-        '''
-        self.cer_file = str(cer_file)
-
-        # Load all wavelength data
-        with open(cer_file, 'r') as f:
-            lineData = [s.strip().split(',') for s in f.readlines()]
-            lineLam = np.array([float(ld[1]) for ld in lineData[2:]])
-            lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
-            lineName = np.array([ld[3] for ld in lineData[2:]])
-
-        amuToKeV = 931494.095 # amu in keV
-
-        # Load atomic data, for calculating line widths, etc...
-        with open('atomic_data.csv', 'r') as f:
-            atomData = [s.strip().split(',') for s in f.readlines()]
-            atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
-            atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
-
-        if lam_bounds == None:
-            if primary_impurity == 'Ca':
-                if primary_line == 'w':
-                    lam_bounds = (3.172, 3.188)
-                elif primary_line == 'lya1':
-                    lam_bounds = (3.010, 3.027)
-                else:
-                    raise NotImplementedError("Line is not yet implemented")
-            elif primary_impurity == 'Ar':
-                if primary_line == 'w':
-                    lam_bounds = (3.945, 3.960)
-                elif primary_line == 'z':
-                    raise NotImplementedError("Not implemented yet (needs line tying)")
-                elif primary_line == 'lya1':
-                    lam_bounds = (3.725, 3.742)
-                else:
-                    raise NotImplementedError("Line is not yet implemented")
-
-        self.lam_bounds = lam_bounds
-
-        # Populate the line data
-        lineInd = np.logical_and(lineLam>lam_bounds[0], lineLam<lam_bounds[1])
-        #satelliteLines = np.array(['s' not in l for l in lineName])
-        #lineInd = np.logical_and(satelliteLines, lineInd)
-        ln = lineName[lineInd]
-        ll = lineLam[lineInd]
-        lz = lineZ[lineInd]
-        lm = atomMass[lz-1]
-        ls = atomSymbol[lz-1]
-
-        # Get the index of the primary line
-        self.pl = np.where(ln==primary_line)[0][0]
-
-        lr = np.sqrt(lm / lm[self.pl])
-
-        self.lines = LineInfo(ll, lm, ln, ls, lz, lr)
-
-        # Sort lines by distance from primary line
-        pl_sorted = np.argsort(np.abs(self.lines.lam-self.lines.lam[self.pl]))
-        for data in self.lines:
-            data = data[pl_sorted]
-
-        '''
-        print 'Fitting:', [self.lines.symbol[i] +
-                ' ' + self.lines.names[i] + ' @ ' +
-                str(self.lines.lam[i]) for i in range(len(self.lines.names))]
-        '''
-
-        # TODO: modify for D3D!
-        specTree = MDSplus.Tree('spectroscopy', shot)
-
-        ana = '.ANALYSIS'
-        if tht > 0:
-            ana += str(tht)
-
-        # Determine which, if any, detector has the desired lam_bounds
-        rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
-        lamInRange = False
-        try:
-            branchNode = specTree.getNode(rootPath+'.HELIKE')
-            self.lam_all = branchNode.getNode('SPEC:LAM').data()
-            if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
-                #print "Fitting on Branch A"
-                lamInRange = True
-        except:
-            pass
-
-        if not lamInRange:
-            try:
-                branchNode = specTree.getNode(rootPath+'.HLIKE')
-                self.lam_all = branchNode.getNode('SPEC:LAM').data()
-                if np.any(np.logical_and(self.lam_all>lam_bounds[0], self.lam_all<lam_bounds[1])):
-                    #print "Fitting on Branch B"
-                    lamInRange = True
-            except:
-                pass
-
-        if not lamInRange:
-            raise ValueError("Fit range does not appear to be on detector")
-
-        # Indices are [lambda, time, channel]
-        self.specBr_all = branchNode.getNode('SPEC:SPECBR').data()
-        self.sig_all = branchNode.getNode('SPEC:SIG').data()
-
-        pos_tmp = specTree.getNode(r'\SPECTROSCOPY::TOP.HIREXSR.ANALYSIS.HLIKE.MOMENTS.LYA1.POS').data()
-        self.pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
-        
-        # Maximum number of channels, time bins
-        self.maxChan = np.max(branchNode.getNode('BINNING:CHMAP').data())+1
-        self.maxTime = np.max(branchNode.getNode('BINNING:TMAP').data())+1
-
-        # get time basis
-        tmp=np.asarray(branchNode.getNode('SPEC:SIG').dim_of(1))
-        mask = tmp>-1
-        self.time = tmp[mask]
-
-        self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
 
 
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,

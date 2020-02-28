@@ -7,30 +7,30 @@ Database of C-Mod shots, corresponding atomic lines, times of interest, THT for 
 
 
 
-def get_shot_info(shot):
+def get_shot_info(shot, imp_override=None):
     ''' Function to output key information for BSFC fitting of atomic lines  '''
 
     if shot==1121002022:
-        primary_impurity = 'Ar'
+        primary_impurity = 'Ar' if imp_override is None else imp_override
         primary_line = 'lya1'
         tbin=5; chbin=40
         t_min=0.7; t_max=0.8
         tht=0
     elif shot==1120914029:    #I-mode FS
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'lya1'
         tbin=104; chbin=11
         t_min= 1.29; t_max=1.4
         tht=9 ############# tht=0 has 15 chords; tht=9 has 32
     elif shot==1120914036:      # I-mode FS
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'lya1'
         tbin=104; chbin=11
         #t_min=1.05; t_max=1.27
         t_min= 0.89; t_max=1.05
         tht=5
     elif shot==1101014019:       # EDA H-mode FS
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w' #'z' # 'w'
         # used to be 128, changed it to 125
         tbin=125; chbin=11
@@ -41,7 +41,7 @@ def get_shot_info(shot):
         #t_min=1.26; t_max=1.27
         tht=0
     elif shot==1101014029:      # I-mode FS
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w' # 'z' #'w'
         tbin=120; chbin=7  #good
         #tbin=6; chbin=19   # apparently below noise level ?
@@ -50,7 +50,7 @@ def get_shot_info(shot):
         t_min=0.78; t_max=1.55 # entire LBO interval
         tht=0
     elif shot==1101014030:    # I-mode FS
-        primary_impurity = 'Ar' #'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override  
         primary_line = 'w' #'all' #'z' # 'w'
         #tbin=128; chbin=31  # t=1.2695
         #tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
@@ -58,35 +58,38 @@ def get_shot_info(shot):
         ####t_min=0.780; t_max = 1.5  # entire LBO interval
         t_min = 1.2; t_max = 1.3
         #t_min=1.185; t_max=1.3
-        tht=1   # for Ca: THT=0; for Ar: THT=1
+        if primary_impurity=='Ar':   # for Ca: THT=0; for Ar: THT=1
+            tht=1
+        else:
+           tht=0
     elif shot==1100305019:
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w'
         # tbin=128; chbin=11
         tbin=116; chbin=18
         t_min=0.98; t_max=1.2
         tht=9
     elif shot==1160506007:
-        primary_impurity = 'Ar'
+        primary_impurity = 'Ar' if imp_override is None else imp_override
         primary_line = 'w'
         tbin = 46; chbin = 40
         t_min=0.93; t_max=0.99 #counter-current rotation SOC
         #t_min=0.57; t_max=0.63 #co-current rotation LOC
         tht = 0
     elif shot==1150903021:
-        primary_impurity = 'Ar'
+        primary_impurity = 'Ar' if imp_override is None else imp_override
         primary_line = 'w'
         tbin = 16; chbin = 6
         t_min=0.93; t_max=0.99
         tht = 2
     elif shot==1160920007:
-        primary_impurity = 'Ar'
+        primary_impurity = 'Ar' if imp_override is None else imp_override
         primary_line = 'lya1'
         tbin = 12; chbin = 4
         t_min=0.81; t_max=0.84
         tht = 0
     elif shot==1101014006:     # L-mode FS
-        primary_impurity = 'Ar' #'Ca'
+        primary_impurity = 'Ar' if imp_override is None else imp_override
         primary_line = 'zz' #'all' #'z' #'w'
         #tbin=116; chbin=18
         #tbin=124; chbin=11   # good for Ca
@@ -95,7 +98,7 @@ def get_shot_info(shot):
         #t_min=1.155; t_max=1.265
         tht=2 #0   # for Ca: THT=0; for Ar: THT=2
     elif shot==1101014011:     # L-mode FS
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'z' #'w'
         #tbin=116; chbin=18
         tbin=124; chbin=11
@@ -103,7 +106,7 @@ def get_shot_info(shot):
         t_min = 0.75; t_max = 1.5  #entire LBO interval
         tht=0
     elif shot==1101014012:     # L-mode FS
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w' # 'z'
         #tbin=116; chbin=18
         tbin=124; chbin=11
@@ -111,7 +114,7 @@ def get_shot_info(shot):
         t_min = 0.75; t_max = 1.5  #entire LBO interval
         tht=0   
     elif str(shot).startswith('1140729'): #1140729021 or shot==1140729023 or shot==1140729030:
-        primary_impurity = 'Ca'
+        primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w'
         tbin=155; chbin=1  #tbin=155 is t=1.43
         #t_min=0.98; t_max=1.2 #1.15
@@ -120,6 +123,5 @@ def get_shot_info(shot):
     else:
         # define more lines!
         raise Exception('Times of interest not set for this shot!')
-
 
     return primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht

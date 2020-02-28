@@ -15,7 +15,10 @@ from helpers import bsfc_cmod_shots
 
 parser = argparse.ArgumentParser()
 parser.add_argument("shot", type=int, help="shot number.")
-parser.add_argument("-l", "--primary_line",type=str, default='w', help="Primary line to save for MITIM analysis.")
+parser.add_argument("-imp", "--primary_impurity", type=str,
+                    default=None, help="Overrun primary_impurity from bsfc_cmod_shots.")
+parser.add_argument("-l", "--primary_line",type=str, default=None,
+                    help="Overrun primary_line from bsf_cmod_shots.")
 parser.add_argument("-p", "--plot", action='store_true', help="Indicate whether results should be plotted")
 
 
@@ -23,41 +26,18 @@ args = parser.parse_args()
 
 
 # get key info for requested shot:
-primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(args.shot)
-primary_line = args.primary_line # over-ride
+primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.get_shot_info(args.shot,
+                                                imp_override=args.primary_impurity if args.primary_impurity is not None else '' )
+if args.primary_impurity is not None: primary_impurity = args.primary_impurity # overrun
+if args.primary_line is not None: primary_line = args.primary_line # overrun
 
 
 mf = MomentFitter(primary_impurity, primary_line, args.shot, tht=tht)
 
-# ===== load pos vector ======= #
-specTree = MDSplus.Tree('spectroscopy', args.shot)
-ana = '.ANALYSIS'
 
-if tht > 0:
-    ana += str(tht)
+# make sure to have the right pos vector for emission forward modeling:
+pos = hirexsr_pos(args.shot, mf.hirex_branch, tht, primary_line, primary_impurity)
 
-rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
-
-try: # branch A
-    # Hack for now; usually the POS variable is in LYA1 on branch B
-    branchNode = specTree.getNode(rootPath+'.HLIKE')  #HE-->H
-    lam_all = branchNode.getNode('SPEC:LAM').data()
-    pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
-    
-except:  #branch B
-    branchNode = specTree.getNode(rootPath+'.HELIKE')    #H-->He
-    lam_all = branchNode.getNode('SPEC:LAM').data()
-    # Otherwise, load the POS variable as normal
-    try:
-        pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
-    except:
-        try:
-            pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
-        except:
-            # for Ar, pos vector seems to be on Z...
-            pos_tmp = branchNode.getNode('MOMENTS.Z:POS').data()
-        
-pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
 
 
 # ====== load BSFC results ======= #
@@ -68,7 +48,8 @@ with open(home+'/bsfc/bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.sh
 
 # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
 out = bsfc_clean_moments.clean_moments(mf.time,mf.maxChan,t_min,t_max,
-                                       gathered_moments,BR_THRESH=2e8, BR_STD_THRESH=2e8, normalize=False) # do not normalize at this stage
+                                       gathered_moments,BR_THRESH=1e3, #2e3,
+                                       BR_STD_THRESH=2e8, normalize=False) # do not normalize at this stage
 
 moments_vals, moments_stds, time_sel = out
 
