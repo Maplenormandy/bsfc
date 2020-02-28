@@ -25,10 +25,10 @@ def clean_moments(mf_time,mf_maxChan, t_min, t_max, gathered_moments, BR_THRESH=
 
     normalize: normalize brightness to largest value across chords.
     '''
-
-    tidx_min = np.argmin(np.abs(mf_time - t_min))
-    tidx_max = np.argmin(np.abs(mf_time - t_max))
-    time_sel= mf_time[tidx_min: tidx_max]
+    ind_sel = np.where(np.logical_and(mf_time>t_min, mf_time<t_max))
+    time_sel= np.array(mf_time)[ind_sel] #[tidx_min: tidx_max]
+    tidx_min = ind_sel[0][0]
+    tidx_max = ind_sel[0][-1]+1  # python indexing
 
     # get individual spectral moments 
     moments_vals = np.empty((tidx_max-tidx_min,mf_maxChan,3))

@@ -9,6 +9,7 @@ import glob, argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("shot", type=int, help="shot number to run analysis on.")
 parser.add_argument("primary_line", type=str, help="name of primary atomic line of fit.")
+parser.add_argument("primary_impurity", type=str, help="name of primary atomic impurity giving rise to line of fit.")
 parser.add_argument("t_min", type=float, help="name of primary atomic line of fit.")
 parser.add_argument("t_max", type=float,help="name of primary atomic line of fit.")
 parser.add_argument("tb", type=int,help="name of primary atomic line of fit.")
@@ -25,7 +26,7 @@ args = parser.parse_args()
 
 
 # load moment fitter setup 
-with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,args.t_min,args.t_max,args.primary_line),'rb') as f:
+with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,args.t_min,args.t_max,args.primary_line, args.primary_impurity),'rb') as f:
     mf=pkl.load(f)
 
 # do fit in the directory of 'basename'
@@ -65,8 +66,8 @@ if rank==0:
     
     # checkpoints and case_dir directories must be created externally to this script!
     checkpoints_dir ='checkpoints/'
-    case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}/'.format(args.shot,args.t_min,args.t_max)
-    file_name = 'moments_{:d}_bin{:d}_{:d}_{:s}line.pkl'.format(args.shot,args.tb,args.cb,args.primary_line)
+    case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}_{:s}/'.format(args.shot,args.t_min,args.t_max, args.primary_impurity)
+    file_name = 'moments_{:d}_bin{:d}_{:d}_{:s}line_{:s}.pkl'.format(args.shot,args.tb,args.cb,args.primary_line, args.primary_impurity)
     resfile = checkpoints_dir + case_dir + file_name
     
     # save measurement results to checkpoint file

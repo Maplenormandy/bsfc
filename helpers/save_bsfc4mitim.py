@@ -18,6 +18,7 @@ parser.add_argument("shot", type=int, help="shot number.")
 parser.add_argument("-l", "--primary_line",type=str, default='w', help="Primary line to save for MITIM analysis.")
 parser.add_argument("-p", "--plot", action='store_true', help="Indicate whether results should be plotted")
 
+
 args = parser.parse_args()
 
 
@@ -39,18 +40,22 @@ rootPath = r'\SPECTROSCOPY::TOP.HIREXSR'+ana
 
 try: # branch A
     # Hack for now; usually the POS variable is in LYA1 on branch B
-    branchNode = specTree.getNode(rootPath+'.HELIKE')
+    branchNode = specTree.getNode(rootPath+'.HLIKE')  #HE-->H
     lam_all = branchNode.getNode('SPEC:LAM').data()
     pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
     
 except:  #branch B
-    branchNode = specTree.getNode(rootPath+'.HLIKE')
+    branchNode = specTree.getNode(rootPath+'.HELIKE')    #H-->He
     lam_all = branchNode.getNode('SPEC:LAM').data()
     # Otherwise, load the POS variable as normal
     try:
         pos_tmp = branchNode.getNode('MOMENTS.'+primary_line.upper()+':POS').data()
     except:
-        pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
+        try:
+            pos_tmp = branchNode.getNode('MOMENTS.LYA1:POS').data()
+        except:
+            # for Ar, pos vector seems to be on Z...
+            pos_tmp = branchNode.getNode('MOMENTS.Z:POS').data()
         
 pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
 
@@ -58,7 +63,7 @@ pos=np.squeeze(pos_tmp[np.where(pos_tmp[:,0]!=-1),:])
 # ====== load BSFC results ======= #
 home = os.path.expanduser('~')
 
-with open(home+'/bsfc/bsfc_fits/moments_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max,primary_line),'rb') as f:
+with open(home+'/bsfc/bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max,primary_line,primary_impurity),'rb') as f:
     gathered_moments=pkl.load(f)
 
 # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
@@ -84,7 +89,7 @@ data['shot'] = args.shot
 data['time_1'] = t_min
 data['time_2'] = t_max
 
-with open('bsfc_hirex_%d_%s.pkl'%(args.shot,primary_line), 'wb') as f:
+with open('bsfc_hirex_%d_%s_%s.pkl'%(args.shot,primary_line, primary_impurity), 'wb') as f:
     pkl.dump(data, f)
         
-print('Saved bsfc_hirex_%d_%s.pkl locally!'%(args.shot,primary_line))
+print('Saved bsfc_hirex_%d_%s_%s.pkl locally!'%(args.shot,primary_line, primary_impurity))

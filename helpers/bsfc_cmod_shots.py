@@ -51,11 +51,12 @@ def get_shot_info(shot):
         tht=0
     elif shot==1101014030:    # I-mode FS
         primary_impurity = 'Ar' #'Ca'
-        primary_line = 'z' #'all' #'z' # 'w'
+        primary_line = 'w' #'all' #'z' # 'w'
         #tbin=128; chbin=31  # t=1.2695
         #tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
-        tbin = 5; chbin = 18
-        t_min=0.780; t_max = 1.5  # entire LBO interval
+        tbin = 6; chbin = 18
+        ####t_min=0.780; t_max = 1.5  # entire LBO interval
+        t_min = 1.2; t_max = 1.3
         #t_min=1.185; t_max=1.3
         tht=1   # for Ca: THT=0; for Ar: THT=1
     elif shot==1100305019:

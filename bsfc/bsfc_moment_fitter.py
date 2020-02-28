@@ -9,13 +9,12 @@ from collections import namedtuple
 import multiprocessing
 import itertools
 import os
-#import sys
-#import warnings
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 plt.ion()
 import shutil
 from IPython import embed
+
 # packages that are specific to tokamak fits:
 import MDSplus
 
@@ -28,6 +27,46 @@ import gptools
 # %%
 
 LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split())
+
+def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w'):
+    '''
+    Get wavelength ranges for Hirex-Sr at C-Mod
+    '''
+
+    if primary_impurity == 'Ca':
+        if primary_line == 'w':    # w-line at 3.177 mA
+            lam_bounds = (3.172, 3.188)
+        elif primary_line == 'z':   # z-line at 3.211 mA
+            lam_bounds = (3.205, 3.215)
+        elif primary_line == 'lya1':
+            lam_bounds = (3.010, 3.027)
+        elif primary_line == 'z':
+            lam_bounds = (3.205, 3.215)
+        elif primary_line == 'all':
+            primary_line = 'w' # substitute to allow routine to recognize line name
+            lam_bounds = (3.172, 3.215)
+        else:
+            raise NotImplementedError("Line is not yet implemented")
+
+    elif primary_impurity == 'Ar':
+        if primary_line == 'w':
+            lam_bounds = (3.945, 3.954)
+        elif primary_line == 'z':
+            lam_bounds = (3.987,3.998) # (3.897, 3.998)
+        elif primary_line == 'lya1':
+            lam_bounds = (3.725, 3.745)
+        elif primary_line == 'zz': # stricter bounds near z (and j)
+            primary_line = 'z'   # substitute to allow routine to recognize line name
+            lam_bounds = (3.975,3.998) #(3.725, 3.998)
+        elif primary_line == 'zzz': # very strict bounds near z (and j)
+            primary_line = 'z'   # substitute to allow routine to recognize line name
+            lam_bounds = (3.992,3.998) #(3.725, 3.998)                    
+        else:
+            raise NotImplementedError("Line is not yet implemented")
+
+
+    return lam_bounds
+
 
 class MomentFitter:
     def __init__(self, primary_impurity, primary_line, shot, tht, lam_bounds = None, nofit=[], experiment='CMOD', instrument='Hirex-Sr'):
@@ -93,44 +132,15 @@ class MomentFitter:
 
         amuToKeV = 931494.095 # amu in keV
         #speedOfLight = 2.998e+5 # speed of light in km/s
-
+        
         # Load atomic data, for calculating line widths, etc...
         with open('../data/atomic_data.csv', 'r') as f:
             atomData = [s.strip().split(',') for s in f.readlines()]
             atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
             atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
-
+        
         if lam_bounds == None:
-            if primary_impurity == 'Ca':
-                if primary_line == 'w':    # w-line at 3.177 mA
-                    lam_bounds = (3.172, 3.188)
-                elif primary_line == 'z':   # z-line at 3.211 mA
-                    lam_bounds = (3.205, 3.215)
-                elif primary_line == 'lya1':
-                    lam_bounds = (3.010, 3.027)
-                elif primary_line == 'z':
-                    lam_bounds = (3.205, 3.215)
-                elif primary_line == 'all':
-                    primary_line = 'w' # substitute to allow routine to recognize line name
-                    lam_bounds = (3.172, 3.215)
-                else:
-                    raise NotImplementedError("Line is not yet implemented")
-
-            elif primary_impurity == 'Ar':
-                if primary_line == 'w':
-                    lam_bounds = (3.945, 3.954)
-                elif primary_line == 'z':
-                    lam_bounds = (3.987,3.998) # (3.897, 3.998)
-                elif primary_line == 'lya1':
-                    lam_bounds = (3.725, 3.745)
-                elif primary_line == 'zz': # stricter bounds near z (and j)
-                    primary_line = 'z'   # substitute to allow routine to recognize line name
-                    lam_bounds = (3.975,3.998) #(3.725, 3.998)
-                elif primary_line == 'zzz': # very strict bounds near z (and j)
-                    primary_line = 'z'   # substitute to allow routine to recognize line name
-                    lam_bounds = (3.992,3.998) #(3.725, 3.998)                    
-                else:
-                    raise NotImplementedError("Line is not yet implemented")
+            lam_bounds = cmod_hirexsr_lam_bounds.get_hirexsr_lam_bounds(primary_impurity, primary_line)
 
         self.lam_bounds = lam_bounds
 
@@ -354,7 +364,7 @@ class MomentFitter:
 
         # get time basis
         tmp=np.asarray(branchNode.getNode('SPEC:SIG').dim_of(1))
-        mask = [tmp>-1]
+        mask = tmp>-1
         self.time = tmp[mask]
 
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
@@ -533,7 +543,10 @@ class MomentFitter:
             # color list, one color for each spectral line
             #from matplotlib import cm 
             #color=cm.rainbow(np.linspace(0,1,len(self.lines.names)))
-            color = ['b','g','c','m','y','k']
+            from matplotlib import colors as mcolors
+            colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
+            
+            color =['b','g','c'] #['g','b','c'] # [colors['darkviolet'],colors['black'],colors['orange']] #['m','k','y']  #['b','g','c']
 
             # plot in red the overall reconstructed spectrum (sum of all spectral lines)
             pred = bf.lineModel.modelPredict(bf.theta_ml)

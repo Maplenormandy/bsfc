@@ -2,18 +2,18 @@
 """
 Run a series of spectral fits for a tokamak discharge in a chosen time range.
 To run, use  
->> python <SHOT> 
+>> python bsfc_run_mpi.py <SHOT> 
 where <SHOT> is the CMOD shot number of interest. If using nested sampling (NS) and if MultiNest was 
 installed with MPI, then this automatically defaults to parallelizing over live point evaluations. 
 This is NOT a high-throughput parallelization, but it works well. See other options in script.
 
 To use a high-throughput parallelization, i.e. parallelized over all time and spatial bins, run this script
 with 
->> mpirun python <SHOT>
+>> mpirun python bsfc_run_mpi.py <SHOT>
 i.e. the same as above, but invoking the `mpirun` command. 
 
 To visualize results, after running, use
-python  <SHOT> -p
+python bsfc_run_mpi.py <SHOT> -p
 without the 'mpirun' command. If results are stored and found, this will try to plot them. 
 
 @author: sciortino
@@ -33,6 +33,7 @@ from helpers import bsfc_clean_moments
 from helpers import bsfc_slider
 from helpers import bsfc_cmod_shots
 from bsfc_bin_fit import _fitTimeWindowWrapper
+from IPython import embed
 
 # MPI parallelization
 from mpi4py import MPI
@@ -81,7 +82,7 @@ primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.g
 # Always create new object by default when running with MPI
 if rank==0:
     mf = MomentFitter(primary_impurity, primary_line, args.shot, tht=tht)
-    with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max,primary_line),'wb') as f:
+    with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max,primary_line,primary_impurity),'wb') as f:
         pkl.dump(mf,f)
 else:
     mf = None
@@ -90,7 +91,7 @@ else:
 if args.plot: 
     # if only 1 core is being used, assume that script is being used for plotting
 
-    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max,primary_line),'rb') as f:
+    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max,primary_line,primary_impurity),'rb') as f:
         gathered_moments=pkl.load(f)
 
     # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
@@ -130,11 +131,12 @@ else:
     # broadcast mf object to all cores (this also acts for synchronization)
     mf = comm.bcast(mf, root = 0)
     chains_dir = comm.bcast(chains_dir, root=0)
-    
-    tidx_min = np.argmin(np.abs(mf.time - t_min))
-    tidx_max = np.argmin(np.abs(mf.time - t_max))
-    time_sel= mf.time[tidx_min: tidx_max]
 
+    ind_sel = np.where(np.logical_and(mf.time>t_min, mf.time<t_max))
+    time_sel= np.array(mf.time)[ind_sel] #[tidx_min: tidx_max]
+    tidx_min = ind_sel[0][0]
+    tidx_max = ind_sel[0][-1]+1  # python indexing
+    
     # map range of channels and compute each
     map_args_tpm = list(itertools.product(range(tidx_min, tidx_max), range(mf.maxChan)))
     map_args = [list(a) for a in map_args_tpm]
@@ -179,7 +181,7 @@ else:
                         pass
         
             # individual fit with MultiNest
-            command = ['python','launch_NSfit.py',str(shot),str(primary_line), str(t_min), str(t_max),
+            command = ['python','launch_NSfit.py',str(shot),str(primary_line), str(primary_impurity), str(t_min), str(t_max),
                        str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),basename_inner]
 
             if not args.high_throughput: command = ['mpirun'] + command
@@ -201,8 +203,8 @@ else:
     for j, binn in enumerate(assigned_bins):
         
         checkpoints_dir ='checkpoints/'
-        case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}/'.format(args.shot,t_min,t_max)
-        file_name = 'moments_{:d}_bin{:d}_{:d}_{:s}line.pkl'.format(args.shot,binn[0],binn[1],primary_line)
+        case_dir = '{:d}_tmin{:.2f}_tmax{:.2f}_{:s}/'.format(args.shot,t_min,t_max,primary_impurity)
+        file_name = 'moments_{:d}_bin{:d}_{:d}_{:s}line_{:s}.pkl'.format(args.shot,binn[0],binn[1],primary_line,primary_impurity)
         resfile = checkpoints_dir + case_dir + file_name
         
         # create checkpoint directory if it doesn't exist yet
@@ -262,7 +264,7 @@ else:
         print "*********** Completed fits *************"
     
         # save fits for future use
-        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline.pkl'%(args.shot,t_min,t_max, primary_line),'wb') as f:
+        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max, primary_line,primary_impurity),'wb') as f:
             pkl.dump(gathered_moments, f)
 
         #if args.resume:
