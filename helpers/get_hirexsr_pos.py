@@ -13,6 +13,8 @@ import cPickle as pkl
 from bsfc_moment_fitter import get_hirexsr_lam_bounds
 import numpy as np
 import matplotlib.pyplot as plt
+import TRIPPy
+import eqtools
 
 tht=1
 primary_line = 'w'
@@ -90,13 +92,13 @@ pos_ave = np.array(pos_ave)
 with open('/home/sciortino/bsfc/helpers/bsfc_hirex_%d_%s_%s.pkl'%(shot,primary_line, primary_impurity), 'rb') as f:
     data = pkl.load(f)
 
-pos_true = data['pos']
+pos_old = data['pos']
 
 # chmap.shape = (195,487) ---> wavelength x space pixels
 # lam_all.shape = (195, 417, 32) ---> 417 times
 # len(w0) = 32 ---> indices of arrays of length 195
 # pos4.shape = (195, 487, 4) -----> wavelength x space pixels 
-# pos_true.shape = (32,4)
+# pos_old.shape = (32,4)
 
 
 fig,ax = plt.subplots(2,2)
@@ -107,11 +109,40 @@ for i in [0,1,2,3]:
     fig.colorbar(pcm, ax=axx[i])
 
 
-fig,ax = plt.subplots()
-plt.plot(pos_ave)
+# visualize chords
+efit_tree = eqtools.CModEFITTree(shot)
+tokamak = TRIPPy.plasma.Tokamak(efit_tree)
 
-axx = ax.flatten()
-for i in [0,1,2,3]:
-    pcm = axx[i].pcolormesh(pos_[:,:,i].T)
-    axx[i].axis('equal')
-    fig.colorbar(pcm, ax=axx[i])
+
+rays = [TRIPPy.beam.pos2Ray(p, tokamak) for p in pos_ave]   #pos_old]
+
+t0=1.25
+
+weights = TRIPPy.invert.fluxFourierSens(
+    rays,
+    efit_tree.rz2psinorm,
+    tokamak.center,
+    t0,
+    np.linspace(0,1, 150),
+    ds=1e-5
+)[0]
+
+from TRIPPy.plot.pyplot import plotTokamak, plotLine
+
+f = plt.figure()
+a = f.add_subplot(1, 1, 1)
+# Only plot the tokamak if an axis was not provided:
+plotTokamak(tokamak)
+
+for r in rays:
+    plotLine(r, pargs='r')
+
+
+i_flux = np.searchsorted(efit_tree.getTimeBase(), t0)
+
+a.contour(
+    efit_tree.getRGrid(),
+    efit_tree.getZGrid(),
+    efit_tree.getFluxGrid()[i_flux, :, :],
+    80
+)
