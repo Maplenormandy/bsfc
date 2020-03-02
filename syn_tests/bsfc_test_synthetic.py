@@ -147,11 +147,11 @@ true_mom, k3, k4 = generateSyntheticSpectrum(mf, 0, 0, 1e3, g_lya1, g_lya2, g_mo
 mf.fitSingleBin(0, 0, nsteps=1)
 bf = mf.fits[0][0]
 
-print "true"
-print true_mom
-print "fit"
-print modelMoments(mf, 0, 0)
-print "fit measurements", bf.lineModel.modelMeasurements(bf.theta_ml)
-print "cumulants", k3, k4
-print "percent"
-print (modelMoments(mf, 0, 0) - true_mom) / true_mom * 100
+print("true")
+print(true_mom)
+print("fit")
+print(modelMoments(mf, 0, 0))
+print("fit measurements", bf.lineModel.modelMeasurements(bf.theta_ml))
+print("cumulants", k3, k4)
+print("percent")
+print((modelMoments(mf, 0, 0) - true_mom) / true_mom * 100)

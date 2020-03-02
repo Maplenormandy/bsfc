@@ -20,7 +20,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-import cPickle as pkl
+try:
+    import pickle as pkl # python 3+
+except:
+    import cPickle as pkl   # python 2.7
 import pdb
 import corner
 import sys
@@ -96,7 +99,7 @@ if rank==0:
         try:
             with open('../bsfc_fits/mf_NS_%d_tbin%d_chbin_%d.pkl'%(shot,tbin,chbin),'rb') as f:
                 mf=pkl.load(f)
-            loaded = True; print "Loaded previous result"
+            loaded = True; print("Loaded previous result")
         except:
             loaded = False
 
@@ -189,11 +192,11 @@ if loaded==True:
     moms = np.average(measurements, 0, weights=sample_weights)
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
-    print "Counts = ", moms[0], "+/-", moms_std[0]
-    print "v = ", moms[1], "+/-", moms_std[1]
-    print "Ti = ", moms[2], "+/-", moms_std[2]
-    print "ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]
-    print "# Hermite polynomials: ", n_hermite
+    print("Counts = ", moms[0], "+/-", moms_std[0])
+    print("v = ", moms[1], "+/-", moms_std[1])
+    print("Ti = ", moms[2], "+/-", moms_std[2])
+    print("ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1])
+    print("# Hermite polynomials: ", n_hermite)
 
     #plt.show()
 
@@ -208,7 +211,7 @@ if loaded==True:
 if rank==0:
     # end time count
     elapsed_time=time_.time()-start_time
-    print 'Time to run: ' + str(elapsed_time) + " s"
+    print('Time to run: ' + str(elapsed_time) + " s")
 
 
 #plt.show(block=True)

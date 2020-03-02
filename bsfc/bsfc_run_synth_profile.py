@@ -19,14 +19,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-#import cPickle as pkl
-#import pdb
-#import corner
 import sys
 import time as time_
 import os
-#import shutil
-#import scipy
 
 import argparse
 
@@ -69,7 +64,7 @@ if 'BSFC_ROOT' not in os.environ:
 n_hermite = args.n_hermite
 
 if args.noline:
-    print "Fitting without wn5"
+    print("Fitting without wn5")
     basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/%s_nl_nh%d-.'%(primary_line, n_hermite))
 else:
     basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/%s_nh%d-.'%(primary_line, n_hermite))
@@ -106,7 +101,7 @@ lnev_std = np.zeros(mf.maxChan)
 
 
 for chbin in range(mf.maxChan):
-    print "Fitting chbin", chbin
+    print("Fitting chbin", chbin)
     removeFiles(basename)
 
     if args.noline:
@@ -162,7 +157,7 @@ for chbin in range(mf.maxChan):
 
     # end time count
     elapsed_time=time_.time()-start_time
-    print 'Time to run: ' + str(elapsed_time) + " s"
+    print('Time to run: ' + str(elapsed_time) + " s")
 
 
 

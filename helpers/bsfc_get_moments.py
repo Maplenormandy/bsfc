@@ -206,7 +206,7 @@ def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
 
 ############################
 def get_meas(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
-    #print "Computing brightness, rotation and ion temperature"
+    #print("Computing brightness, rotation and ion temperature")
     # # select times of interest
     tidx_min = np.argmin(np.abs(mf.time - t_min))
     tidx_max = np.argmin(np.abs(mf.time - t_max))

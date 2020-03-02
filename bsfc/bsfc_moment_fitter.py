@@ -278,7 +278,7 @@ class MomentFitter:
             atomData = [s.strip().split(',') for s in f.readlines()]
             atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
             atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
-        
+
         if lam_bounds == None:
             lam_bounds = get_hirexsr_lam_bounds(primary_impurity, primary_line)
 
@@ -325,6 +325,10 @@ class MomentFitter:
                 lamInRange = True
                 self.hirex_branch = 'A'
         except:
+            lamInRange=False
+
+
+        if not lamInRange:
             try:
                 branchNode = specTree.getNode(rootPath+'.HELIKE')  
                 self.lam_all = branchNode.getNode('SPEC:LAM').data()
@@ -352,7 +356,7 @@ class MomentFitter:
         
         mask = tmp>-1
         self.time = tmp[mask]
-        #print Available times for analysis:', self.time
+        print('Available times for analysis:', self.time)
         
         #embed()
         self.fits = [[None for y in range(self.maxChan)] for x in range(self.maxTime)] #[[None]*self.maxChan]*self.maxTime
@@ -381,21 +385,19 @@ class MomentFitter:
         sig = self.sig_all[w0:w1,tbin,chbin]
         whitefield = self.whitefield[w0:w1,tbin,chbin]
 
-        #embed()
         # Fix NaN whitefield values by taking the average of the two neighbors
         nans = np.isnan(whitefield)
         if np.any(nans):
             notnan = np.logical_not(nans)
             whitefield[nans] = np.interp(lam[nans], lam[notnan], whitefield[notnan])
-            print whitefield
+            print(whitefield)
             pass
-
 
         bf = BinFit(lam, specBr, sig, whitefield, self.lines, range(len(self.lines.names)), n_hermite=n_hermite)
 
         self.fits[tbin][chbin] = bf
 
-        #print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps
+        #print("Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps)
         if NS==False:
             # MCMC fit
             good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads, PT=PT)
@@ -409,9 +411,9 @@ class MomentFitter:
                             basename=basename, verbose=verbose, const_eff=const_eff)
 
         #if not good:
-        #    print "not worth fitting"
+        #    print("not worth fitting")
         #else:
-        #    print "--> done"
+        #    print("--> done")
 
 
     def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
@@ -423,7 +425,7 @@ class MomentFitter:
         if parallel:
             if nproc==None:
                 nproc = multiprocessing.cpu_count()
-            print "running fitTimeBin in parallel with nproc=", nproc
+            print("running fitTimeBin in parallel with nproc=", nproc)
             pool = multiprocessing.Pool(processes=nproc)
 
             # requires a wrapper for multiprocessing to pickle the function
@@ -446,7 +448,7 @@ class MomentFitter:
         if parallel:
             if nproc==None:
                 nproc = multiprocessing.cpu_count()
-            print "running fitChBin in parallel with nproc=", nproc
+            print("running fitChBin in parallel with nproc=", nproc)
             pool = multiprocessing.Pool(processes=nproc)
 
             # requires a wrapper for multiprocessing to pickle the function
@@ -479,7 +481,7 @@ class MomentFitter:
         if parallel:
             if nproc==None:
                 nproc = multiprocessing.cpu_count()
-            print "running fitTimeWindow in parallel with nproc=", nproc
+            print("running fitTimeWindow in parallel with nproc=", nproc)
             pool = multiprocessing.Pool(processes=nproc)
 
             # requires a wrapper for multiprocessing to pickle the function

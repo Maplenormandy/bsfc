@@ -8,8 +8,11 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.ion()
+try:
+    import pickle as pkl # python 3+
+except:
+    import cPickle as pkl   # python 2.7
 
-import cPickle as pkl
 import pdb
 import corner
 #import bsfc_main
@@ -72,7 +75,7 @@ for nh in range(nh_min, nh_max+1):
     #nn=n_live_points #nsteps
 
     # save each fit independently
-    print "Loading from ", '../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn)
+    print("Loading from ", '../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn))
     with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
 
@@ -95,12 +98,12 @@ for nh in range(nh_min, nh_max+1):
     lnev_vns.append(mf.fits[tbin][chbin].multinest_stats['nested sampling global log-evidence'])
     lnev_vns_unc.append(mf.fits[tbin][chbin].multinest_stats['nested sampling global log-evidence error'])
 
-    print " ++++++++++++++++++++++++++"
-    print "nh = ", nh
-    print "lnev = ", lnev[-1], "+/-", lnev_unc[-1]
-    print "br = ", means[0], "+/-", stds[0]
-    print "v = ", means[1], "+/-", stds[1]
-    print "Ti = ", means[2], "+/-", stds[2]
+    print(" ++++++++++++++++++++++++++")
+    print("nh = ", nh)
+    print("lnev = ", lnev[-1], "+/-", lnev_unc[-1])
+    print("br = ", means[0], "+/-", stds[0])
+    print("v = ", means[1], "+/-", stds[1])
+    print("Ti = ", means[2], "+/-", stds[2])
     br.append(means[0]); br_unc.append(stds[0])
     v.append(means[1]); v_unc.append(stds[1])
     Ti.append(means[2]); Ti_unc.append(stds[2])

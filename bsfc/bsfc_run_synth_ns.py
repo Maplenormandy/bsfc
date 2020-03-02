@@ -20,8 +20,10 @@ from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-
-import cPickle as pkl
+try:
+    import pickle as pkl  #python 3+
+except:
+    import cPickle as pkl  # python 2.7
 import pdb
 import corner
 import bsfc_main
@@ -80,7 +82,7 @@ else:
     try:
         with open('../bsfc_fits/mf_synth_%d.pkl'%(shot),'rb') as f:
             mf=pkl.load(f)
-        loaded = True; print "Loaded previous result"
+        loaded = True; print("Loaded previous result")
     except:
         loaded = False
 
@@ -149,12 +151,12 @@ if loaded==True:
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
 
-    print "Counts = ", moms[0], "+/-", moms_std[0]
-    print "v = ", moms[1], "+/-", moms_std[1]
-    print "Ti = ", moms[2], "+/-", moms_std[2]
+    print("Counts = ", moms[0], "+/-", moms_std[0])
+    print("v = ", moms[1], "+/-", moms_std[1])
+    print("Ti = ", moms[2], "+/-", moms_std[2])
 
-    print "(true) v = ", true_meas[1]
-    print "(true) Ti = ", true_meas[2]
+    print("(true) v = ", true_meas[1])
+    print("(true) Ti = ", true_meas[2])
 
 
 # Import mpi4py here to output timing only once
@@ -166,5 +168,5 @@ size = comm.Get_size()
 if rank==0:
     # end time count
     elapsed_time=time_.time()-start_time
-    print 'Time to run: ' + str(elapsed_time) + " s"
+    print('Time to run: ' + str(elapsed_time) + " s")
 

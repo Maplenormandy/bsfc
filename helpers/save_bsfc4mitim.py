@@ -5,7 +5,10 @@ This script creates an input file for MITIM from Hirex-Sr analysis using BSFC re
 
 import MDSplus, os, sys, argparse
 import numpy as np
-import cPickle as pkl
+try:
+    import pickle as pkl  #python 3+
+except:
+    import cPickle as pkl  # python 2.7
 
 from bsfc_moment_fitter import *
 from helpers import bsfc_clean_moments 

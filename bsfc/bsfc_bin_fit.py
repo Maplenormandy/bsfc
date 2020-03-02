@@ -35,7 +35,7 @@ class BinFit:
         self.sig = sig
         self.lineData = lineData
         self.linesFit = linesFit
-
+        
         # Normalized lambda, for evaluating noise
         self.lamNorm = (lam-np.average(lam))/(np.max(lam)-np.min(lam))*2
 
@@ -111,7 +111,7 @@ class BinFit:
         # round number of steps to multiple of thinning factor:
         nsteps = nsteps - nsteps%thin
 
-        if PT: print "Using PT-MCMC!"
+        if PT: print("Using PT-MCMC!")
         ndim, nwalkers = len(theta_ml), len(theta_ml)*4
 
         if PT == False:
@@ -279,9 +279,9 @@ class BinFit:
         try:
             import pymultinest
         except:
-            print "********************"
-            print "Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH."
-            print "MultiNest must also be on your LD_LIBRARY_PATH"
+            print("********************")
+            print("Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH.")
+            print("MultiNest must also be on your LD_LIBRARY_PATH")
             raise ValueError("Abort BSFC fit")
 
         pymultinest.run(
@@ -315,9 +315,9 @@ class BinFit:
         try:
             import pymultinest
         except:
-            print "********************"
-            print "Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH."
-            print "MultiNest must also be on your LD_LIBRARY_PATH"
+            print("********************")
+            print("Could not import pyMultiNest! Make sure that both this is in your PYTHONPATH.")
+            print("MultiNest must also be on your LD_LIBRARY_PATH")
             raise ValueError("Abort BSFC fit")
 
         # after MultiNest run, read results
@@ -444,10 +444,10 @@ class _TimeBinFitWrapper(object):
         #
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))   #needs to be updated for more recent BinFit call!
          
-        print "Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps
+        print("Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps)
         good = bf.MCMCfit(nsteps=self.nsteps)
         if not good:
-            print "not worth fitting"
+            print("not worth fitting")
 
         return bf
 
@@ -473,10 +473,10 @@ class _ChBinFitWrapper(object):
         # create bin-fit
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names))) #needs to be updated for more recent BinFit call!
 
-        print "Now fitting tbin=", tbin, ',chbin=', self.chbin, "with nsteps=", self.nsteps
+        print("Now fitting tbin=", tbin, ',chbin=', self.chbin, "with nsteps=", self.nsteps)
         good = bf.MCMCfit(nsteps=self.nsteps)
         if not good:
-            print "not worth fitting"
+            print("not worth fitting")
 
         return bf
 
@@ -501,16 +501,16 @@ class _fitTimeWindowWrapper(object):
         # create bin-fit
         bf = BinFit(lam, specBr, sig, self.mf.lines, range(len(self.mf.lines.names)))  #needs to be updated for more recent BinFit call!
 
-        print "Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps
+        print("Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps)
         try:
             good = bf.MCMCfit(nsteps=self.nsteps)
         except ValueError:
-            print "BinFit.fit() failed."
-            print "++++++++++++++++++++++++++++++++"
-            print "Failed at fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps
-            print "++++++++++++++++++++++++++++++++"
+            print("BinFit.fit() failed.")
+            print("++++++++++++++++++++++++++++++++")
+            print("Failed at fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps)
+            print("++++++++++++++++++++++++++++++++")
             good = False
         if not good:
-            print "Fitting not available. Result will be None."
+            print("Fitting not available. Result will be None.")
 
         return bf

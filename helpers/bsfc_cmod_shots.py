@@ -30,16 +30,19 @@ def get_shot_info(shot, imp_override=None):
         t_min= 0.89; t_max=1.05
         tht=5
     elif shot==1101014019:       # EDA H-mode FS
-        primary_impurity = 'Ca' if imp_override is None else imp_override
-        primary_line = 'w' #'z' # 'w'
+        primary_impurity = 'Ar' if imp_override is None else imp_override
+        primary_line = 'z' #'z' # 'w'
         # used to be 128, changed it to 125
         tbin=125; chbin=11
         #tbin=111; chbin=31  #problematic: works with 1000 steps, but not 25000
         #tbin=111; chbin=15   #problematic
-        t_min = 0.83; t_max = 1.4 # entire LBO interval
-        #t_min=1.24; t_max=1.4
+        #t_min = 0.83; t_max = 1.4 # entire LBO interval
+        t_min=1.24; t_max=1.4
         #t_min=1.26; t_max=1.27
-        tht=0
+        if primary_impurity=='Ar':   # for Ca: THT=0; for Ar: THT=1?
+            tht=1
+        else:
+           tht=0
     elif shot==1101014029:      # I-mode FS
         primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w' # 'z' #'w'
@@ -90,13 +93,16 @@ def get_shot_info(shot, imp_override=None):
         tht = 0
     elif shot==1101014006:     # L-mode FS
         primary_impurity = 'Ar' if imp_override is None else imp_override
-        primary_line = 'zz' #'all' #'z' #'w'
+        primary_line = 'w' #'all' #'z' #'w'
         #tbin=116; chbin=18
         #tbin=124; chbin=11   # good for Ca
         tbin=14; chbin=20   # for Ar
-        t_min = 0.75; t_max = 1.5  #entire LBO interval
-        #t_min=1.155; t_max=1.265
-        tht=2 #0   # for Ca: THT=0; for Ar: THT=2
+        #t_min = 0.75; t_max = 1.5  #entire LBO interval
+        t_min=1.155; t_max=1.265
+        if primary_impurity=='Ar':   # for Ca: THT=0; for Ar: THT=1
+            tht=2
+        else:
+           tht=0
     elif shot==1101014011:     # L-mode FS
         primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'z' #'w'

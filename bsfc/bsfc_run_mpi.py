@@ -23,7 +23,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-import cPickle as pkl
+try:
+    import pickle as pkl # python 3+
+except:
+    import cPickle as pkl   # python 2.7
+
 import sys, itertools, os, shutil
 import scipy, glob, subprocess, argparse
 
@@ -69,7 +73,7 @@ if not args.verbose:
     warnings.filterwarnings("ignore")
 
 if rank == 0:
-    print "Analyzing shot ", args.shot
+    print("Analyzing shot ", args.shot)
     
     # Start counting time:
     t_start=MPI.Wtime()
@@ -187,11 +191,11 @@ else:
             if not args.high_throughput: command = ['mpirun'] + command
         
             # print out command to be run on screen
-            print ' '.join(command)
+            print(' '.join(command))
             
             # Run externally:
             out = subprocess.check_output(command, stderr=subprocess.STDOUT)
-            if verbose: print out
+            if verbose: print(out)
     else:
         # emcee requires a wrapper for multiprocessing to pickle the function
         spectral_fit = _fitTimeWindowWrapper(mf,nsteps=args.nsteps)
@@ -218,12 +222,12 @@ else:
             # if fit has already been created, re-load it from checkpoint directory
             with open(resfile,'rb') as f:
                 res[j] = pkl.load(f)
-            print "Loaded fit moments from ", resfile
+            print("Loaded fit moments from ", resfile)
                 
         except:
             # if fit cannot be loaded, run fitting now:
             if NS:
-                print "Fitting bin [%d,%d] ...."%(binn[0],binn[1])
+                print("Fitting bin [%d,%d] ...."%(binn[0],binn[1]))
                 spectral_fit(args.shot,t_min,t_max,binn[0],binn[1],args.chosen_n_hermite,args.verbose,rank)
 
                 # load result in memory
@@ -261,7 +265,7 @@ else:
         gath_res = np.concatenate(gathered_res)
         gathered_moments= np.asarray(gath_res).reshape((tidx_max-tidx_min,mf.maxChan))
 
-        print "*********** Completed fits *************"
+        print("*********** Completed fits *************")
     
         # save fits for future use
         with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max, primary_line,primary_impurity),'wb') as f:
@@ -277,5 +281,5 @@ else:
         # end time count
         elapsed_time = MPI.Wtime() - t_start
         
-        print 'Time to run: ' + str(elapsed_time) + " s"
-        print 'Completed BSFC analysis for shot ', args.shot
+        print('Time to run: ' + str(elapsed_time) + " s")
+        print('Completed BSFC analysis for shot ', args.shot)

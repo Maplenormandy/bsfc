@@ -67,12 +67,12 @@ def plot_convergence(chain, dim=1, nsteps=1024):
 	if chain.shape[2]>dim:
 		chain = chain[:, :, dim]
 	else:
-		print "chosen chain dimension is too large! Using dim=1 instead"
+		print("chosen chain dimension is too large! Using dim=1 instead")
 		chain = chain[:, :, 0]
 
 	plt.figure()
 	
-	print chain.shape
+	print(chain.shape)
 	plt.hist(chain[:,int(nsteps/2.0):].flatten(), 100)
 	plt.title('chains histogram long dim=%d'%dim)
 	plt.gca().set_yticks([])

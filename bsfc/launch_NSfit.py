@@ -1,5 +1,8 @@
 import sys
-import cPickle as pkl
+try:
+    import pickle as pkl # python 3+
+except:
+    import cPickle as pkl   # python 2.7
 import os
 import numpy as np
 import glob, argparse
@@ -23,6 +26,8 @@ parser.add_argument("-l", "--line_name", help="name of atomic line of interest f
 
 args = parser.parse_args()
 
+#from IPython import embed
+#embed()
 
 
 # load moment fitter setup 

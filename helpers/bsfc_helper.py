@@ -9,9 +9,6 @@ import scipy
 import numpy as np
 
 import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -84,11 +81,13 @@ class HirexData(object):
         
         # Process the injections:
         t = []; y = []; std_y = []; y_norm = []; std_y_norm = []
-        
-        t_hirex_start, t_hirex_stop = profiletools.get_nearest_idx(
-            [injection.t_start, injection.t_stop],
-            self.hirex_time
-        )
+
+        t_hirex_start = np.searchsorted(injection.t_start, self.hirex_time)
+        t_hirex_stop = np.searchsorted(injection.t_stop, self.hirex_time)
+        #t_hirex_start, t_hirex_stop = profiletools.get_nearest_idx(
+        #    [injection.t_start, injection.t_stop],
+        #    self.hirex_time
+        #)
         hirex_signal = self.hirex_signal[t_hirex_start:t_hirex_stop + 1, :]
         hirex_flagged = self.hirex_flagged[t_hirex_start:t_hirex_stop + 1, :]
         hirex_uncertainty = self.hirex_uncertainty[t_hirex_start:t_hirex_stop + 1, :]
@@ -173,10 +172,16 @@ class HirexData(object):
         
         return f
 
+
 class HirexPlotFrame(tk.Frame):
     """Frame to hold the plot with the HiReX-SR time-series data.
     """
     def __init__(self, *args, **kwargs):
+        
+        matplotlib.use('TkAgg')
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+        from matplotlib.backend_bases import key_press_handler
+        
         tk.Frame.__init__(self, *args, **kwargs)
         self.f = Figure()
         self.suptitle = self.f.suptitle('')
