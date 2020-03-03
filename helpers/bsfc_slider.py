@@ -4,6 +4,9 @@ Functions to visualize multidimensional data using a slider plot.
 
 @author: sciortino
 """
+from builtins import zip
+from builtins import next
+from builtins import range
 
 import numpy as np
 import matplotlib as mpl
@@ -82,11 +85,11 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
         x_error = np.zeros_like(x)
         
         #IPython.embed()
-        h_err = a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], xerr = x_error, fmt=ls_cycle.next(), label=l_, **kwargs)
+        h_err = a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], xerr = x_error, fmt=next(ls_cycle), label=l_, **kwargs)
         err_list.append(h_err)
 
     if plot_sum:
-        l_sum, = a_plot.plot(x, z[:, :, 0].sum(axis=0), ls_cycle.next(), label='total', **kwargs)
+        l_sum, = a_plot.plot(x, z[:, :, 0].sum(axis=0), next(ls_cycle), label='total', **kwargs)
     
     leg=a_plot.legend(loc='best')
     leg.draggable(True)
@@ -207,7 +210,7 @@ def visualize_moments(moments_vals,moments_stds, time_sel, q='br'):
         raise ValueError('Please indicate a valid quantity to measure')
 
     slider_plot(
-        np.asarray(range(vals.shape[1])),
+        np.asarray(list(range(vals.shape[1]))),
         time_sel,
         np.expand_dims(vals.T,axis=0),
         np.expand_dims(stds.T,axis=0),
@@ -220,7 +223,7 @@ def visualize_moments(moments_vals,moments_stds, time_sel, q='br'):
     
     slider_plot(
         time_sel,
-        np.asarray(range(vals.shape[1])),
+        np.asarray(list(range(vals.shape[1]))),
         np.expand_dims(vals,axis=0),
         np.expand_dims(stds,axis=0),
         xlabel=r'$t$ [s]',

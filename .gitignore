@@ -14,7 +14,10 @@ __pycache__/
 *.pkl
 *.out
 *.npz
+
+# temporary files
 *.old
+*.png
 
 # C extensions
 *.so

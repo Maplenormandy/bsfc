@@ -4,13 +4,17 @@ Compare brightness results for BSFC vs. THACO. Version 2.
 
 @author: sciortino
 """
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from past.utils import old_div
 
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
 import bsfc_helper
-import cPickle as pkl
+import pickle as pkl
 import bsfc_autocorr
 import pdb
 import corner
@@ -51,8 +55,8 @@ plt.title('chord #%d'%chord)
 
 # plot relative uncertainties in Hirex chord
 plt.figure()
-plt.plot(thaco.t, thaco.std_y_norm[:,chord]/thaco.y_norm[:,chord],'.', label='THACO')
-plt.plot(bsfc['time']-t_start, bsfc['hirex_uncertainty'][:,chord]/ bsfc['hirex_signal'][:,chord],'.', label='BSFC')
+plt.plot(thaco.t, old_div(thaco.std_y_norm[:,chord],thaco.y_norm[:,chord]),'.', label='THACO')
+plt.plot(bsfc['time']-t_start, old_div(bsfc['hirex_uncertainty'][:,chord], bsfc['hirex_signal'][:,chord]),'.', label='BSFC')
 plt.xlabel('time [s]')
 plt.ylabel('Rel unc')
 plt.legend()

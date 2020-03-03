@@ -4,6 +4,9 @@ Convenience function to clean Hirex-Sr signals after spectral line fitting.
 
 @author: sciortino
 """
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 
 import numpy as np
 
@@ -70,7 +73,7 @@ def clean_moments(mf_time,mf_maxChan, t_min, t_max, gathered_moments, BR_THRESH=
         max_br = moments_vals[idx1,idx2,0]
         max_br_std = moments_stds[idx1,idx2,0]
 
-        moments_vals[:, :,0] = moments_vals[:,:,0]/ max_br
-        moments_stds[:,:,0] = np.sqrt((moments_stds[:,:,0] / max_br)**2.0 + ((moments_vals[:,:,0] / max_br)*(max_br_std / max_br))**2.0)
+        moments_vals[:, :,0] = old_div(moments_vals[:,:,0], max_br)
+        moments_stds[:,:,0] = np.sqrt((old_div(moments_stds[:,:,0], max_br))**2.0 + ((old_div(moments_vals[:,:,0], max_br))*(old_div(max_br_std, max_br)))**2.0)
 
     return moments_vals, moments_stds, time_sel

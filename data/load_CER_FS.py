@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import print_function
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 import os,sys
 import numpy as np
 import matplotlib
@@ -39,7 +43,7 @@ for shot in shots:
     MDSconn.openTree('D3D', shot)
  
     for los in los_list:
-        print shot, los
+        print(shot, los)
         cer_data = readsav('./data/shot%d%s.sav'%(shot,los))
  
         data = cer_data['chord_data'][0]
@@ -69,7 +73,7 @@ for shot in shots:
 
         t_start = t_start[tg<=data_grp.max()]
         t_integ = t_integ[tg<=data_grp.max()]
-        time_vec = t_start + t_integ/2.0
+        time_vec = t_start + old_div(t_integ,2.0)
 
         corrupted = data - order_filter(data,np.ones((1,5)),1)
         corrupted[:,0] = 0
@@ -89,7 +93,7 @@ for shot in shots:
 
         # plot data matrix
         plt.figure(figsize=(6,12))
-        plt.imshow(data, interpolation='nearest', aspect='auto',vmin=0,vmax=50, origin='lower', extent=(0,1,t_start[0]/1000,(t_start[-1]+t_integ[-1])/1000));plt.colorbar()
+        plt.imshow(data, interpolation='nearest', aspect='auto',vmin=0,vmax=50, origin='lower', extent=(0,1,old_div(t_start[0],1000),old_div((t_start[-1]+t_integ[-1]),1000)));plt.colorbar()
         plt.ylim(1,6)
         plt.ylabel('time [s]')
         plt.xlabel('Wavelength range? ')
@@ -144,7 +148,7 @@ for shot in shots:
         
         # definition of Gaussian fitting function:
         def gauss(x,  A, mu, sigma):
-            return A*np.exp(-(x-mu)**2/(2.*sigma**2))/np.sqrt(2*np.pi)/sigma
+            return A*np.exp(old_div(-(x-mu)**2,(2.*sigma**2)))/np.sqrt(2*np.pi)/sigma
         
         # Define time range to fit
         t_min = 2000.0   # ms
@@ -194,21 +198,21 @@ for shot in shots:
         
         ####
         # Gaussian parameters: A, mu, sigma
-        plt.figure(); plt.step(time_sel, (coeffs[:,0]- min(coeffs[:,0]))/max(coeffs[:,0])); 
+        plt.figure(); plt.step(time_sel, old_div((coeffs[:,0]- min(coeffs[:,0])),max(coeffs[:,0]))); 
         #plt.ylim([coeffs[:,0].min(),None])
         plt.plot(nbi30L_t_cut,nbi30L_cut/max(nbi30L_cut) *plt.gca().get_ylim()[1], alpha=0.5, label='NBI')
         plt.xlabel('time [ms]')
         plt.ylabel('Gaussian amplitude [A.U.]')
         plt.legend().draggable()
 
-        plt.figure(); plt.step(time_sel,  (coeffs[:,1]- min(coeffs[:,1]))/max(coeffs[:,1]));
+        plt.figure(); plt.step(time_sel,  old_div((coeffs[:,1]- min(coeffs[:,1])),max(coeffs[:,1])));
         #plt.ylim([coeffs[:,1].min(),None])
         plt.plot(nbi30L_t_cut,nbi30L_cut/max(nbi30L_cut) *plt.gca().get_ylim()[1], alpha=0.5, label='NBI')
         plt.xlabel('time [ms]')
         plt.ylabel('Gaussian mean [A.U.]')
         plt.legend().draggable()
 
-        plt.figure(); plt.step(time_sel,  (coeffs[:,2]- min(coeffs[:,2]))/max(coeffs[:,0]));
+        plt.figure(); plt.step(time_sel,  old_div((coeffs[:,2]- min(coeffs[:,2])),max(coeffs[:,0])));
         #plt.ylim([coeffs[:,2].min(),None])
         plt.plot(nbi30L_t_cut,nbi30L_cut/max(nbi30L_cut) *plt.gca().get_ylim()[1], alpha=0.5, label='NBI')
         plt.xlabel('time [ms]')

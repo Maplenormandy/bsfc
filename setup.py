@@ -18,8 +18,11 @@ setuptools.setup(
     maintainer_email = "sciortino@psfc.mit.edu",
     url = "https://github.com/Maplenormandy/bsfc",
     packages = setuptools.find_packages(),
+    requires = ["matplotlib","scipy", "numpy (>=1.5)","pymultinest","emcee","MDSplus",
+                "gptools","eqtools","profiletools"]
     classifiers=[
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],

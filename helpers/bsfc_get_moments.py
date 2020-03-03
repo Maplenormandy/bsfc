@@ -4,6 +4,9 @@ by N. Cao & F. Sciortino
 BSFC functions to obtain moments from spectral fitting
 
 '''
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -127,8 +130,8 @@ def get_rotation(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
                 m1_std = mf.fits[tbin][chbin].m_std[1]
                 linesLam = mf.fits[tbin][chbin].lineModel.linesLam[line]
 
-                rot[t,chbin] = (m1 / (m0 * linesLam)) *1e-3 * c
-                rot_unc[t,chbin] = (1e-3 * c/ linesLam) * np.sqrt((m1_std**2/m0**2)+(m1**2*m0_std**2/m0**4))
+                rot[t,chbin] = (old_div(m1, (m0 * linesLam))) *1e-3 * c
+                rot_unc[t,chbin] = (1e-3 * c/ linesLam) * np.sqrt((old_div(m1_std**2,m0**2))+(m1**2*m0_std**2/m0**4))
 
             else:
                 rot[t,chbin] = np.nan
@@ -175,7 +178,7 @@ def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
             linesLam = mf.fits[tbin][chbin].lineModel.linesLam[line]
             linesFit = mf.fits[tbin][chbin].lineModel.linesFit
             m_kev = mf.fits[tbin][chbin].lineModel.lineData.m_kev[linesFit][line]
-            w = linesLam**2 / m_kev
+            w = old_div(linesLam**2, m_kev)
 
             if mf.fits[tbin][chbin].good:
                 m0 = mf.fits[tbin][chbin].m_avg[0]
@@ -186,7 +189,7 @@ def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
                 m2_std = mf.fits[tbin][chbin].m_std[2]
 
                 Temp[t,chbin] = m2*1e-6/m0 / w #(m2/(linesLam**2 *m0)) * m_kev *1e-6
-                Temp_unc[t,chbin] = (1e-6/ w) * np.sqrt((m2_std**2/m0**2)+((m1**2*m0_std**2)/m0**4))
+                Temp_unc[t,chbin] = (old_div(1e-6, w)) * np.sqrt((old_div(m2_std**2,m0**2))+(old_div((m1**2*m0_std**2),m0**4)))
 
             else:
                 Temp[t,chbin] = np.nan
@@ -254,11 +257,11 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
 
     f, a = plt.subplots(3, 1, sharex=True)
 
-    a[0].errorbar(range(mf.maxChan), moments[:,0], yerr=moments_std[:,0], fmt='.')
+    a[0].errorbar(list(range(mf.maxChan)), moments[:,0], yerr=moments_std[:,0], fmt='.')
     a[0].set_ylabel('0th moment')
-    a[1].errorbar(range(mf.maxChan), moments[:,1], yerr=moments_std[:,1], fmt='.')
+    a[1].errorbar(list(range(mf.maxChan)), moments[:,1], yerr=moments_std[:,1], fmt='.')
     a[1].set_ylabel('1st moment')
-    a[2].errorbar(range(mf.maxChan), moments[:,2], yerr=moments_std[:,2], fmt='.')
+    a[2].errorbar(list(range(mf.maxChan)), moments[:,2], yerr=moments_std[:,2], fmt='.')
     a[2].set_ylabel('2nd moment')
     a[2].set_xlabel(r'channel')
 

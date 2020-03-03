@@ -4,6 +4,9 @@ Created on Tue Feb 26 16:19:46 2019
 
 @author: normandy
 """
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 
 import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermeroots
@@ -69,7 +72,7 @@ figure = corner.corner(rescaled)
 
 rscaled = np.sum(rescaled**2, axis=1)
 hist, bin_edges = np.histogram(rscaled, bins=256, density=True)
-bins = (bin_edges[1:] + bin_edges[:-1])/2.0
+bins = old_div((bin_edges[1:] + bin_edges[:-1]),2.0)
 plt.loglog(bins, hist)
 plt.loglog(bins, bins*1e-1)
 #x = np.linspace(0,np.max(rscaled))

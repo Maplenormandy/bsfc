@@ -4,6 +4,9 @@ Tests bsfc_main versus synthetic data, to see the quality of the fits
 
 @author: normandy
 """
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 
 import readline
 import MDSplus
@@ -35,9 +38,9 @@ ax0 = plt.subplot(gs1[0])
 ax1 = plt.subplot(gs1[1], sharex=ax0)
 ax2 = plt.subplot(gs1[2], sharex=ax0)
 
-brightChange = np.nanmean(data['meas_true'][0,:]) / np.nanmean(data['meas_avg'][0,:])
+brightChange = old_div(np.nanmean(data['meas_true'][0,:]), np.nanmean(data['meas_avg'][0,:]))
 
-bins = np.array(range(50))
+bins = np.array(list(range(50)))
 ax0.plot(bins, data['meas_true'][0,:], marker='.')
 ax0.errorbar(bins, data['meas_avg'][0,:]*brightChange, marker='.', yerr=data['meas_std'][0,:]*brightChange)
 

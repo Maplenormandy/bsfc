@@ -4,6 +4,7 @@ Database of C-Mod shots, corresponding atomic lines, times of interest, THT for 
 
 @author: sciortino
 """
+from builtins import str
 
 
 
@@ -55,16 +56,17 @@ def get_shot_info(shot, imp_override=None):
     elif shot==1101014030:    # I-mode FS
         primary_impurity = 'Ca' if imp_override is None else imp_override  
         primary_line = 'w' #'all' #'z' # 'w'
-        #tbin=128; chbin=31  # t=1.2695
-        #tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
-        tbin = 6; chbin = 18
-        ####t_min=0.780; t_max = 1.5  # entire LBO interval
         t_min = 1.2; t_max = 1.3
         #t_min=1.185; t_max=1.3
         if primary_impurity=='Ar':   # for Ca: THT=0; for Ar: THT=1
             tht=1
+            tbin = 6; chbin = 18
         else:
            tht=0
+           #tbin=128; chbin=31  # t=1.2695
+           tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
+           ####t_min=0.780; t_max = 1.5  # entire LBO interval
+           
     elif shot==1100305019:
         primary_impurity = 'Ca' if imp_override is None else imp_override
         primary_line = 'w'

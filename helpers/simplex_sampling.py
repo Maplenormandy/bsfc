@@ -4,6 +4,9 @@ Created on Wed Dec 12 14:58:43 2018
 
 @author: maple
 """
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 
 import numpy as np
 
@@ -53,12 +56,12 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
 
     # The volume of the tetrahedra is calculated as 1/6 of the volume of the parallelepiped
     # formed by the vectors pointing to the three non-zero coordinates
-    vol1 = np.abs(np.linalg.det(np.array([r1, r2, r31]))/6)
-    vol2 = np.abs(np.linalg.det(np.array([r1, r2, r32]))/6)
+    vol1 = np.abs(old_div(np.linalg.det(np.array([r1, r2, r31])),6))
+    vol2 = np.abs(old_div(np.linalg.det(np.array([r1, r2, r32])),6))
 
     # The cutpoint is from [0,1] in one dimension such that the ratio of the cut hypercube volumes is
     # equal to the ratio of the simplex volumes
-    cutpoint = vol1/(vol1+vol2)
+    cutpoint = old_div(vol1,(vol1+vol2))
 
     # Sets of vertices. Note that the vertex that differs is in the first slot.
     # This is because z[0]==0 is the face that the hypercubes will share, and so
@@ -68,10 +71,10 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
 
     def hypercubeToHermiteSample(z):
         if z[0] <= cutpoint:
-            z0_new = 1.0 - (z[0] / cutpoint)
+            z0_new = 1.0 - (old_div(z[0], cutpoint))
             return hypercubeToSimplex(np.array([z0_new, z[1], z[2]]), tet1)
         else:
-            z0_new = (z[0]-cutpoint)/(1.0-cutpoint)
+            z0_new = old_div((z[0]-cutpoint),(1.0-cutpoint))
             return hypercubeToSimplex(np.array([z0_new, z[1], z[2]]), tet2)
 
     return hypercubeToHermiteSample
@@ -144,10 +147,10 @@ def generalizedHypercubeConstraintFunction(cind, n_hermite, bound=1.0):
     axes = np.maximum(axes, [2.0]*len(axes))
 
     hypercubeConstraint = lambda theta: (bound - np.sum(
-        np.abs(
+        old_div(np.abs(
             np.dot(invMatrix,
-                   theta[cind+1:cind+n_hermite]/(theta[cind]+1e-4) - mean) - zero
-                   ) / axes
+                   old_div(theta[cind+1:cind+n_hermite],(theta[cind]+1e-4)) - mean) - zero
+                   ), axes)
                    ))
 
     return hypercubeConstraint

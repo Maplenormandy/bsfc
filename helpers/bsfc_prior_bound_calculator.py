@@ -4,6 +4,7 @@ Created on Tue Feb 26 16:19:46 2019
 
 @author: normandy
 """
+from builtins import range
 
 import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermeroots

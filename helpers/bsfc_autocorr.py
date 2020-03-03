@@ -6,6 +6,9 @@ http://emcee.readthedocs.io/en/latest/tutorials/autocorr/
 
 @author: sciortino
 """
+from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -73,7 +76,7 @@ def plot_convergence(chain, dim=1, nsteps=1024):
 	plt.figure()
 	
 	print(chain.shape)
-	plt.hist(chain[:,int(nsteps/2.0):].flatten(), 100)
+	plt.hist(chain[:,int(old_div(nsteps,2.0)):].flatten(), 100)
 	plt.title('chains histogram long dim=%d'%dim)
 	plt.gca().set_yticks([])
 	plt.xlabel(r"$\theta$")

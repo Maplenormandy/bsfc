@@ -4,6 +4,12 @@ Tests bsfc_main versus synthetic data, to see the quality of the fits
 
 @author: normandy
 """
+from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 
 import readline
 import MDSplus
@@ -18,7 +24,7 @@ speedOfLight = 2.998e+5 # speed of light in km/s
 
 # %%
 
-class SyntheticGenerator:
+class SyntheticGenerator(object):
     def __init__(self, shot, tht, branchB, dataLine, tbin, tinst=0.5):
         # Do some branching to load the right node
         ana = 'ANALYSIS'
@@ -84,12 +90,12 @@ class SyntheticGenerator:
             measurement_ml = bf.lineModel.modelMeasurements(bf.theta_ml, line=j)
             countsMultiplier[j] = measurement_ml[0]
         #countsMultiplier[1] = countsMultiplier[0]*0.1
-        print countsMultiplier
+        print(countsMultiplier)
 
         noise, center, scale, herm = bf.lineModel.unpackTheta(bf.theta_ml)
         noise = noise[0]
 
-        countsMultiplier = countsMultiplier / countsMultiplier[0]
+        countsMultiplier = old_div(countsMultiplier, countsMultiplier[0])
 
         # Get the normalized line width w
         w2 = (self.pro[3,:]+self.tinst) * mf.lines.lam[0]**2 / mf.lines.m_kev[0]
@@ -100,7 +106,7 @@ class SyntheticGenerator:
         lam = mf.lam_all[:,self.tbin,chbin]
 
         lamEdge = np.zeros(len(lam)+1)
-        lamEdge[1:-1] = (lam[1:] + lam[:-1]) / 2
+        lamEdge[1:-1] = old_div((lam[1:] + lam[:-1]), 2)
         lamEdge[-1] = 2 * lamEdge[-2] - lamEdge[-3]
         lamEdge[0] = 2 * lamEdge[1] - lamEdge[2]
         lamEdge = lamEdge
@@ -118,8 +124,8 @@ class SyntheticGenerator:
 
         specBr += noise
 
-        specBrSamp = np.random.poisson(lam=specBr*whitefield)/whitefield
-        specBrSampSig = np.sqrt(specBrSamp*whitefield)/whitefield
+        specBrSamp = old_div(np.random.poisson(lam=specBr*whitefield),whitefield)
+        specBrSampSig = old_div(np.sqrt(specBrSamp*whitefield),whitefield)
 
 
         mf.specBr_all[:,self.tbin,chbin] = specBrSamp

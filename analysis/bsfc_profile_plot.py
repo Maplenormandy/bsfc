@@ -4,6 +4,9 @@ Tests bsfc_main versus synthetic data, to see the quality of the fits
 
 @author: normandy
 """
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 
 import readline
 import MDSplus
@@ -58,7 +61,7 @@ lamw = 3.94912
 mAr = 39.948
 c = 2.998e+5
 
-normError = (momsErr[:,tbin,:maxChan] / momsRaw[:,tbin,:maxChan])**2
+normError = (old_div(momsErr[:,tbin,:maxChan], momsRaw[:,tbin,:maxChan]))**2
 moms = momsRaw[:,tbin,:maxChan]
 
 v_thaco = moms[1] / moms[0] * c/lamw
@@ -75,7 +78,7 @@ data = data2
 gdata = data['meas_avg']
 gstd = data['meas_std']
 
-bins = np.array(range(data['meas_avg'].shape[1]))
+bins = np.array(list(range(data['meas_avg'].shape[1])))
 
 """
 for chbin in bins:
@@ -106,7 +109,7 @@ t_thaco[24] = np.nan
 brightChange = 1.0
 lbin = 26
 
-brightChange = np.nanmean(moms[0,lbin:]) / np.nanmean(gdata[0,lbin:])
+brightChange = old_div(np.nanmean(moms[0,lbin:]), np.nanmean(gdata[0,lbin:]))
 
 # %%
 
@@ -267,10 +270,10 @@ def modelMeasurements(lm, theta, line=0, order=-1, thaco=True):
     # Note that this needs to be projected onto the toroidal component
     v = moments[1]*1e-3/moments[0] / lm.linesLam[line] * c
     # width of a 1 kev line = rest wavelength ** 2 / mass in kev
-    w = lm.linesLam[line]**2 / lm.lineData.m_kev[lm.linesFit][line]
+    w = old_div(lm.linesLam[line]**2, lm.lineData.m_kev[lm.linesFit][line])
     ti = moments[2]*1e-6/moments[0] / w
     if thaco:
-        counts = m0/scale[line]
+        counts = old_div(m0,scale[line])
     else:
         counts = m0
 

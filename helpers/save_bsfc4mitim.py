@@ -2,13 +2,16 @@
 This script creates an input file for MITIM from Hirex-Sr analysis using BSFC results. This require that BSFC has been previously run for a time window of interest for a chosen shot. 
 
 '''
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 
 import MDSplus, os, sys, argparse
 import numpy as np
 try:
     import pickle as pkl  #python 3+
 except:
-    import cPickle as pkl  # python 2.7
+    import pickle as pkl  # python 2.7
 
 from bsfc_moment_fitter import *
 from helpers import bsfc_clean_moments 

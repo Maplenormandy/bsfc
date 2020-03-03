@@ -5,6 +5,16 @@ spectroscopic data structures.
 
 @author: sciortino
 """
+from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import scipy
 import numpy as np
 
@@ -18,11 +28,19 @@ import matplotlib.widgets as mplw
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
 
-import profiletools
-import Tkinter as tk
-import gptools
+try:
+    # Python3+ compatible versions
+    import profiletools3 as profiletools
+    import gptools3 as gptools
+except:
+    import profiletools
+    import gptools
+
+
 import re
 import pdb
+import tkinter as tk
+
 
 # Threshold for size of HiReX-SR errorbar to reject:
 HIREX_THRESH = 0.03
@@ -97,7 +115,7 @@ class HirexData(object):
         # chord:
         maxs = scipy.zeros(hirex_signal.shape[1])
         s_maxs = scipy.zeros_like(maxs)
-        for j in xrange(0, hirex_signal.shape[1]):
+        for j in range(0, hirex_signal.shape[1]):
             good = ~hirex_flagged[:, j]
             max_idx = np.argmax(hirex_signal[good,j])
             maxs[j] = hirex_signal[good,j][max_idx]
@@ -120,8 +138,8 @@ class HirexData(object):
         t.append(hirex_time)
         y.append(hirex_signal)
         std_y.append(hirex_uncertainty)
-        y_norm.append(hirex_signal / m)
-        std_y_norm.append(scipy.sqrt((hirex_uncertainty / m)**2.0 + ((hirex_signal / m)*(s / m))**2.0))
+        y_norm.append(old_div(hirex_signal, m))
+        std_y_norm.append(scipy.sqrt((old_div(hirex_uncertainty, m))**2.0 + ((old_div(hirex_signal, m))*(old_div(s, m)))**2.0))
         
         # import pdb
         # pdb.set_trace()
@@ -157,7 +175,7 @@ class HirexData(object):
         keep = ~(self.hirex_flagged.ravel())
         signal = self.hirex_signal
         uncertainty = self.hirex_uncertainty
-        CHAN, T = scipy.meshgrid(range(0, signal.shape[1]), t)
+        CHAN, T = scipy.meshgrid(list(range(0, signal.shape[1])), t)
         profiletools.errorbar3d(
             a,
             T.ravel()[keep],
@@ -181,6 +199,7 @@ class HirexPlotFrame(tk.Frame):
         matplotlib.use('TkAgg')
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
         from matplotlib.backend_bases import key_press_handler
+        
         
         tk.Frame.__init__(self, *args, **kwargs)
         self.f = Figure()
@@ -349,7 +368,7 @@ class HirexWindow(tk.Tk):
             )
         )
         for i, x, y in zip(
-                xrange(0, self.signal.shape[0]),
+                range(0, self.signal.shape[0]),
                 self.time,
                 self.signal[:, int(new_idx)]
             ):
@@ -414,7 +433,7 @@ def interp_max(x, y, err_y=None, s_guess=0.2, s_max=10.0, l_guess=0.005, fixed_l
         i = m_gp.argmax()
     elif method == 'spline':
         m_gp = scipy.interpolate.UnivariateSpline(
-            x, y, w=1.0 / err_y, s=2*len(x)
+            x, y, w=old_div(1.0, err_y), s=2*len(x)
         )(grid)
         if scipy.isnan(m_gp).any():
             print(x)
@@ -630,7 +649,7 @@ class Signal(object):
         i_col = 0
         i_row = 0
         
-        for k in xrange(0, self.y.shape[1]):
+        for k in range(0, self.y.shape[1]):
             a.append(
                 f.add_subplot(
                     gs[i_row, i_col],
@@ -702,7 +721,7 @@ def get_robust_weighted_stats(samples, weights=None):
 
     if weights is None:
         # untested, but should work (even non-normalized should work, I think...)
-        weights = np.ones_like(samples[:,1])/len(samples[:,1])
+        weights = old_div(np.ones_like(samples[:,1]),len(samples[:,1]))
 
     median=[]; q01=[]; q10=[]; q25=[]; q75=[]; q90=[]; q99=[]
     sigma = []; sigma1_range=[]; sigma2_range=[]; sigma3_range=[]; sigma5_range=[]
@@ -714,10 +733,10 @@ def get_robust_weighted_stats(samples, weights=None):
         bb = np.array(bb)
         bb[:,0] = bb[:,0].cumsum()  #substitute weights with cumulative weights 
         
-        sig5 = 0.5 + 0.9999994 / 2.
-        sig3 = 0.5 + 0.9973 / 2.
-        sig2 = 0.5 + 0.95 / 2.
-        sig1 = 0.5 + 0.6826 / 2.
+        sig5 = 0.5 + old_div(0.9999994, 2.)
+        sig3 = 0.5 + old_div(0.9973, 2.)
+        sig2 = 0.5 + old_div(0.95, 2.)
+        sig1 = 0.5 + old_div(0.6826, 2.)
         
         # evaluate parameter at chosen probability value (normalized cumulative weight)
         bbi = lambda x: np.interp(x, bb[:,0], bb[:,1], left=bb[0,1], right=bb[-1,1])
@@ -739,7 +758,7 @@ def get_robust_weighted_stats(samples, weights=None):
         low5 = bbi(1 - sig5)
         high5 = bbi(sig5)
         
-        sigma.append( (high1 - low1) / 2. )
+        sigma.append( old_div((high1 - low1), 2.) )
         sigma1_range.append( [low1, high1] )
         sigma2_range.append( [low2, high2] )
         sigma3_range.append( [low3, high3] )

@@ -4,13 +4,15 @@ Compare brightness results for BSFC vs. THACO.
 
 @author: sciortino
 """
+from future import standard_library
+standard_library.install_aliases()
 
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
 import bsfc_helper
-import cPickle as pkl
+import pickle as pkl
 import bsfc_autocorr
 import pdb
 import corner
