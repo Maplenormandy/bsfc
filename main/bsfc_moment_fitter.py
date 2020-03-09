@@ -25,7 +25,8 @@ import shutil
 import MDSplus
 
 #from .bsfc_bin_fit import BinFit
-from bsfc_bin_fit import BinFit
+#from bsfc_bin_fit import BinFit
+import bsfc_bin_fit
 
 # packages that require extra installation/care:
 import emcee
@@ -373,21 +374,19 @@ class MomentFitter(object):
 
 
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
-                     NS=False,n_hermite=3, n_live_points=400, sampling_efficiency=0.3,
+                     method=1,n_hermite=3, n_live_points=400, sampling_efficiency=0.3,
                      const_eff=True, verbose=True, basename=None):
-        ''' Basic function to launch fitting methods. If NS==True, this uses Nested Sampling
-        with MultiNest. In this case, the number of steps (nsteps) doesn't matter since the
+        ''' Basic function to launch fitting methods. If method>1, this uses Nested Sampling
+        with MultiNest (method=1) or dyPolyChord (method=2). 
+        In this case, the number of steps (nsteps) doesn't matter since the
         algorithm runs until meeting a convergence threshold. Parallelization is activated by
-        default in MultiNest if MPI libraries are available.
+        default in MultiNest or PolyChord if MPI libraries are available.
 
-        If NS==False, emcee is used. Either an affine-invariant Ensemble Sampler or
-        Parallel-Tempering MCMC are used. Both require specification of a certain number of
-        steps and a number of threads for parallelization. It is recommended to keep this to 1
-        if the user is already using parallelization to compute multiple spectal images at the same
-        time (i.e. avoid double-layer parallelization).
+        The sampling algorithm is specified via `method`. Options:
+        {0: vanilla emcee, 1: parallel-tempering emcee, 2: MultiNest, 3: dyPolyChord}
         '''
-
-        self.NS = NS
+        self.method = method
+        
         w0, w1 = np.searchsorted(self.lam_all[:,tbin,chbin], self.lam_bounds)
         lam = self.lam_all[w0:w1,tbin,chbin]
         specBr = self.specBr_all[w0:w1,tbin,chbin]
@@ -402,28 +401,35 @@ class MomentFitter(object):
             print(whitefield)
             pass
 
-        bf = BinFit(lam, specBr, sig, whitefield, self.lines, list(range(len(self.lines.names))), n_hermite=n_hermite)
+        bf = bsfc_bin_fit.BinFit(lam, specBr, sig, whitefield, self.lines, list(range(len(self.lines.names))), n_hermite=n_hermite)
 
         self.fits[tbin][chbin] = bf
 
         #print("Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", nsteps)
-        if NS==False:
+        if self.method==0 or self.method==1:
             # MCMC fit
-            good = bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads, PT=PT)
-        else:
+            bf.MCMCfit(nsteps=nsteps, emcee_threads=emcee_threads, PT=PT)
             
-            # Using nested sampling
+        elif self.method==2:
+            # Using nested rejection sampling within ellipsoidal bounds (MultiNest)
             if basename==None:
                 basename = os.path.abspath(os.environ['BSFC_ROOT']+'/mn_chains/c-.' )
 
-            good = bf.NSfit(lnev_tol= 0.1, n_live_points=n_live_points,
+            bf.MN_fit(lnev_tol= 0.1, n_live_points=n_live_points,
                             sampling_efficiency=sampling_efficiency,
                             basename=basename, verbose=verbose, const_eff=const_eff)
 
-        #if not good:
-        #    print("not worth fitting")
-        #else:
-        #    print("--> done")
+        elif self.method==3:
+            # Dynamic nested slice sampling (dyPolyChord)
+            if basename==None:
+                basename = os.path.abspath(os.environ['BSFC_ROOT']+'/dypc_chains/c-.' )
+                
+            bf.dyPC_fit(dynamic_goal=1.0, ninit=100, nlive_const=n_live_points,
+                 dypc_basename=basename, verbose=verbose, plot=False)
+
+
+        else:
+            raise ValueError('Unrecognized sampling method!')
 
 
     def fitTimeBin(self, tbin, parallel=True, nproc=None, nsteps=1024, emcee_threads=1):
@@ -439,7 +445,7 @@ class MomentFitter(object):
             pool = multiprocessing.Pool(processes=nproc)
 
             # requires a wrapper for multiprocessing to pickle the function
-            ff = _TimeBinFitWrapper(self,nsteps=nsteps, tbin=tbin)
+            ff = bsfc_bin_fit._TimeBinFitWrapper(self,nsteps=nsteps, tbin=tbin)
 
             # map range of channels and compute each
             self.fits[tbin][:] = pool.map(ff, list(range(self.maxChan)))
@@ -462,7 +468,7 @@ class MomentFitter(object):
             pool = multiprocessing.Pool(processes=nproc)
 
             # requires a wrapper for multiprocessing to pickle the function
-            ff = _ChBinFitWrapper(self, nsteps=nsteps, chbin=chbin)
+            ff = bsfc_bin_fit._ChBinFitWrapper(self, nsteps=nsteps, chbin=chbin)
 
             # map range of channels and compute each
             self.fits[:][chbin] = pool.map(ff, list(range(self.maxTime)))
@@ -495,7 +501,7 @@ class MomentFitter(object):
             pool = multiprocessing.Pool(processes=nproc)
 
             # requires a wrapper for multiprocessing to pickle the function
-            ff = _fitTimeWindowWrapper(self,nsteps=nsteps)
+            ff = bsfc_bin_fit._fitTimeWindowWrapper(self,nsteps=nsteps)
 
             # map range of channels and compute each
             map_args_tpm = list(itertools.product(list(range(tidx_min, tidx_max)), list(range(self.maxChan))))
@@ -555,12 +561,16 @@ class MomentFitter(object):
 
             # plot some samples: noise floor in black, spectral lines all in different colors
             for samp in range(160):
-                if not self.NS:
+                if self.method==0 or self.method==1:  # emcee ES or PT
                     theta = bf.samples[np.random.randint(len(bf.samples))]
-                else:
+                elif self.method==2: # MultiNest
                     # With nested sampling, sample the samples according to the weights
                     sampleIndex = np.searchsorted(bf.cum_sample_weights, np.random.rand())
                     theta = bf.samples[sampleIndex]
+                elif self.method==3: # dyPolyChord
+                    raise ValueError('Not implemented yet!')
+                else:
+                    raise ValueError('Unrecognized method!')
 
                 noise = bf.lineModel.modelNoise(theta)
                 a0.plot(bf.lam, noise, c='k', alpha=0.04)

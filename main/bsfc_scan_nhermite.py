@@ -42,14 +42,14 @@ size = comm.Get_size()
 # ===========
 # Scan parameters
 shot = 1160506007 #1101014019 #1101014019 #1160506007
-NS=True   #if NS==True, then nsteps is useless.
+method=2   #if method=2, then MultiNest is used and (emcee) nsteps is useless.
 nsteps = int(1e5) #make sure this is an integer
 nh_min = 3
 nh_max = 9
 # ============
 
 # Use as many cores as are available (this only works on a single machine/node!)
-if NS==False:
+if method==0 or method==1:
     NTASKS = multiprocessing.cpu_count()
     print("Running on ", NTASKS, "cores")
 else:
@@ -83,7 +83,7 @@ for nh in range(nh_min, nh_max+1):
     # Create new fitting container for each value of n_hermite
     mf = MomentFitter(primary_impurity, primary_line, shot, tht=0)
 
-    if rank==0 and NS:
+    if rank==0 and method>1:
         # check that empty directory exists for MultiNest output:
         chains_dir = os.path.dirname(basename)
 
@@ -104,17 +104,17 @@ for nh in range(nh_min, nh_max+1):
     #with warnings.catch_warnings():
     #    warnings.simplefilter("ignore")
 
-    # NB: if NS==True, PT doesn't matter
+    # NB: if method!=1, PT doesn't matter
     mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps,emcee_threads=NTASKS,
-                    PT=True, NS=NS,n_live_points=n_live_points,sampling_efficiency=0.3,
+                    PT=True, method=method,n_live_points=n_live_points,sampling_efficiency=0.3,
                     verbose=True,const_eff=True, n_hermite=nh)
 
-    if rank==0 and NS:
+    if rank==0 and method>1:
         mf.fits[tbin][chbin].NS_analysis(basename)
 
     # save each fit independently
     if rank==0:
-        if NS:
+        if method>1:
             nn=n_live_points
         else:
             nn=nsteps

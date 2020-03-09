@@ -87,7 +87,7 @@ for nh in range(nh_min, nh_max+1):
     with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
 
-    if mf.NS==False:
+    if mf.method<=1:
         chain = mf.fits[tbin][chbin].samples
 
         moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
@@ -209,7 +209,7 @@ nh=3
 with open('../bsfc_fits/mf_%d_tbin%d_chbin%d_jef_nh%d_%d.pkl'%(shot,tbin,chbin,nh,nn),'rb') as f:
         mf = pkl.load(f)
 
-if mf.NS==False:
+if mf.method<=1:
     chain = mf.fits[tbin][chbin].samples
 
     moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)

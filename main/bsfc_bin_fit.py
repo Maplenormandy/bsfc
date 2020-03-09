@@ -11,6 +11,7 @@ from builtins import object
 
 import numpy as np
 import scipy.optimize as op
+from IPython import embed
 
 # make it possible to use other packages within the BSFC distribution:
 from os import path
@@ -205,7 +206,7 @@ class BinFit(object):
         if herm[0][0] < noise[0]*0.5: #0.1 or 0.05?
             self.m0_ml = 0.0
             self.good = False
-            return False
+           
         else:
             # obtain maximum likelihood fits
             self.result_ml = self.optimizeFit(theta0)
@@ -242,11 +243,161 @@ class BinFit(object):
             self.m_std = np.std(self.m_samples, axis=0) #, ddof=len(theta0))
 
             self.good = True
-            return True
 
 
-    def NSfit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3,
-              INS=True, const_eff=True,basename=None, verbose=True):
+    def dyPC_loglike(self, theta, nderived=0):
+        ''' Convenience function for PolyChord/dyPolyChord).
+        pyPolyChord requires any derived quantities to be returned after the log-likelihood value,
+        but here we don't set any.
+        '''
+        return self.lineModel.hypercube_lnlike(theta), [0.0]*nderived
+    
+        
+    def dyPC_fit(self,dynamic_goal=1.0, ninit=100, nlive_const=500,
+                 dypc_basename='dypc_chains', verbose=True, plot=False):
+        '''
+
+        Parameters
+        ----------
+        dynamic_goal : float, opt
+            Parameter in [0,1] determining whether algorithm prioritizes accuracy in 
+            parameter estimation or evidence accuracy.
+        ninit : int, opt
+            Number of live points to use in initial exploratory run. 
+        nlive_const : int, opt
+            Total computational budget, equivalent to non-dynamic nested sampling with nlive_const live points.
+        dypc_basename : str, opt
+            Location in which dyPolyChord will store chains. 
+        verbose : bool, opt
+            If True, text will be output on the terminal to check how run is proceeding. 
+        plot : bool, opt
+            Display some sample plots to check result of dynamic slice nested sampling.
+        
+ 
+        '''       
+
+        # obtain maximum likelihood fits
+        theta0 = self.lineModel.guessFit()
+        self.result_ml = self.optimizeFit(theta0)
+        self.theta_ml = self.result_ml['x']
+
+        # save theta_ml also in the lineModel object,
+        # so that constraints may be set based on ML result
+        self.lineModel.theta_ml = self.theta_ml
+        
+        # save moments obtained from maximum likelihood optimization
+        self.m_ml = self.lineModel.modelMoments(self.theta_ml)
+        
+        # dimensionality of the problem
+        ndim = int(self.lineModel.thetaLength())
+
+        try:
+            import dyPolyChord.pypolychord_utils
+            import dyPolyChord
+        except:
+            print("********************")
+            print("Could not import dyPolyChord! Make sure that this is in your PYTHONPATH.")
+            print("PolyChord must also be on your LD_LIBRARY_PATH")
+            raise ValueError("Abort BSFC fit")
+
+        
+        # Make a callable for running PolyChord
+        my_callable = dyPolyChord.pypolychord_utils.RunPyPolyChord(
+            self.dyPC_loglike,
+            self.lineModel.hypercube_lnprior_generalized_simplex,
+            ndim
+        )
+        
+        # Specify sampler settings (see run_dynamic_ns.py documentation for more details)
+ 
+        settings_dict = {'file_root': 'bsfc',
+                         'base_dir': 'dypc_chains', #dypc_basename,
+                         'seed': 1}
+
+        '''
+        settings_dict = {'base_dir': 'dypc_chains',
+        'boost_posterior': 0.0,
+        'cluster_posteriors': False,
+        'do_clustering': True,
+        'equals': False,
+        'file_root': 'bsfc_init',
+        'max_ndead': 100,
+        'nlive': 100,
+        'nlives': {},
+        'num_repeats': 20,
+        'posteriors': False,
+        'read_resume': True,
+        'seed': 1,
+        'write_dead': True,
+        'write_live': False,
+        'write_paramnames': False,
+        'write_prior': False,
+        'write_resume': True,
+        'write_stats': True}
+        '''
+ 
+        # Run dyPolyChord
+        MPI_parallel=False
+        if MPI_parallel:
+            from mpi4py import MPI
+            comm = MPI.COMM_WORLD
+            dyPolyChord.run_dypolychord(my_callable, dynamic_goal, settings_dict,
+                                        ninit=ninit, nlive_const=nlive_const, comm=comm)
+        else:
+            dyPolyChord.run_dypolychord(my_callable, dynamic_goal, settings_dict,
+                                        ninit=ninit, nlive_const=nlive_const)
+                                        
+        if verbose:
+            # Read output:
+            import nestcheck.data_processing
+            import nestcheck.estimators as estim
+            
+            # load the run
+            run = nestcheck.data_processing.process_polychord_run(
+                'bsfc',           # = settings['file_root']
+                dypc_basename)    # = settings['base_dir']
+            
+            print('The log evidence estimate using the first run is {}'
+                  .format(estim.logz(run)))
+            print('The estimated parameter means are: ')
+            print(*[estim.param_mean(run, param_ind=i) for i in np.arange(ndim)])
+
+            
+        if plot:
+
+            import nestcheck.ns_run_utils
+            
+            # get the sample's estimated logX co-ordinates and relative posterior mass
+            logx = nestcheck.ns_run_utils.get_logx(run['nlive_array'])
+            logw = logx + run['logl']
+            w_rel = np.exp(logw - logw.max())
+            
+            # plot nlive and w_rel on same axis
+            fig = plt.figure()
+            ax1 = fig.add_subplot(111)
+            ax2 = ax1.twinx()
+            l1 = ax1.plot(logx, run['nlive_array'], label='number of live points', color='blue')
+            l2 = ax2.plot(logx, w_rel, label='relative posterior mass', color='black', linestyle='dashed')
+            lines = l1 + l2
+            ax1.legend(lines, [l.get_label() for l in lines], loc=0)
+            ax1.set_xlabel('estimated $\log X$')
+            ax1.set_xlim(right=0.0)
+            ax1.set_ylim(bottom=0.0)
+            ax1.set_ylabel('number of live points')
+            ax2.set_ylim(bottom=0.0)
+            ax2.set_yticks([])
+            ax2.set_ylabel('relative posterior mass')
+            plt.show()
+
+        
+        self.good=True
+
+
+        
+        
+                 
+    def MN_fit(self, lnev_tol=0.1, n_live_points=400, sampling_efficiency=0.3,
+               INS=True, const_eff=True,basename=None, verbose=False, resume=False):
         ''' Fit with Nested Sampling (MultiNest algorithm).
         For Nested Sampling, the prior and likelihood are not simply combined into a posterior
         (which is the only function passed to EMCEE), but they are used differently to explore the
@@ -292,7 +443,7 @@ class BinFit(object):
             print("MultiNest must also be on your LD_LIBRARY_PATH")
             raise ValueError("Abort BSFC fit")
 
-        pymultinest.run(
+        pymultinest.solve(
             self.lineModel.hypercube_lnlike,   # log-likelihood
             self.lineModel.hypercube_lnprior_generalized_simplex,   # log-prior
             ndim,
@@ -306,15 +457,22 @@ class BinFit(object):
             max_modes = 100,
             mode_tolerance = -1e90,  #keeps all modes
             verbose = verbose,
-            resume = False,
+            resume = resume,
         )
 
         self.good=True
 
-        return True
+        # Read output:
+        #import nestcheck.data_processing
+        #import nestcheck.estimators as estim
+    
+        #run = nestcheck.data_processing.process_multinest_run(
+        #    basename, basename)
+        
+            
 
 
-    def NS_analysis(self, basename):
+    def MN_analysis(self, basename):
         '''
         Splitting of MultiNest output analysis
 

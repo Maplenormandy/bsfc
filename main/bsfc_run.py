@@ -45,14 +45,14 @@ try:
 except:
     PT = False
 
-# if NS is used, this script will be called with mpirun
+# if NS is used (either with MultiNest or dyPolyChord), this script should be called with mpirun
 try:
-    NS = bool(int(sys.argv[5]))
+    method = int(int(sys.argv[5]))
 except:
-    NS = False
+    method = 1 # PT-emcee
 
 # Use as many cores as are available (this only works on a single machine/node!)
-if NS==False:
+if method<=1:
     NTASKS = multiprocessing.cpu_count()
     print("Running on ", NTASKS, "cores")
     print("Analyzing shot ", shot)
@@ -88,8 +88,8 @@ except:
     mf = bsfc_main.MomentFitter(primary_impurity, primary_line, shot, tht=0)
     loaded = False
 
-    # if NS sampling is requested, set up output directory
-    if NS==True:
+    # if Multinest or dyPolyChord sampling is requested, set up output directory
+    if method>1:
         # create output
         if 'BSFC_ROOT' not in os.environ:          
             # assume bsfc is in user's home
@@ -110,16 +110,16 @@ except:
 if option==1:
     if loaded==False:
         mf.fitSingleBin(tbin=tbin, chbin=chbin, nsteps=nsteps,
-                        emcee_threads=NTASKS, PT=PT, NS=NS)
+                        emcee_threads=NTASKS, PT=PT, method=method)
 
     if loaded==True:
         # the following will be empty at this stage for MultiNest
         chain = mf.fits[tbin][chbin].samples
         
-        if NS==True:
+        if method>1:
             print("Loaded MultiNest output")
             # load MultiNest output
-            mf.fits[tbin][chbin].NS_analysis(basename)
+            mf.fits[tbin][chbin].MN_analysis(basename)
 
             # corner plot
             f = gptools.plot_sampler(
@@ -164,7 +164,7 @@ if option==1:
                     ax.axhline(mean_emp[yi], color='r')
                     ax.plot(mean_emp[xi],mean_emp[yi],'sr')
 
-        if chain is not None and NS==False:
+        if chain is not None and method<=1:
             mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
             
             # if thinning is done, divide nsteps by ``thin''
@@ -172,12 +172,11 @@ if option==1:
             bsfc_autocorr.plot_convergence(chain, dim=1, nsteps=nsteps)
             
             plt.show(block=True)
-        elif chain is None and NS==False:
+        elif chain is None and method<=1:
             print(" ********* ")
             print("No result to plot")
             print(" ********* ")
         else:
-            # should still work for NS
             mf.plotSingleBinFit(tbin=tbin, chbin=chbin)
 
 

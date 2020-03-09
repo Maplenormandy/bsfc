@@ -458,24 +458,17 @@ class LineModel(object):
 
 
     # Routines for multinest:
-    def hypercube_lnprior_simple(self, cube, ndim, nparams):
+    def hypercube_lnprior_simple(self, cube):
         """Prior distribution function for :py:mod:`pymultinest`.
         This version does NOT set any correlations between parameters in the prior.
 
         Maps the (free) parameters in `cube` from [0, 1] to real space.
         This is necessary because MultiNest only works in a unit hypercube.
 
-        Do NOT attempt to change function arguments, even if they are not used!
-        This function signature is internally required in Fortran by MultiNest.
-
         Parameters
         ----------
         cube : array of float, (`num_free_params`,)
             The variables in the unit hypercube.
-        ndim : int
-            The number of dimensions (meaningful length of `cube`).
-        nparams : int
-            The number of parameters (length of `cube`).
         """
 
         # noise:
@@ -502,25 +495,22 @@ class LineModel(object):
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
 
+        return cube
 
-    def hypercube_lnprior_simplex(self,cube, ndim, nparams):
+    
+
+    def hypercube_lnprior_simplex(self,cube):
         """Prior distribution function for :py:mod:`pymultinest`.
         This version sets smart bounds within hypercube method of MultiNest.
 
         Maps the (free) parameters in `cube` from [0, 1] to real space.
         This is necessary because MultiNest only works in a unit hypercube.
 
-        Do NOT attempt to change function arguments, even if they are not used!
-        This function signature is internally required in Fortran by MultiNest.
-
         Parameters
         ----------
         cube : array of float, (`num_free_params`,)
             The variables in the unit hypercube.
-        ndim : int
-            The number of dimensions (meaningful length of `cube`).
-        nparams : int
-            The number of parameters (length of `cube`).
+
         """
         # set simplex limits so that a1 and a2 are 1/8 of a0 at most
         # a0 is set to be >0 and smaller than 1e5 (widest bound)
@@ -552,27 +542,26 @@ class LineModel(object):
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
 
-    def hypercube_lnprior_generalized_simplex(self,cube, ndim, nparams):
+        return cube
+
+
+    
+    def hypercube_lnprior_generalized_simplex(self,cube):
         """Prior distribution function for :py:mod:`pymultinest`.
         This version sets smart bounds within hypercube method of MultiNest.
 
         Maps the (free) parameters in `cube` from [0, 1] to real space.
         This is necessary because MultiNest only works in a unit hypercube.
 
-        Do NOT attempt to change function arguments, even if they are not used!
-        This function signature is internally required in Fortran by MultiNest.
-
         Parameters
         ----------
         cube : array of float, (`num_free_params`,)
             The variables in the unit hypercube.
-        ndim : int
-            The number of dimensions (meaningful length of `cube`).
-        nparams : int
-            The number of parameters (length of `cube`).
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
 
+
+        #print(cube)
         # FS: make sure that noise is a positive variable (it seems to swing a little near 0)
         noise[0] = max([noise[0],1e-10])
         
@@ -632,29 +621,19 @@ class LineModel(object):
             # increase count by number of Hermite polynomials considered.
             cind = cind + self.hermFuncs[i]
 
+        return cube
+    
 
-
-    def hypercube_lnlike(self, cube, ndim, nparams, lnew):
+    def hypercube_lnlike(self, theta):
         """Log-likelihood function for py:mod:`pymultinest`.
-
-        Do NOT attempt to change function arguments, even if they are not used!
-        This function signature is internally required by MultiNest.
 
         Parameters
         ----------
-        cube : array of float, (`num_free_params`,)
+        params : array of float, (`num_free_params`,)
             The free parameters.
-        ndim : int
-            The number of dimensions (meaningful length of `cube`).
-        nparams : int
-            The number of parameters (length of `cube`).
-        lnew : float
-            New log-likelihood. Probably just there for FORTRAN compatibility?
+
         """
-
         # parameters are in the hypercube space defined by multinest_lnprior
-        theta = [cube[i] for i in range(0, ndim)]
-
         pred = self.modelPredict(theta)
         ll_sig = -0.5 * np.sum(np.log(np.abs(pred)*self.whitefield))
         ll_cnst = -len(pred) * 0.5 * np.log(2.0 * np.pi)

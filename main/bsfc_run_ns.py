@@ -58,15 +58,15 @@ from bsfc_moment_fitter import *
 
 n_hermite=3
 
-# To be removed before public release:
-if '/home/sciortino/usr/pythonmodules/PyMultiNest' not in sys.path:
-    sys.path.insert(0,'/home/sciortino/usr/pythonmodules/PyMultiNest')
-
 parser = argparse.ArgumentParser()
-parser.add_argument("shot", type=int, help="shot number to run analysis on")
-parser.add_argument("-l", "--line_name", help="name of atomic line of interest for post-fitting analysis. For the primary line, just leave to None")
-parser.add_argument('-f', "--force", action="store_true", help="whether or not to force an overwrite of saved data")
-
+parser.add_argument("shot", type=int,
+                    help="shot number to run analysis on")
+parser.add_argument("method", type=int, default=2,
+                    help="Sampling method to use, among {0: emcee ES, 1: emcee PT, 2: MultiNest, 3: dyPolyChord}")
+parser.add_argument("-l", "--line_name",
+                    help="name of atomic line of interest for post-fitting analysis. For the primary line, just leave to None")
+parser.add_argument('-f', "--force", action="store_true",
+                    help="whether or not to force an overwrite of saved data")
 args = parser.parse_args()
 
 # first command line argument gives shot number
@@ -143,8 +143,8 @@ if loaded==False:
     else:   # if directory does not exist, create it
         os.mkdir(chains_dir)
     
-    # Do a single spectral fit with nested sampling
-    mf.fitSingleBin(tbin=tbin, chbin=chbin,NS=True,n_live_points=500,
+    # Do a single spectral fit with MultiNest (nested sampling)
+    mf.fitSingleBin(tbin=tbin, chbin=chbin, method=args.method,n_live_points=500,
                     sampling_efficiency=0.05,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
 
