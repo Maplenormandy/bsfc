@@ -4,8 +4,9 @@ pckg_dev.txt
 # emacs temp files
 *~
 
-# Do not save MultiNest chains
+# Do not save sampling chains
 *mn_chains*
+*chains*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -8,9 +8,10 @@ from __future__ import division
 from builtins import range
 from builtins import object
 from past.utils import old_div
-
+from IPython import embed
 import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermemulx
+import copy
 
 # make it possible to use other packages within the BSFC distribution:
 #from os import path
@@ -95,6 +96,7 @@ class LineModel(object):
 
     def unpackTheta(self, theta):
         # 2nd order Legendre noise
+        #embed()
         noise = theta[0:self.noiseFuncs]
 
         # Extract center and scale, one for each line to fit
@@ -200,27 +202,35 @@ class LineModel(object):
         """
         Full prediction given theta
         """
+        # issue: scale is sometimes coming out as ~9e-5 in PolyChord and this gives overflows...
         noise, center, scale, herm = self.unpackTheta(theta)
-
+        #embed()
+        
         # Shift and scale lambdas to evaluation points
         lamEv = old_div((self.lam[:,np.newaxis]-center),scale)
         lamEdgeEv = old_div((self.lamEdge[:,np.newaxis]-center),scale)
-
+        
         # Evaluate gaussian functions
+        # with np.errstate(all='raise'):
+        #     try:
+        #         gauss = np.exp(old_div(-lamEv**2, 2))
+        #         gaussEdge = np.exp(old_div(-lamEdgeEv**2, 2))
+        #     except:
+        #         embed()
         gauss = np.exp(old_div(-lamEv**2, 2))
         gaussEdge = np.exp(old_div(-lamEdgeEv**2, 2))
-
+        
         hn = np.zeros(lamEv.shape)
         hnEdge = np.zeros(lamEdgeEv.shape)
-
+      
         # Compute hermite functions to model lineData
         for i in range(self.nfit):
-            hn[:,i] = hermeval(lamEv[:,i], herm[i]) * gauss[:,i]
+            hn[:,i] = hermeval(lamEv[:,i], herm[i]) * gauss[:,i] ##
             hnEdge[:,i] = hermeval(lamEdgeEv[:,i], herm[i]) * gaussEdge[:,i]
 
         # Compute integral over finite pixel size
         hnEv = (4 * hn + hnEdge[1:] + hnEdge[:-1])/6.0*self.dlam/scale[np.newaxis,:]
-
+        
         # Evaluate noise as 2nd order Legendre fit
         if self.noiseFuncs == 1:
             noiseEv = noise[0]
@@ -463,7 +473,7 @@ class LineModel(object):
         This version does NOT set any correlations between parameters in the prior.
 
         Maps the (free) parameters in `cube` from [0, 1] to real space.
-        This is necessary because MultiNest only works in a unit hypercube.
+        This is necessary because nested sampling algorithms work in a unit hypercube.
 
         Parameters
         ----------
@@ -504,7 +514,7 @@ class LineModel(object):
         This version sets smart bounds within hypercube method of MultiNest.
 
         Maps the (free) parameters in `cube` from [0, 1] to real space.
-        This is necessary because MultiNest only works in a unit hypercube.
+        This is necessary because nested sampling algorithms work in a unit hypercube.
 
         Parameters
         ----------
@@ -546,12 +556,12 @@ class LineModel(object):
 
 
     
-    def hypercube_lnprior_generalized_simplex(self,cube):
+    def hypercube_lnprior_generalized_simplex(self,_cube):
         """Prior distribution function for :py:mod:`pymultinest`.
         This version sets smart bounds within hypercube method of MultiNest.
 
         Maps the (free) parameters in `cube` from [0, 1] to real space.
-        This is necessary because MultiNest only works in a unit hypercube.
+        This is necessary because nested sampling algorithms work in a unit hypercube.
 
         Parameters
         ----------
@@ -560,8 +570,9 @@ class LineModel(object):
         """
         noise, center, scale, herm = self.unpackTheta(self.theta_ml)
 
-
-        #print(cube)
+        # create copy of _cube since PolyChord passes immutable object
+        cube = copy.deepcopy(_cube)
+        
         # FS: make sure that noise is a positive variable (it seems to swing a little near 0)
         noise[0] = max([noise[0],1e-10])
         
@@ -624,8 +635,8 @@ class LineModel(object):
         return cube
     
 
-    def hypercube_lnlike(self, theta):
-        """Log-likelihood function for py:mod:`pymultinest`.
+    def ns_lnlike(self, theta):
+        """Log-likelihood function.
 
         Parameters
         ----------
@@ -633,10 +644,24 @@ class LineModel(object):
             The free parameters.
 
         """
-        # parameters are in the hypercube space defined by multinest_lnprior
+        # parameters are in real space, as given by lnprior
+        #from IPython import embed
+        #embed()
+        #with np.errstate(all='ignore'):
+        #try:
+
         pred = self.modelPredict(theta)
         ll_sig = -0.5 * np.sum(np.log(np.abs(pred)*self.whitefield))
         ll_cnst = -len(pred) * 0.5 * np.log(2.0 * np.pi)
         ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield * 0.5)
-
         return ll + ll_sig + ll_cnst
+
+        
+        #except:
+        #    
+        #    # too much freedom in s? This seems to cause overflows sometimes,
+        #    # crashing PolyChord. Kind of annoying.
+        #    return -np.infty
+
+
+        #return -1.0

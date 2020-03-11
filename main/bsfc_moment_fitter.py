@@ -30,10 +30,7 @@ import bsfc_bin_fit
 
 # packages that require extra installation/care:
 import emcee
-try:
-    import gptools3 as gptools
-except:
-    import gptools
+import gptools
 
 # %%
 
@@ -338,7 +335,6 @@ class MomentFitter(object):
         except:
             lamInRange=False
 
-
         if not lamInRange:
             try:
                 branchNode = specTree.getNode(rootPath+'.HELIKE')  
@@ -374,7 +370,7 @@ class MomentFitter(object):
 
 
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
-                     method=1,n_hermite=3, n_live_points=400, sampling_efficiency=0.3,
+                     method=1,n_hermite=3, n_live_points='auto', sampling_efficiency=0.3,
                      const_eff=True, verbose=True, basename=None):
         ''' Basic function to launch fitting methods. If method>1, this uses Nested Sampling
         with MultiNest (method=1) or dyPolyChord (method=2). 
@@ -384,6 +380,9 @@ class MomentFitter(object):
 
         The sampling algorithm is specified via `method`. Options:
         {0: vanilla emcee, 1: parallel-tempering emcee, 2: MultiNest, 3: dyPolyChord}
+
+        The "n_live_points" argument is only used for nested sampling algorithms. Set to 'auto'
+        to use the default value of 25*ndims.
         '''
         self.method = method
         
@@ -421,11 +420,12 @@ class MomentFitter(object):
 
         elif self.method==3:
             # Dynamic nested slice sampling (dyPolyChord)
+            dynamic=False
             if basename==None:
-                basename = os.path.abspath(os.environ['BSFC_ROOT']+'/dypc_chains/c-.' )
+                basename = 'dypc_chains' if dynamic else 'pc_chains'  #os.path.abspath(os.environ['BSFC_ROOT']+'/dypc_chains/c-.' )
                 
-            bf.dyPC_fit(dynamic_goal=1.0, ninit=100, nlive_const=n_live_points,
-                 dypc_basename=basename, verbose=verbose, plot=False)
+            bf.PC_fit(nlive_const=n_live_points,dynamic_goal=1.0, dynamic=False, ninit=100,
+                 basename=basename, verbose=verbose, plot=False)
 
 
         else:
@@ -568,7 +568,9 @@ class MomentFitter(object):
                     sampleIndex = np.searchsorted(bf.cum_sample_weights, np.random.rand())
                     theta = bf.samples[sampleIndex]
                 elif self.method==3: # dyPolyChord
-                    raise ValueError('Not implemented yet!')
+                    sampleIndex = np.searchsorted(bf.cum_sample_weights, np.random.rand())
+                    theta = bf.samples[sampleIndex]
+                    #raise ValueError('Not implemented yet!')
                 else:
                     raise ValueError('Unrecognized method!')
 

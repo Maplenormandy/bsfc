@@ -24,10 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-try:
-    import pickle as pkl # python 3+
-except:
-    import pickle as pkl   # python 2.7
+import pickle as pkl   
 import pdb
 import corner
 import sys
@@ -40,6 +37,7 @@ from helpers import bsfc_cmod_shots
 from helpers import bsfc_autocorr
 
 import matplotlib as mpl
+from IPython import embed
 
 mpl.rcParams['axes.labelsize']=20
 mpl.rcParams['legend.fontsize']=20 #16
@@ -144,7 +142,7 @@ if loaded==False:
         os.mkdir(chains_dir)
     
     # Do a single spectral fit with MultiNest (nested sampling)
-    mf.fitSingleBin(tbin=tbin, chbin=chbin, method=args.method,n_live_points=500,
+    mf.fitSingleBin(tbin=tbin, chbin=chbin, method=args.method,n_live_points='auto',
                     sampling_efficiency=0.05,verbose=True,const_eff=True,
                     n_hermite=n_hermite)
 
@@ -156,12 +154,18 @@ if loaded==False:
 if loaded==True:
     # DO NOT try to load and plot with multiple workers (i.e. using mpirun)!
 
-    # load MultiNest output
-    mf.fits[tbin][chbin].NS_analysis(basename)
+    if args.method==2:
+        # load MultiNest output
+        mf.fits[tbin][chbin].MN_analysis(basename)
+        
+        samples = mf.fits[tbin][chbin].samples
+        sample_weights = mf.fits[tbin][chbin].sample_weights
+    elif args.method==3:
+        # load PolyChord output
+        mf.fits[tbin][chbin].PC_analysis('bsfc','pc_chains')
 
-    samples = mf.fits[tbin][chbin].samples
-    sample_weights = mf.fits[tbin][chbin].sample_weights
-
+        samples = mf.fits[tbin][chbin].samples
+        sample_weights = mf.fits[tbin][chbin].sample_weights
 
     # corner plot
     #f = gptools.plot_sampler(
@@ -199,11 +203,11 @@ if loaded==True:
     moms = np.average(measurements, 0, weights=sample_weights)
     moms_std = np.sqrt(np.average((measurements-moms)**2, 0, weights=sample_weights))
 
-    print(("Counts = ", moms[0], "+/-", moms_std[0]))
-    print(("v = ", moms[1], "+/-", moms_std[1]))
-    print(("Ti = ", moms[2], "+/-", moms_std[2]))
-    print(("ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1]))
-    print(("# Hermite polynomials: ", n_hermite))
+    print("Counts = ", moms[0], "+/-", moms_std[0])
+    print("v = ", moms[1], "+/-", moms_std[1])
+    print("Ti = ", moms[2], "+/-", moms_std[2])
+    print("ln(ev) = ", mf.fits[tbin][chbin].lnev[0], "+/-", mf.fits[tbin][chbin].lnev[1])
+    print("# Hermite polynomials: ", n_hermite)
 
     #plt.show()
 

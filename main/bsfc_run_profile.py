@@ -23,15 +23,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-#import cPickle as pkl
-#import pdb
-#import corner
 import sys
 import time as time_
 import os
-#import shutil
-#import scipy
-
 import argparse
 
 from .bsfc_moment_fitter import MomentFitter
