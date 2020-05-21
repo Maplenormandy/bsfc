@@ -3,7 +3,7 @@
 
 import setuptools
 
-with open("README.md", "r") as ff:
+with open("README.rst", "r") as ff:
     long_description = ff.read()
 
 setuptools.setup(
@@ -19,7 +19,7 @@ setuptools.setup(
     url = "https://github.com/Maplenormandy/bsfc",
     packages = setuptools.find_packages(),
     requires = ["matplotlib","scipy", "numpy (>=1.5)","pymultinest","emcee","MDSplus",
-                "gptools","eqtools","profiletools"]
+                "gptools","eqtools","profiletools"],
     classifiers=[
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
