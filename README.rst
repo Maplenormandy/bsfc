@@ -1,6 +1,5 @@
-# bsfc
-Bayesian Spectral Fitting Code
-[Github page](https://github.com/Maplenormandy/bsfc)
+Bayesian Spectral Fitting Code (BSFC)
+=============
 
 Under active development. 
 N.M.Cao & F.Sciortino
