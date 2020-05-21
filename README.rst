@@ -8,7 +8,6 @@ N.M.Cao & F.Sciortino
  
 BSFC is a Python code that decomposes atomic spectra into a set of 3 (or more) Hermite polynomials per line, with central wavelength and width scaling optimized as joint parameters for all lines. MCMC-based algorithms (some interfacing Fortran) are used to obtain Bayesian estimates of the moments of each line. The first 3 of these are required to estimate line intensity, particle velocity and temperature. 
 
-![image](https://user-images.githubusercontent.com/25516628/82562670-b7fac300-9b43-11ea-921a-3ba4d292d7d3.png)
 
 Installation
 -------------------
