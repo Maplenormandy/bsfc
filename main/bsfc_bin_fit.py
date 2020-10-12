@@ -4,25 +4,18 @@ by N. Cao & F. Sciortino
 This script contains the BinFit class, where methods for spectral fitting are defined.
 
 '''
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import range
-from builtins import object
-
 import numpy as np
 import scipy.optimize as op
 from IPython import embed
 
 # make it possible to use other packages within the BSFC distribution:
-from os import path
-import sys
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # BSFC modules
 from helpers import bsfc_helper
 from helpers import bsfc_autocorr
-#from .bsfc_line_model import *
-from bsfc_line_model import *
+from bsfc_line_model import LineModel
 
 # packages that require extra installation/care:
 import emcee
@@ -30,17 +23,17 @@ import gptools
 
 # =====================================================
 
-class BinFit(object):
+class BinFit:
     """
     Performs a nonlinear fit and MCMC error estimate of given binned data
     """
-    def __init__(self, lam, specBr, sig, whitefield, lineData, linesFit, n_hermite):
+    def __init__(self, lam, amp, amp_unc, whitefield, lineData, linesFit, n_hermite):
         self.lam = lam
-        self.specBr = specBr
-        self.sig = sig
+        self.amp = amp
+        self.amp_unc = amp_unc  
         self.lineData = lineData
         self.linesFit = linesFit
-        
+
         # Normalized lambda, for evaluating noise
         self.lamNorm = (lam-np.average(lam))/(np.max(lam)-np.min(lam))*2
 
@@ -58,7 +51,7 @@ class BinFit(object):
         hermFuncs = [3]*len(linesFit)
         hermFuncs[0] = n_hermite
 
-        self.lineModel = LineModel(lam, self.lamNorm, specBr, sig, whitefield, lineData, linesFit, hermFuncs)
+        self.lineModel = LineModel(lam, self.lamNorm, amp, amp_unc, whitefield, lineData, linesFit, hermFuncs)
 
 
     def optimizeFit(self, theta0):
@@ -72,12 +65,11 @@ class BinFit(object):
             guesses for all parameters, given to the optimizer.
 
         '''
-        #embed()
         nll = lambda *args: -self.lineModel.lnlike(*args)
 
         constraints = self.lineModel.hermiteConstraints()
         result_ml = op.minimize(nll, theta0, tol=1e-6, constraints = constraints)
-        #embed()
+
         return result_ml
 
 
@@ -122,7 +114,7 @@ class BinFit(object):
 
         if PT == False:
             # pos has shape (nwalkers, ndim)
-            pos = [theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
+            pos = [theta_ml + 1e-4 * np.random.randn(ndim) for i in np.arange(nwalkers)]
 
             # use affine-invariant Ensemble Sampling
             sampler = emcee.EnsembleSampler(nwalkers, ndim, _LnPost_Wrapper(self), threads=emcee_threads) # self.lineModel.lnprob
@@ -143,7 +135,7 @@ class BinFit(object):
             ntemps = sampler.ntemps
 
             # pos has shape (ntemps, nwalkers, ndim)
-            pos = [[theta_ml + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)] for t in range(ntemps)]
+            pos = [[theta_ml + 1e-4 * np.random.randn(ndim) for i in np.arange(nwalkers)] for t in np.arange(ntemps)]
 
             # burn-in 'burn' iterations
             for p, lnprob, lnlike in sampler.sample(pos, iterations=burn):
@@ -254,12 +246,11 @@ class BinFit(object):
     def PC_fit(self,nlive_const='auto', dynamic=True,dynamic_goal=1.0, ninit=100, 
                  basename='dypc_chains', verbose=True, plot=False):
         '''
-
         Parameters
         ----------
         dynamic_goal : float, opt
             Parameter in [0,1] determining whether algorithm prioritizes accuracy in 
-            parameter estimation or evidence accuracy.
+            evidence accuracy (goal near 0) or parameter estimation (goal near 1).
         ninit : int, opt
             Number of live points to use in initial exploratory run. 
         nlive_const : int, opt
@@ -314,13 +305,12 @@ class BinFit(object):
             )
         
             # Specify sampler settings (see run_dynamic_ns.py documentation for more details)
-
             settings_dict = {'file_root': 'bsfc',
                              'base_dir': basename,
                              'seed': 1}
 
             # Run dyPolyChord
-            MPI_parallel=False
+            MPI_parallel=True
             if MPI_parallel:
                 from mpi4py import MPI
                 comm = MPI.COMM_WORLD
@@ -367,11 +357,16 @@ class BinFit(object):
         self.good=True
 
 
-    def PC_analysis(self, file_root, base_dir, dynamic=True, plot=False):
+    def PC_analysis(self, file_root, base_dir=None, dynamic=True, plot=False):
         ''' Analysis of (dy)PolyChord output.
         If dynamic==True, dyPolyChord output is processed, else a default PolyChord 
         run is assumed. 
         '''
+        if base_dir is None:
+            if dynamic:
+                base_dir='dypc_chains'
+            else:
+                base_dir='pc_chains'
 
         # Read output:
         try:
@@ -381,8 +376,6 @@ class BinFit(object):
             print("********************")
             print("Could not import nestcheck! Make sure that this is in your PYTHONPATH.")
             raise ValueError("Abort BSFC analysis")
-        import matplotlib.pyplot as plt
-        plt.ion()
         
         # load the run
         run = nestcheck.data_processing.process_polychord_run(
@@ -391,27 +384,39 @@ class BinFit(object):
         # temporary
         self.ndim = run['theta'].shape[1]
         
-        print('The log evidence estimate using the first run is {}'
-              .format(estim.logz(run)))
-        print('The estimated parameter means are: ')
-        print(*[estim.param_mean(run, param_ind=i) for i in np.arange(self.ndim)])
+        #print('The log evidence estimate using the first run is {}'
+        #      .format(estim.logz(run)))
+        #print('The estimated parameter means are: ')
+        #print(*[estim.param_mean(run, param_ind=i) for i in np.arange(self.ndim)])
 
         import pypolychord
         out = pypolychord.output.PolyChordOutput('pc_chains', 'bsfc')
-        paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(self.ndim)]
-        #paramnames += [('r*', 'r')]
-        #out.make_paramnames_file(paramnames)
-        
+
+        paramnames = [('p%i' % i, self.lineModel.thetaLabels()[i].strip('$')) for i in np.arange(self.ndim)]
+
+        # get paramnames files for getdist
         for n in np.arange(out.ncluster):
             out.cluster_paramnames_file(n)
         out.make_paramnames_files(paramnames)   # what's the difference from `..file'?
 
+        self.clusters = {}
+        if out.ncluster>1:
+            self.clusters['lnev'] = []
+            self.clusters['posterior'] = []
+            for n in np.arange(out.ncluster):
+                self.clusters['lnev'].append([out.logZs[n], out.logZerrs[n]])
+                try:
+                    self.clusters['posterior'].append(out.cluster_posterior(n+1))
+                except:
+                    # not all clusters seem to readable for some reason...
+                    pass
+
         post = out.posterior
-        
+
         self.lnev = [out.logZ, out.logZerr]
         
         self.samples = post.samples #run['theta']
-        self.sample_weights = post.weights #run[
+        self.sample_weights = post.weights 
         self.cum_sample_weights = np.cumsum(self.sample_weights)
 
         self.m_bayes_marg = self.lineModel.modelMoments(post.means)
@@ -443,16 +448,15 @@ class BinFit(object):
             from pypolychord.settings import PolyChordSettings
             
         if plot:
-            paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(self.ndim)]
-            paramnames += [('r*', 'r')]
-            output.make_paramnames_files(paramnames)
             
             import getdist.plots
+            import matplotlib.pyplot as plt
+            plt.ion()
+            plt.switch_backend("Qt5Agg")   # getdist changes backend to Agg without warning...
             
-            posterior = output.posterior
-            g = getdist.plots.getSubplotPlotter()
-            g.triangle_plot(posterior, filled=True)
-            g.export('posterior.pdf')
+            g = getdist.plots.get_single_plotter() #getSubplotPlotter()
+            g.triangle_plot(post, filled=True)
+            #g.export('posterior.pdf')
 
             if dynamic:
                 # plot nlive and w_rel on same axis
@@ -470,8 +474,11 @@ class BinFit(object):
                 ax2.set_ylim(bottom=0.0)
                 ax2.set_yticks([])
                 ax2.set_ylabel('relative posterior mass')
-        
-        
+
+            #embed()
+            #import pdb
+            #pdb.set_trace()
+            return logx, run['nlive_array'],w_rel
                  
     def MN_fit(self, lnev_tol=0.1, n_live_points='auto', sampling_efficiency=0.3,
                INS=True, const_eff=True,basename=None, verbose=False, resume=False):
@@ -525,7 +532,7 @@ class BinFit(object):
             self.lineModel.hypercube_lnprior_generalized_simplex,   # log-prior
             ndim,
             outputfiles_basename=basename,
-            n_live_points=int(25*ndim) if n_live_points=='auto' else int(n_live_points),
+            n_live_points=200+int(25*ndim) if n_live_points=='auto' else int(n_live_points),
             importance_nested_sampling = INS,
             const_efficiency_mode = const_eff, # only appropriate with INS
             evidence_tolerance = lnev_tol,
@@ -562,6 +569,24 @@ class BinFit(object):
             print("MultiNest must also be on your LD_LIBRARY_PATH")
             raise ValueError("Abort BSFC fit")
 
+        ####
+        ##Only works for MultiNest v3.11+, but we use MultiNest 3.10
+        ## Read output:
+        #try:
+        #    import nestcheck.data_processing
+        #    import nestcheck.estimators as estim
+        #except:
+        #    print("********************")
+        #    print("Could not import nestcheck! Make sure that this is in your PYTHONPATH.")
+        #    raise ValueError("Abort BSFC analysis")
+        # 
+        ## for testing
+        #run = nestcheck.data_processing.process_multinest_run(
+        #    basename.split('/')[-1],
+        #    os.path.dirname(basename)+'/')
+        
+        ####
+        
         # after MultiNest run, read results
         a = pymultinest.Analyzer(
             n_params= self.lineModel.thetaLength(),
@@ -626,7 +651,7 @@ class BinFit(object):
 #
 ### =============================
 
-class _LnPost_Wrapper(object):
+class _LnPost_Wrapper:
     """wrapper for log-posterior evaluation in parallel emcee.
     This is needed since instance methods are not pickeable.
     """
@@ -638,7 +663,7 @@ class _LnPost_Wrapper(object):
 
         return out
 
-class _LnLike_Wrapper(object):
+class _LnLike_Wrapper:
     """wrapper for log-likelihood evaluation in parallel emcee.
     This is needed since instance methods are not pickeable.
     """
@@ -650,7 +675,7 @@ class _LnLike_Wrapper(object):
 
         return out
 
-class _LnPrior_Wrapper(object):
+class _LnPrior_Wrapper:
     """wrapper for log-prior evaluation in parallel emcee.
     This is needed since instance methods are not pickeable.
     """
@@ -665,7 +690,7 @@ class _LnPrior_Wrapper(object):
 
 
 
-class _TimeBinFitWrapper(object):
+class _TimeBinFitWrapper:
     """ Wrapper to support parallelization of different channels in a
     specific time bin. This is needed since instance methods are not pickeable.
 
@@ -680,13 +705,14 @@ class _TimeBinFitWrapper(object):
 
         w0, w1 = np.searchsorted(self.mf.lam_all[:,self.tbin,chbin], self.mf.lam_bounds)
         lam = self.mf.lam_all[w0:w1,self.tbin,chbin]
-        specBr = self.mf.specBr_all[w0:w1,self.tbin,chbin]
-        sig = self.mf.sig_all[w0:w1,self.tbin,chbin]
+        amp = self.mf.amp_all[w0:w1,self.tbin,chbin]
+        amp_unc = self.mf.amp_unc_all[w0:w1,self.tbin,chbin]
 
-        #
-        bf = BinFit(lam, specBr, sig, self.mf.lines, list(range(len(self.mf.lines.names))))   #needs to be updated for more recent BinFit call!
+        # create bin-fit
+        bf = BinFit(lam, amp, amp_unc, self.mf.whitefield, self.mf.lines,
+                    list(np.arange(len(self.mf.lines.names))), n_hermite=self.n_hermite)
          
-        print(("Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps))
+        print("Now fitting tbin =", self.tbin, ',chbin =', chbin, "with nsteps =", self.nsteps)
         good = bf.MCMCfit(nsteps=self.nsteps)
         if not good:
             print("not worth fitting")
@@ -695,7 +721,7 @@ class _TimeBinFitWrapper(object):
 
 
 
-class _ChBinFitWrapper(object):
+class _ChBinFitWrapper:
     """ Wrapper to support parallelization of different time bins in a
     specific channel bin. This is needed since instance methods are not pickeable.
 
@@ -709,13 +735,14 @@ class _ChBinFitWrapper(object):
 
         w0, w1 = np.searchsorted(self.mf.lam_all[:,tbin,self.chbin], self.mf.lam_bounds)
         lam = self.mf.lam_all[w0:w1,tbin,self.chbin]
-        specBr = self.mf.specBr_all[w0:w1,tbin,self.chbin]
-        sig = self.mf.sig_all[w0:w1,tbin,self.chbin]
+        amp = self.mf.amp_all[w0:w1,tbin,self.chbin]
+        amp_unc = self.mf.amp_unc_all[w0:w1,tbin,self.chbin]
 
         # create bin-fit
-        bf = BinFit(lam, specBr, sig, self.mf.lines, list(range(len(self.mf.lines.names)))) #needs to be updated for more recent BinFit call!
+        bf = BinFit(lam, amp, amp_unc, self.mf.whitefield, self.mf.lines,
+                    list(np.arange(len(self.mf.lines.names))), n_hermite=self.n_hermite)
 
-        print(("Now fitting tbin=", tbin, ',chbin=', self.chbin, "with nsteps=", self.nsteps))
+        print("Now fitting tbin=", tbin, ',chbin=', self.chbin, "with nsteps=", self.nsteps)
         good = bf.MCMCfit(nsteps=self.nsteps)
         if not good:
             print("not worth fitting")
@@ -723,7 +750,7 @@ class _ChBinFitWrapper(object):
         return bf
 
 
-class _fitTimeWindowWrapper(object):
+class _fitTimeWindowWrapper:
     """ Wrapper to support parallelization of different time bins in a
     specific channel bin. This is needed since instance methods are not pickeable.
 
@@ -737,19 +764,20 @@ class _fitTimeWindowWrapper(object):
 
         w0, w1 = np.searchsorted(self.mf.lam_all[:,tbin,chbin], self.mf.lam_bounds)
         lam = self.mf.lam_all[w0:w1,tbin,chbin]
-        specBr = self.mf.specBr_all[w0:w1,tbin,chbin]
-        sig = self.mf.sig_all[w0:w1,tbin,chbin]
+        amp = self.mf.amp_all[w0:w1,tbin,chbin]
+        amp_unc = self.mf.amp_unc_all[w0:w1,tbin,chbin]
 
         # create bin-fit
-        bf = BinFit(lam, specBr, sig, self.mf.lines, list(range(len(self.mf.lines.names))))  #needs to be updated for more recent BinFit call!
+        bf = BinFit(lam, amp, amp_unc, self.mf.whitefield, self.mf.lines,
+                    list(np.arange(len(self.mf.lines.names))), n_hermite=self.n_hermite)
 
-        print(("Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps))
+        print("Now fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps)
         try:
             good = bf.MCMCfit(nsteps=self.nsteps)
         except ValueError:
             print("BinFit.fit() failed.")
             print("++++++++++++++++++++++++++++++++")
-            print(("Failed at fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps))
+            print("Failed at fitting tbin=", tbin, ', chbin=', chbin, " with nsteps=", self.nsteps)
             print("++++++++++++++++++++++++++++++++")
             good = False
         if not good:

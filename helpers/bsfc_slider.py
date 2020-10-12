@@ -4,29 +4,13 @@ Functions to visualize multidimensional data using a slider plot.
 
 @author: sciortino
 """
-from builtins import zip
-from builtins import next
-from builtins import range
-
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.ion()
 
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.backend_bases import key_press_handler
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-
 import matplotlib.gridspec as mplgs
 import matplotlib.widgets as mplw
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.colors import LogNorm
 import itertools
-import pdb
-import IPython
 
 color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
 style_vals = ['.', '--', '-.', ':']
@@ -35,8 +19,6 @@ for s in style_vals:
     for c in color_vals:
         ls_vals.append(c + s)
 ls_cycle = itertools.cycle(ls_vals)
-    
-#mpl.rcParams['errorbar.capsize'] = 3
 
 def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False, axs=None, **kwargs):
     """Make a plot to explore multidimensional data.
@@ -84,15 +66,13 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
     for v, v_unc, l_ in zip(z, z_unc, labels):
         x_error = np.zeros_like(x)
         
-        #IPython.embed()
         h_err = a_plot.errorbar(x, v[:, 0],yerr=v_unc[:,0], xerr = x_error, fmt=next(ls_cycle), label=l_, **kwargs)
         err_list.append(h_err)
 
     if plot_sum:
         l_sum, = a_plot.plot(x, z[:, :, 0].sum(axis=0), next(ls_cycle), label='total', **kwargs)
     
-    leg=a_plot.legend(loc='best')
-    leg.draggable(True)
+    leg=a_plot.legend(loc='best').set_draggable(True)
     title = f.suptitle('')
 
     #return f, a_plot, a_slider
@@ -142,8 +122,8 @@ def slider_plot(x, y, z, z_unc, xlabel='', ylabel='', zlabel='', labels=None, pl
                     
         a_plot.relim()
         a_plot.autoscale()
-        
-        if isinstance(y[i], int):
+
+        if isinstance(y[i], (int,np.int64)):
             title.set_text('%s %d' % (ylabel, y[i]) if ylabel else '%d' % (y[i],))
         else:
             title.set_text('%s = %.5f' % (ylabel, y[i]) if ylabel else '%.5f' % (y[i],))
@@ -194,7 +174,7 @@ def visualize_moments(moments_vals,moments_stds, time_sel, q='br'):
     if q == 'br':
         vals = moments_vals[:,:,0]
         stds = moments_stds[:,:,0]
-        zlbl = r'$B$ [eV]'
+        zlbl = r'$B$ [A.U.]'
         title_lbl='Brightness'
     elif q == 'vel':
         vals = moments_vals[:,:,1]
@@ -210,7 +190,7 @@ def visualize_moments(moments_vals,moments_stds, time_sel, q='br'):
         raise ValueError('Please indicate a valid quantity to measure')
 
     slider_plot(
-        np.asarray(list(range(vals.shape[1]))),
+        np.arange(vals.shape[1], dtype=int),
         time_sel,
         np.expand_dims(vals.T,axis=0),
         np.expand_dims(stds.T,axis=0),
@@ -223,7 +203,7 @@ def visualize_moments(moments_vals,moments_stds, time_sel, q='br'):
     
     slider_plot(
         time_sel,
-        np.asarray(list(range(vals.shape[1]))),
+        np.arange(vals.shape[1],dtype=int),
         np.expand_dims(vals,axis=0),
         np.expand_dims(stds,axis=0),
         xlabel=r'$t$ [s]',

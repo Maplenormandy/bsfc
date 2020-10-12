@@ -4,10 +4,6 @@ Created on Tue Feb 26 16:19:46 2019
 
 @author: normandy
 """
-from __future__ import division
-from builtins import range
-from past.utils import old_div
-
 import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermeroots
 #import scipy.optimize as op
@@ -37,7 +33,7 @@ nwalkers = max(8, ndim**2)
 nwalkers = nwalkers + (nwalkers%2)
 nburn = 100
 nsamples = 1000
-p0 = [np.random.rand(ndim)*1e-4 for i in range(nwalkers)]
+p0 = [np.random.rand(ndim)*1e-4 for i in np.arange(nwalkers)]
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob)
 pos, prob, state = sampler.run_mcmc(p0, nburn)
 sampler.reset()
@@ -72,7 +68,7 @@ figure = corner.corner(rescaled)
 
 rscaled = np.sum(rescaled**2, axis=1)
 hist, bin_edges = np.histogram(rscaled, bins=256, density=True)
-bins = old_div((bin_edges[1:] + bin_edges[:-1]),2.0)
+bins = (bin_edges[1:] + bin_edges[:-1])/2.0
 plt.loglog(bins, hist)
 plt.loglog(bins, bins*1e-1)
 #x = np.linspace(0,np.max(rscaled))

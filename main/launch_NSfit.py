@@ -1,10 +1,5 @@
-from future import standard_library
-standard_library.install_aliases()
 import sys
-try:
-    import pickle as pkl # python 3+
-except:
-    import pickle as pkl   # python 2.7
+import pickle as pkl
 import os
 import numpy as np
 import glob, argparse
@@ -30,13 +25,16 @@ args = parser.parse_args()
 
 
 # load moment fitter setup 
-with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,args.t_min,args.t_max,args.primary_line, args.primary_impurity),'rb') as f:
+with open('../bsfc_fits/mf_{args.shot:d}_tmin{args.t_min:.2f}_tmax{args.t_max:.2f}_{args.primary_line:s}line_{args.primary_impurity:s}.pkl','rb') as f:
     mf=pkl.load(f)
 
+
 # do fit in the directory of 'basename'
-mf.fitSingleBin(tbin=args.tb, chbin=args.cb,NS=True, n_hermite=args.n_hermite,
-                n_live_points=400,sampling_efficiency=0.3,
+mf.fitSingleBin(tbin=args.tb, chbin=args.cb, n_hermite=args.n_hermite,
+                method=2, INS=True, const_eff=True, n_live_points='auto', sampling_efficiency=0.3,  # fixed
                 verbose=args.verbose, basename=args.basename)
+
+
 
 # now import MPI to run MultiNest data analysis only once
 from mpi4py import MPI
@@ -46,7 +44,7 @@ size = comm.Get_size()
 
 if rank==0:
     # load MultiNest output
-    mf.fits[args.tb][args.cb].NS_analysis(args.basename)
+    good = mf.fits[args.tb][args.cb].MN_analysis(args.basename)
     
     # process samples and weights
     samples = mf.fits[args.tb][args.cb].samples
@@ -55,9 +53,10 @@ if rank==0:
     if args.line_name is None:
         # if user didn't request a specific line, assume that primary line is of interest
         args.line_name = mf.primary_line
-    
+
     try:
         line_id = np.where(mf.fits[args.tb][args.cb].lineModel.linesnames==args.line_name)[0][0]
+        print(f'Analyzing {args.line_name} line')
     except:
         raise ValueError('Requested line cannot be found in MultiNest output!')
 

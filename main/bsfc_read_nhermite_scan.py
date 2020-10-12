@@ -4,14 +4,6 @@ by N. Cao & F. Sciortino
 This script reads the results of bsfc_scan_nhermite.py and plots relevant quantities to select
 optimal number of Hermite polynomials.
 '''
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -74,10 +66,10 @@ Ti = []; Ti_unc = []
 lnev=[]; lnev_unc =[]
 lnev_vns=[]; lnev_vns_unc=[] # from vanilla NS
 nn = 500
-for nh in range(nh_min, nh_max+1):
+for nh in np.arange(nh_min, nh_max+1):
     #nh=3
     #nlp = [50,100,200,600,1000,1400,1800,2300,3000,5000]
-    #nlp = [2**i for i in range(6, 13)]
+    #nlp = [2**i for i in np.arange(6, 13)]
 
     #for n_live_points in nlp:
     #nn=n_live_points #nsteps
@@ -124,18 +116,18 @@ times = [138.8696210384369, 157.01426005363464, 178.54218196868896, 203.29988193
 
 # Plot lnev scaling
 
-#for nh in range(nh_min, nh_max+1):
+#for nh in np.arange(nh_min, nh_max+1):
 #    lnev_arr.append(lnev[nh])
 #    lnev_unc_arr.append(lnev_unc[nh])
 
 
-nh = list(range(nh_min,nh_max+1))
+nh = list(np.arange(nh_min,nh_max+1))
 # %%
 
 f = plt.figure(1, figsize=(3.375, 3.375*1.2))
 gs1 = mpl.gridspec.GridSpec(5, 1, hspace=0.0)
 ax0 = plt.subplot(gs1[0])
-ax = [plt.subplot(gs1[j], sharex=ax0) for j in range(5)]
+ax = [plt.subplot(gs1[j], sharex=ax0) for j in np.arange(5)]
 
 ax[0].errorbar(nh, br, br_unc, fmt='.')
 ax[1].errorbar(nh, v, v_unc, fmt='.')
@@ -238,7 +230,7 @@ font = {'family' : 'serif',
         'size'   : 15}
 #mpl.rc('font', **font)
 
-toplot = np.array([np.log10(old_div(samples[:,3+nh],samples[:,3])), measurements[:,1], measurements[:,2]]).T
+toplot = np.array([np.log10(samples[:,3+nh]/samples[:,3]), measurements[:,1], measurements[:,2]]).T
 
 #f = gptools.plot_sampler(
 #    toplot, # index 0 is weights, index 1 is -2*loglikelihood, then samples

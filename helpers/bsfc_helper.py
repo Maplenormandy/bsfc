@@ -5,16 +5,7 @@ spectroscopic data structures.
 
 @author: sciortino
 """
-from __future__ import print_function
-from __future__ import division
-from future import standard_library
-standard_library.install_aliases()
-from builtins import zip
-from builtins import map
-from builtins import str
-from builtins import range
-from builtins import object
-from past.utils import old_div
+
 import scipy
 import numpy as np
 
@@ -27,15 +18,6 @@ import matplotlib.gridspec as mplgs
 import matplotlib.widgets as mplw
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
-
-try:
-    # Python3+ compatible versions
-    import profiletools3 as profiletools
-    import gptools3 as gptools
-except:
-    import profiletools
-    import gptools
-
 
 import re
 import pdb
@@ -50,7 +32,7 @@ HIREX_THRESH = 0.03
 # considered numeric.
 LIST_REGEX = r'([0-9]+)[^0-9]*'
 
-class HirexData(object):
+class HirexData:
     """Helper object to load and process the HiReX-SR data.
     
     The sequence of operations is as follows:
@@ -102,10 +84,7 @@ class HirexData(object):
 
         t_hirex_start = np.searchsorted(injection.t_start, self.hirex_time)
         t_hirex_stop = np.searchsorted(injection.t_stop, self.hirex_time)
-        #t_hirex_start, t_hirex_stop = profiletools.get_nearest_idx(
-        #    [injection.t_start, injection.t_stop],
-        #    self.hirex_time
-        #)
+
         hirex_signal = self.hirex_signal[t_hirex_start:t_hirex_stop + 1, :]
         hirex_flagged = self.hirex_flagged[t_hirex_start:t_hirex_stop + 1, :]
         hirex_uncertainty = self.hirex_uncertainty[t_hirex_start:t_hirex_stop + 1, :]
@@ -115,7 +94,7 @@ class HirexData(object):
         # chord:
         maxs = scipy.zeros(hirex_signal.shape[1])
         s_maxs = scipy.zeros_like(maxs)
-        for j in range(0, hirex_signal.shape[1]):
+        for j in np.arange(0, hirex_signal.shape[1]):
             good = ~hirex_flagged[:, j]
             max_idx = np.argmax(hirex_signal[good,j])
             maxs[j] = hirex_signal[good,j][max_idx]
@@ -138,8 +117,8 @@ class HirexData(object):
         t.append(hirex_time)
         y.append(hirex_signal)
         std_y.append(hirex_uncertainty)
-        y_norm.append(old_div(hirex_signal, m))
-        std_y_norm.append(scipy.sqrt((old_div(hirex_uncertainty, m))**2.0 + ((old_div(hirex_signal, m))*(old_div(s, m)))**2.0))
+        y_norm.append(hirex_signal/m)
+        std_y_norm.append(scipy.sqrt((hirex_uncertainty/m)**2.0 + ((hirex_signal/m)*(s/m))**2.0))
         
         # import pdb
         # pdb.set_trace()
@@ -175,7 +154,11 @@ class HirexData(object):
         keep = ~(self.hirex_flagged.ravel())
         signal = self.hirex_signal
         uncertainty = self.hirex_uncertainty
-        CHAN, T = scipy.meshgrid(list(range(0, signal.shape[1])), t)
+        CHAN, T = scipy.meshgrid(list(np.arange(0, signal.shape[1])), t)
+
+        # make sure to have Python3+ compatible versions of profiletools:
+        import profiletools
+        
         profiletools.errorbar3d(
             a,
             T.ravel()[keep],
@@ -368,7 +351,7 @@ class HirexWindow(tk.Tk):
             )
         )
         for i, x, y in zip(
-                range(0, self.signal.shape[0]),
+                np.arange(0, self.signal.shape[0]),
                 self.time,
                 self.signal[:, int(new_idx)]
             ):
@@ -411,54 +394,29 @@ def interp_max(x, y, err_y=None, s_guess=0.2, s_max=10.0, l_guess=0.005, fixed_l
     debug_plots : bool, optional
         Set to True to plot the data, the smoothed curve (with uncertainty) and
         the location of the peak value.
-    method : {'GP', 'spline'}, optional
-        Method to use when interpolating. Default is 'GP' (Gaussian process
-        regression). Can also use a cubic spline.
     """
     grid = scipy.linspace(max(0, x.min()), min(0.08, x.max()), 1000)
-    if method == 'GP':
-        hp = (
-            gptools.UniformJointPrior([(0, s_max),]) *
-            gptools.GammaJointPriorAlt([l_guess,], [0.1,])
-        )
-        k = gptools.SquaredExponentialKernel(
-            # param_bounds=[(0, s_max), (0, 2.0)],
-            hyperprior=hp,
-            initial_params=[s_guess, l_guess],
-            fixed_params=[False, fixed_l]
-        )
-        gp = gptools.GaussianProcess(k, X=x, y=y, err_y=err_y)
-        gp.optimize_hyperparameters(verbose=True, random_starts=100)
-        m_gp, s_gp = gp.predict(grid)
+
+    m_gp = scipy.interpolate.UnivariateSpline(
+        x, y, w=1.0/err_y, s=2*len(x)
+    )(grid)
+    if scipy.isnan(m_gp).any():
+        print(x)
+        print(y)
+        print(err_y)
         i = m_gp.argmax()
-    elif method == 'spline':
-        m_gp = scipy.interpolate.UnivariateSpline(
-            x, y, w=old_div(1.0, err_y), s=2*len(x)
-        )(grid)
-        if scipy.isnan(m_gp).any():
-            print(x)
-            print(y)
-            print(err_y)
-        i = m_gp.argmax()
-    else:
-        raise ValueError("Undefined method %s" % (method,))
-    
+
     if debug_plots:
         f = plt.figure()
         a = f.add_subplot(1, 1, 1)
         a.errorbar(x, y, yerr=err_y, fmt='.', color='b')
         a.plot(grid, m_gp, color='g')
-        if method == 'GP':
-            a.fill_between(grid, m_gp - s_gp, m_gp + s_gp, color='g', alpha=0.5)
         a.axvline(grid[i])
     
-    if method == 'GP':
-        return (m_gp[i], s_gp[i])
-    else:
-        return m_gp[i]
+    return m_gp[i]
 
 #########################
-class Injection(object):
+class Injection:
     """Class to store information on a given injection.
     """
     def __init__(self, t_inj, t_start, t_stop):
@@ -470,7 +428,7 @@ class Injection(object):
 
 
 #########################
-class Signal(object):
+class Signal:
     def __init__(self, y, std_y, y_norm, std_y_norm, t, name, atomdat_idx, pos=None, sqrtpsinorm=None, weights=None, blocks=0,m=None,s=None ):
         """Class to store the data from a given diagnostic.
         
@@ -649,7 +607,7 @@ class Signal(object):
         i_col = 0
         i_row = 0
         
-        for k in range(0, self.y.shape[1]):
+        for k in np.arange(0, self.y.shape[1]):
             a.append(
                 f.add_subplot(
                     gs[i_row, i_col],
@@ -705,7 +663,6 @@ def remove_all(v):
 def get_robust_weighted_stats(samples, weights=None):
     '''
     Obtain robust weighted statistics for a set of samples and respective weights.
-    This function gives a generalization of the meanw and stdw functions in profiletools. 
 
     Parameters:
     ------------------------
@@ -721,22 +678,22 @@ def get_robust_weighted_stats(samples, weights=None):
 
     if weights is None:
         # untested, but should work (even non-normalized should work, I think...)
-        weights = old_div(np.ones_like(samples[:,1]),len(samples[:,1]))
+        weights = np.ones_like(samples[:,1])/len(samples[:,1])
 
     median=[]; q01=[]; q10=[]; q25=[]; q75=[]; q90=[]; q99=[]
     sigma = []; sigma1_range=[]; sigma2_range=[]; sigma3_range=[]; sigma5_range=[]
 
     # Compute robust statistics
-    for i in range(samples.shape[1]): # loop over radial points, for D,V stats
+    for i in np.arange(samples.shape[1]): # loop over radial points, for D,V stats
         bb = list(zip(weights, samples[:,i]))
         bb.sort(key=lambda x: x[1])
         bb = np.array(bb)
         bb[:,0] = bb[:,0].cumsum()  #substitute weights with cumulative weights 
         
-        sig5 = 0.5 + old_div(0.9999994, 2.)
-        sig3 = 0.5 + old_div(0.9973, 2.)
-        sig2 = 0.5 + old_div(0.95, 2.)
-        sig1 = 0.5 + old_div(0.6826, 2.)
+        sig5 = 0.5 + 0.9999994/2.
+        sig3 = 0.5 + 0.9973/2.
+        sig2 = 0.5 + 0.95/2.
+        sig1 = 0.5 + 0.6826/2.
         
         # evaluate parameter at chosen probability value (normalized cumulative weight)
         bbi = lambda x: np.interp(x, bb[:,0], bb[:,1], left=bb[0,1], right=bb[-1,1])
@@ -758,7 +715,7 @@ def get_robust_weighted_stats(samples, weights=None):
         low5 = bbi(1 - sig5)
         high5 = bbi(sig5)
         
-        sigma.append( old_div((high1 - low1), 2.) )
+        sigma.append( (high1 - low1)/2.) 
         sigma1_range.append( [low1, high1] )
         sigma2_range.append( [low2, high2] )
         sigma3_range.append( [low3, high3] )

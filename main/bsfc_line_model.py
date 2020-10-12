@@ -4,45 +4,34 @@ by N. Cao & F. Sciortino
 This script contains the LineModel class, which define the Hermite polynomial decomposition for each line, model noise, the likelihood function and prior function.
 
 '''
-from __future__ import division
-from builtins import range
-from builtins import object
-from past.utils import old_div
 from IPython import embed
 import numpy as np
 from numpy.polynomial.hermite_e import hermeval, hermemulx
 import copy
 
-# make it possible to use other packages within the BSFC distribution:
-#from os import path
-#import sys
-#sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ))
-
-# BSFC modules
-#from helpers import bsfc_helper
-#from helpers import bsfc_autocorr
-#from helpers.simplex_sampling import hypercubeToSimplex, hypercubeToHermiteSampleFunction
 from helpers.simplex_sampling import hypercubeToHermiteSampleFunction
 from helpers.simplex_sampling import generalizedHypercubeToHermiteSampleFunction, generalizedHypercubeConstraintFunction
 
 
-# %%
-class LineModel(object):
+class LineModel:
     """
     Models a spectra. Uses 2nd order Legendre fitting on background noise,
     and n-th order Hermite on the lines
     """
-    def __init__(self, lam, lamNorm, specBr, sig, whitefield, lineData, linesFit, hermFuncs, scaleFree=True, sqrtPrior=False):
+    def __init__(self, lam, lamNorm, amp, amp_unc, whitefield, lineData, linesFit, hermFuncs,
+                 scaleFree=True, sqrtPrior=False):
         """
         Note scaleFree uses scale-free priors (~1/s) on the scale parameters
         if scaleFree=True, sqrtPrior uses the square root prior (~1/sqrt(s)) on Poisson processes instead of the scale-free prior
         Note that these two parameters have only been implemented for the nested sampling routines.
         """
         self.lam = lam
-        self.specBr = specBr
-        self.sig = sig
+        self.amp = amp
+        self.amp_unc = amp_unc 
+        
         self.lineData = lineData
-        # It's assumed that the primary line is at index 0 of linesFit
+        
+        # Assume that the primary line is at index 0 of linesFit
         self.linesFit = linesFit
 
         self.linesLam = self.lineData.lam[self.linesFit]
@@ -55,7 +44,7 @@ class LineModel(object):
 
         # Get the edge of the lambda bins, for integrating over finite pixels
         lamEdge = np.zeros(len(lam)+1)
-        lamEdge[1:-1] = old_div((lam[1:] + lam[:-1]), 2)
+        lamEdge[1:-1] = (lam[1:] + lam[:-1])/2.
         lamEdge[-1] = 2 * lamEdge[-2] - lamEdge[-3]
         lamEdge[0] = 2 * lamEdge[1] - lamEdge[2]
         self.lamEdge = lamEdge
@@ -96,17 +85,16 @@ class LineModel(object):
 
     def unpackTheta(self, theta):
         # 2nd order Legendre noise
-        #embed()
         noise = theta[0:self.noiseFuncs]
 
         # Extract center and scale, one for each line to fit
         center = theta[self.noiseFuncs]*1e-4 + self.linesLam
-        scale = (old_div(theta[self.noiseFuncs+1],self.linesSqrtMRatio))*1e-4
+        scale = (theta[self.noiseFuncs+1]/self.linesSqrtMRatio)*1e-4
 
         # Ragged array of hermite function coefficients
         herm = [None]*self.nfit
         cind = self.noiseFuncs+2
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
             herm[i] = np.array(theta[cind:cind+self.hermFuncs[i]])
             cind = cind + self.hermFuncs[i]
 
@@ -131,8 +119,8 @@ class LineModel(object):
         labels.append('$s$')
 
         # labels for Hermite function coefficients
-        for line in range(self.nfit):
-            for h in range(self.hermFuncs[line]):
+        for line in np.arange(self.nfit):
+            for h in np.arange(self.hermFuncs[line]):
                 labels.append('$%s_%d$'%(self.linesnames[line],h))
 
         return labels
@@ -159,8 +147,8 @@ class LineModel(object):
             })
 
         if self.simpleConstraints:
-            for i in range(self.nfit):
-                for j in range(self.hermFuncs[i]):
+            for i in np.arange(self.nfit):
+                for j in np.arange(self.hermFuncs[i]):
                     if j == 0:
                         constraints.append({
                             'type': 'ineq',
@@ -176,7 +164,7 @@ class LineModel(object):
 
                 cind = cind + self.hermFuncs[i]
         else:
-            for i in range(self.nfit):
+            for i in np.arange(self.nfit):
                 if self.hermFuncs[i] != 0:
                     constraints.append({
                         'type': 'ineq',
@@ -204,27 +192,19 @@ class LineModel(object):
         """
         # issue: scale is sometimes coming out as ~9e-5 in PolyChord and this gives overflows...
         noise, center, scale, herm = self.unpackTheta(theta)
-        #embed()
         
         # Shift and scale lambdas to evaluation points
-        lamEv = old_div((self.lam[:,np.newaxis]-center),scale)
-        lamEdgeEv = old_div((self.lamEdge[:,np.newaxis]-center),scale)
+        lamEv = (self.lam[:,np.newaxis]-center)/scale
+        lamEdgeEv = (self.lamEdge[:,np.newaxis]-center)/scale
         
-        # Evaluate gaussian functions
-        # with np.errstate(all='raise'):
-        #     try:
-        #         gauss = np.exp(old_div(-lamEv**2, 2))
-        #         gaussEdge = np.exp(old_div(-lamEdgeEv**2, 2))
-        #     except:
-        #         embed()
-        gauss = np.exp(old_div(-lamEv**2, 2))
-        gaussEdge = np.exp(old_div(-lamEdgeEv**2, 2))
+        gauss = np.exp(-lamEv**2/2.)
+        gaussEdge = np.exp(-lamEdgeEv**2/2.)
         
         hn = np.zeros(lamEv.shape)
         hnEdge = np.zeros(lamEdgeEv.shape)
       
         # Compute hermite functions to model lineData
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
             hn[:,i] = hermeval(lamEv[:,i], herm[i]) * gauss[:,i] ##
             hnEdge[:,i] = hermeval(lamEdgeEv[:,i], herm[i]) * gaussEdge[:,i]
 
@@ -263,12 +243,12 @@ class LineModel(object):
         noise, center, scale, herm = self.unpackTheta(theta)
 
         # Shift and scale lambdas to evaluation points
-        lamEv = old_div((self.lam[:,np.newaxis]-center),scale)
-        lamEdgeEv = old_div((self.lamEdge[:,np.newaxis]-center),scale)
+        lamEv = (self.lam[:,np.newaxis]-center)/scale
+        lamEdgeEv = (self.lamEdge[:,np.newaxis]-center)/scale
 
         # Evaluate gaussian functions
-        gauss = np.exp(old_div(-lamEv**2, 2))
-        gaussEdge = np.exp(old_div(-lamEdgeEv**2, 2))
+        gauss = np.exp(-lamEv**2/2.)
+        gaussEdge = np.exp(-lamEdgeEv**2/2.)
 
         hn = np.zeros(lamEv.shape)
         hnEdge = np.zeros(lamEdgeEv.shape)
@@ -324,10 +304,10 @@ class LineModel(object):
         # Note that this needs to be projected onto the toroidal component
         v = moments[1]*1e-3/moments[0] / self.linesLam[line] * c
         # width of a 1 kev line = rest wavelength ** 2 / mass in kev
-        w = old_div(self.linesLam[line]**2, self.lineData.m_kev[self.linesFit][line])
+        w = self.linesLam[line]**2/self.lineData.m_kev[self.linesFit][line]
         ti = moments[2]*1e-6/moments[0] / w
         if thaco:
-            counts = old_div(m0, scale[line])
+            counts = m0/scale[line]
         else:
             counts = m0
 
@@ -341,13 +321,13 @@ class LineModel(object):
         """
         Returns a theta0 that is the 'zeroth order' guess
         """
-        noise0 = np.percentile(self.specBr, 5)
+        noise0 = np.percentile(self.amp, 5)
         center = 0.0
         scale = 0.0
 
         # Ragged array of hermite function coefficients
         herm = [None]*self.nfit
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
             herm[i] = np.zeros(self.hermFuncs[i])
             l0 = np.searchsorted(self.lam, self.linesLam[i])
 
@@ -355,13 +335,13 @@ class LineModel(object):
                 l_lower = np.max((0, l0-4))
                 l_upper = np.min((len(self.lam)-1, l0+5))
                 lamFit = self.lam[l_lower:l_upper]
-                specFit =  np.maximum( self.specBr[l_lower:l_upper]-noise0, 0) #element-wise
+                specFit =  np.maximum( self.amp[l_lower:l_upper]-noise0, 0) #element-wise
 
                 center = np.average(lamFit, weights=specFit)
                 scale = np.sqrt(np.average((lamFit-center)**2, weights=specFit))*1e4
 
             if self.hermFuncs[i] > 0:
-                herm[i][0] = np.max(self.specBr[l0]-noise0, 0)
+                herm[i][0] = np.max(self.amp[l0]-noise0, 0)
 
         hermflat = np.concatenate(herm)
         if self.noiseFuncs == 3:
@@ -378,7 +358,7 @@ class LineModel(object):
 
         cind = self.noiseFuncs+2
         herm = [None]*self.nfit
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
             herm[i] = np.zeros(self.hermFuncs[i])
 
             if i < oldLineFit.nfit:
@@ -386,7 +366,7 @@ class LineModel(object):
                 cind = cind + oldLineFit.hermFuncs[i]
             else:
                 l0 = np.searchsorted(self.lam, self.linesLam)
-                herm[0] = np.max(self.specBr[l0]-oldTheta[0], 0)
+                herm[0] = np.max(self.amp[l0]-oldTheta[0], 0)
 
         hermflat = np.concatenate(herm)
         return np.concatenate((thetafirst, hermflat))
@@ -409,10 +389,10 @@ class LineModel(object):
 
         ll_sig = -0.5 * np.sum(np.log(np.abs(pred)*self.whitefield))
         ll_cnst = -len(pred) * 0.5 * np.log(2.0 * np.pi)
-        ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield * 0.5)
+        ll = -np.sum((self.amp-pred)**2/np.abs(pred)*self.whitefield * 0.5)
 
         return ll + ll_sig + ll_cnst
-        #return -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield)
+        #return -np.sum((self.amp-pred)**2/np.abs(pred)*self.whitefield)
 
 
 
@@ -482,7 +462,7 @@ class LineModel(object):
         """
 
         # noise:
-        for kk in range(self.noiseFuncs):
+        for kk in np.arange(self.noiseFuncs):
             cube[kk] = cube[kk] * 1e2 # noise must be positive
 
         # center wavelength (in 1e-4 A units)
@@ -496,10 +476,10 @@ class LineModel(object):
         cind = self.noiseFuncs+2
 
         # loop over number of spectral lines:
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
             cube[cind]  = cube[cind] *1e5
             #loop over other Hermite coeffs (only j=2,3 normally)
-            for j in range(1, self.hermFuncs[i]):
+            for j in np.arange(1, self.hermFuncs[i]):
                 cube[cind+j]  = cube[cind+j] *2e3 - 1e3  # Hermite coeff must be +ve (large upper bound?)
 
             # increase count by number of Hermite polynomials considered.
@@ -527,7 +507,7 @@ class LineModel(object):
         f_simplex = hypercubeToHermiteSampleFunction(1e3, 0.125, 0.125)
 
         # noise:
-        for kk in range(self.noiseFuncs):
+        for kk in np.arange(self.noiseFuncs):
             cube[kk] = cube[kk] * 1e2 # noise must be positive
 
         # center wavelength (in 1e-4 A units)
@@ -540,12 +520,12 @@ class LineModel(object):
         cind = self.noiseFuncs+2
 
         # loop over number of spectral lines:
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
 
             # map hypercube to constrained simplex:
             [cube[cind], cube[cind+1],cube[cind+2]] = f_simplex([cube[cind],cube[cind+1], cube[cind+2] ])
 
-            for nn in range(3, self.hermFuncs[i]):
+            for nn in np.arange(3, self.hermFuncs[i]):
                 # constrain any further coefficients to be +/-0.3 h_0
                 cube[cind + 3] = 0.3 *  cube[cind] * (2 * cube[cind+3] +1)
 
@@ -585,14 +565,14 @@ class LineModel(object):
                 # Otherwise log(rate) is uniformly distributed
                 cube[0] = np.exp((cube[0]-0.5)+np.log(noise[0]))
 
-            for kk in range(self.noiseFuncs):
+            for kk in np.arange(self.noiseFuncs):
                 if kk == 0:
                     continue
                 else:
                     cube[kk] = (cube[kk]-0.5)*2.0 * cube[0]
         else:
-            for kk in range(self.noiseFuncs):
-                cube[kk] = cube[kk] * noise[0] * (1 + old_div(10.0, np.sqrt(noise[0])))  # noise must be positive
+            for kk in np.arange(self.noiseFuncs):
+                cube[kk] = cube[kk] * noise[0] * (1 + 10.0/np.sqrt(noise[0]))  # noise must be positive
 
         # center wavelength (in 1e-4 A units)
         cube[self.noiseFuncs] = cube[self.noiseFuncs]*2e1 - 1e1
@@ -609,7 +589,7 @@ class LineModel(object):
         cind = self.noiseFuncs+2
 
         # loop over number of spectral lines:
-        for i in range(self.nfit):
+        for i in np.arange(self.nfit):
             if self.hermFuncs[i] == 0:
                 continue
 
@@ -621,12 +601,12 @@ class LineModel(object):
                 a_max = (a0 + noise[0]) * 1.1
                 f_simplex = generalizedHypercubeToHermiteSampleFunction(a_max, self.hermFuncs[i], scaleFree=self.scaleFree, sqrtPrior=self.sqrtPrior)
 
-            cubeCoords = np.array([cube[cind+j] for j in range(self.hermFuncs[i])])
+            cubeCoords = np.array([cube[cind+j] for j in np.arange(self.hermFuncs[i])])
 
             # map hypercube to constrained simplex:
             hermCoefs = f_simplex(cubeCoords)
 
-            for j in range(self.hermFuncs[i]):
+            for j in np.arange(self.hermFuncs[i]):
                 cube[cind+j] = hermCoefs[j]
 
             # increase count by number of Hermite polynomials considered.
@@ -653,7 +633,7 @@ class LineModel(object):
         pred = self.modelPredict(theta)
         ll_sig = -0.5 * np.sum(np.log(np.abs(pred)*self.whitefield))
         ll_cnst = -len(pred) * 0.5 * np.log(2.0 * np.pi)
-        ll = -np.sum((self.specBr-pred)**2/np.abs(pred)*self.whitefield * 0.5)
+        ll = -np.sum((self.amp-pred)**2/np.abs(pred)*self.whitefield * 0.5)
         return ll + ll_sig + ll_cnst
 
         

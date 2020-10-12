@@ -2,48 +2,35 @@
 """
 Run a series of spectral fits for a tokamak discharge in a chosen time range.
 To run, use  
->> python bsfc_run_mpi.py <SHOT> 
+>> python3 bsfc_run_mpi.py <SHOT> 
 where <SHOT> is the CMOD shot number of interest. If using nested sampling (NS) and if MultiNest was 
 installed with MPI, then this automatically defaults to parallelizing over live point evaluations. 
 This is NOT a high-throughput parallelization, but it works well. See other options in script.
 
 To use a high-throughput parallelization, i.e. parallelized over all time and spatial bins, run this script
 with 
->> mpirun python bsfc_run_mpi.py <SHOT>
-i.e. the same as above, but invoking the `mpirun` command. 
+>> mpirun python3 bsfc_run_mpi.py <SHOT> 
+i.e. the same as above, but invoking the `mpirun` command.
 
 To visualize results, after running, use
-python bsfc_run_mpi.py <SHOT> -p
+python3 bsfc_run_mpi.py <SHOT> -p
 without the 'mpirun' command. If results are stored and found, this will try to plot them. 
 
 @author: sciortino
 """
-from __future__ import print_function
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import chr
-from builtins import range
-
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-try:
-    import pickle as pkl # python 3+
-except:
-    import pickle as pkl   # python 2.7
-
+import pickle as pkl 
 import sys, itertools, os, shutil
 import scipy, glob, subprocess, argparse
 
-#import bsfc_main
-from .bsfc_moment_fitter import *
+from bsfc_moment_fitter import *
 from helpers import bsfc_clean_moments 
 from helpers import bsfc_slider
 from helpers import bsfc_cmod_shots
-from .bsfc_bin_fit import _fitTimeWindowWrapper
+from bsfc_bin_fit import _fitTimeWindowWrapper
 
 # MPI parallelization
 from mpi4py import MPI
@@ -66,6 +53,7 @@ parser.add_argument("-ht","--high_throughput", action='store_true', help='Flag t
 # optional arguments for emcee runs
 parser.add_argument("--emcee", action="store_true", help="Boolean to indicate whether to use emcee. Default is False, so that MultiNest is used instead.")
 parser.add_argument("--nsteps", type=int, help="Number of emcee steps. Only used if emcee is being used.")
+
 args = parser.parse_args()
 # ---------------------------------
 
@@ -79,7 +67,7 @@ if not args.verbose:
     warnings.filterwarnings("ignore")
 
 if rank == 0:
-    print(("Analyzing shot ", args.shot))
+    print("Analyzing shot ", args.shot)
     
     # Start counting time:
     t_start=MPI.Wtime()
@@ -92,7 +80,7 @@ primary_impurity, primary_line, tbin,chbin, t_min, t_max,tht = bsfc_cmod_shots.g
 # Always create new object by default when running with MPI
 if rank==0:
     mf = MomentFitter(primary_impurity, primary_line, args.shot, tht=tht)
-    with open('../bsfc_fits/mf_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max,primary_line,primary_impurity),'wb') as f:
+    with open('../bsfc_fits/mf_{args.shot:d}_tmin{t_min:.2f}_tmax{t_max:.2f}_{primary_line:s}line_{primary_impurity:s}.pkl','wb') as f:
         pkl.dump(mf,f)
 else:
     mf = None
@@ -100,8 +88,7 @@ else:
     
 if args.plot: 
     # if only 1 core is being used, assume that script is being used for plotting
-
-    with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max,primary_line,primary_impurity),'rb') as f:
+    with open(f'../bsfc_fits/moments_{args.shot:d}_tmin{t_min:.2f}_tmax{t_max:.2f}_{primary_line:s}line_{primary_impurity:s}.pkl','rb') as f:
         gathered_moments=pkl.load(f)
 
     # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
@@ -140,13 +127,16 @@ else:
     mf = comm.bcast(mf, root = 0)
     chains_dir = comm.bcast(chains_dir, root=0)
 
-    ind_sel = np.where(np.logical_and(mf.time>t_min, mf.time<t_max))
-    time_sel= np.array(mf.time)[ind_sel] #[tidx_min: tidx_max]
-    tidx_min = ind_sel[0][0]
-    tidx_max = ind_sel[0][-1]+1  # python indexing
+    tidx_min = np.argmin(np.abs(mf_time - t_min))
+    tidx_max = np.argmin(np.abs(mf_time - t_max))
+    time_sel= mf.time[tidx_min:tidx_max]
+    #ind_sel = np.where(np.logical_and(mf.time>t_min, mf.time<t_max))
+    #time_sel= np.array(mf.time)[ind_sel] #[tidx_min: tidx_max]
+    #tidx_min = ind_sel[0][0]
+    #tidx_max = ind_sel[0][-1]+1  # python indexing
     
     # map range of channels and compute each
-    map_args_tpm = list(itertools.product(list(range(tidx_min, tidx_max)), list(range(mf.maxChan))))
+    map_args_tpm = list(itertools.product(list(np.arange(tidx_min, tidx_max)), list(np.arange(mf.maxChan))))
     map_args = [list(a) for a in map_args_tpm]
 
     # we have comm.size cores available. Total number of jobs to be run:
@@ -165,7 +155,7 @@ else:
     assigned_bins = map_args[assigned_jobs_offset:assigned_jobs_offset+personal_njobs]
     
     # now, fill up result array for each worker:
-    res = np.asarray([ None for yy in range(len(assigned_bins)) ])
+    res = np.asarray([ None for yy in np.arange(len(assigned_bins)) ])
 
     # define spectral_fit function based on whether emcee or MultiNest should be run
     if NS:
@@ -173,7 +163,7 @@ else:
         def spectral_fit(shot,t_min,t_max,tb,cb,n_hermite,verbose,rank):
     
             # set up directory for MultiNest to run
-            basename_inner = os.path.abspath(chains_dir+'/mn_chains_%s/c-.'%rank )
+            basename_inner = os.path.abspath(chains_dir+'/mn_chains_%s/c-'%rank )  # eliminated . at the end
             chains_dir_inner = os.path.dirname(basename_inner)
             
             if not os.path.exists(chains_dir_inner):
@@ -189,9 +179,10 @@ else:
                         pass
         
             # individual fit with MultiNest
-            command = ['python','launch_NSfit.py',str(shot),str(primary_line), str(primary_impurity), str(t_min), str(t_max),
+            command = ['python3','launch_NSfit.py',str(shot),str(primary_line), str(primary_impurity), str(t_min), str(t_max),
                        str(int(tb)),str(int(cb)),str(int(n_hermite)), str(int(verbose)),basename_inner]
 
+            
             if not args.high_throughput: command = ['mpirun'] + command
         
             # print out command to be run on screen
@@ -200,6 +191,7 @@ else:
             # Run externally:
             out = subprocess.check_output(command, stderr=subprocess.STDOUT)
             if verbose: print(out)
+
     else:
         # emcee requires a wrapper for multiprocessing to pickle the function
         spectral_fit = _fitTimeWindowWrapper(mf,nsteps=args.nsteps)
@@ -226,7 +218,7 @@ else:
             # if fit has already been created, re-load it from checkpoint directory
             with open(resfile,'rb') as f:
                 res[j] = pkl.load(f)
-            print(("Loaded fit moments from ", resfile))
+            print("Loaded fit moments from ", resfile)
                 
         except:
             # if fit cannot be loaded, run fitting now:
@@ -272,7 +264,7 @@ else:
         print("*********** Completed fits *************")
     
         # save fits for future use
-        with open('../bsfc_fits/moments_%d_tmin%f_tmax%f_%sline_%s.pkl'%(args.shot,t_min,t_max, primary_line,primary_impurity),'wb') as f:
+        with open(f'../bsfc_fits/moments_{args.shot:d}_tmin{t_min:.2f}_tmax{t_max:.2f}_{primary_line:s}line_{primary_impurity:s}.pkl','wb') as f:
             pkl.dump(gathered_moments, f)
 
         #if args.resume:
@@ -286,4 +278,4 @@ else:
         elapsed_time = MPI.Wtime() - t_start
         
         print('Time to run: ' + str(elapsed_time) + " s")
-        print(('Completed BSFC analysis for shot ', args.shot))
+        print('Completed BSFC analysis for shot ', args.shot)

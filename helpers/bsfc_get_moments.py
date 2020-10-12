@@ -4,10 +4,6 @@ by N. Cao & F. Sciortino
 BSFC functions to obtain moments from spectral fitting
 
 '''
-from __future__ import division
-from builtins import range
-from past.utils import old_div
-
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
@@ -43,9 +39,9 @@ def get_brightness(mf, t_min=1.2, t_max=1.4, plot=False, save=False):
     # Get fitted results for brightness
     br = np.zeros((tidx_max-tidx_min, mf.maxChan))
     br_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
-    for chbin in range(mf.maxChan):
+    for chbin in np.arange(mf.maxChan):
         t=0
-        for tbin in range(tidx_max-tidx_min): #range(tidx_min, tidx_max):
+        for tbin in np.arange(tidx_max-tidx_min): #np.arange(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
                 br[t,chbin] = mf.fits[tbin][chbin].m_avg[0]
                 br_unc[t,chbin] = mf.fits[tbin][chbin].m_std[0]
@@ -74,7 +70,7 @@ def get_brightness(mf, t_min=1.2, t_max=1.4, plot=False, save=False):
     if plot:
         # plot time series of Hirex-Sr signals for all channels
         plt.figure()
-        for i in range(hirex_signal.shape[1]):
+        for i in np.arange(hirex_signal.shape[1]):
             plt.errorbar(time_sel, hirex_signal[:,i], hirex_uncertainty[:,i], fmt='-.', label='ch. %d'%i)
         leg=plt.legend(fontsize=8)
         leg.draggable()
@@ -85,12 +81,12 @@ def get_brightness(mf, t_min=1.2, t_max=1.4, plot=False, save=False):
 
         # plt.figure()
         # plt.subplot(211)
-        # for i in range(sig.signal.y.shape[1]):
+        # for i in np.arange(sig.signal.y.shape[1]):
         #     plt.errorbar(sig.signal.t, sig.signal.y_norm[:,i], sig.signal.std_y_norm[:,i])#, '.-')
         # plt.title('new fits')
 
         # plt.subplot(212)
-        # for i in range(sig.signal.y.shape[1]):
+        # for i in np.arange(sig.signal.y.shape[1]):
         #     plt.errorbar(signals[0].t, signals[0].y_norm[:,i], signals[0].std_y_norm[:,i])
         # plt.title('saved fits from 1101014019')
     if save:
@@ -120,9 +116,9 @@ def get_rotation(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
 
     rot = np.zeros((tidx_max-tidx_min, mf.maxChan))
     rot_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
-    for chbin in range(mf.maxChan):
+    for chbin in np.arange(mf.maxChan):
         t=0
-        for tbin in range(tidx_min, tidx_max):
+        for tbin in np.arange(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
                 m0 = mf.fits[tbin][chbin].m_avg[0]
                 m1 = mf.fits[tbin][chbin].m_avg[1]
@@ -130,8 +126,8 @@ def get_rotation(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
                 m1_std = mf.fits[tbin][chbin].m_std[1]
                 linesLam = mf.fits[tbin][chbin].lineModel.linesLam[line]
 
-                rot[t,chbin] = (old_div(m1, (m0 * linesLam))) *1e-3 * c
-                rot_unc[t,chbin] = (1e-3 * c/ linesLam) * np.sqrt((old_div(m1_std**2,m0**2))+(m1**2*m0_std**2/m0**4))
+                rot[t,chbin] = (m1/(m0 * linesLam)) *1e-3 * c
+                rot_unc[t,chbin] = (1e-3 * c/ linesLam) * np.sqrt((m1_std**2/m0**2)+(m1**2*m0_std**2/m0**4))
 
             else:
                 rot[t,chbin] = np.nan
@@ -141,7 +137,7 @@ def get_rotation(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
     if plot:
         # plot time series of Hirex-Sr signals for all channels
         plt.figure()
-        for i in range(rot.shape[1]):
+        for i in np.arange(rot.shape[1]):
             plt.errorbar(time_sel, rot[:,i], rot_unc[:,i], fmt='-.', label='ch. %d'%i)
         leg=plt.legend(fontsize=8)
         leg.draggable()
@@ -172,13 +168,13 @@ def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
     Temp = np.zeros((tidx_max-tidx_min, mf.maxChan))
     Temp_unc = np.zeros((tidx_max-tidx_min, mf.maxChan))
 
-    for chbin in range(mf.maxChan):
+    for chbin in np.arange(mf.maxChan):
         t=0
-        for tbin in range(tidx_min, tidx_max):
+        for tbin in np.arange(tidx_min, tidx_max):
             linesLam = mf.fits[tbin][chbin].lineModel.linesLam[line]
             linesFit = mf.fits[tbin][chbin].lineModel.linesFit
             m_kev = mf.fits[tbin][chbin].lineModel.lineData.m_kev[linesFit][line]
-            w = old_div(linesLam**2, m_kev)
+            w = linesLam**2/m_kev
 
             if mf.fits[tbin][chbin].good:
                 m0 = mf.fits[tbin][chbin].m_avg[0]
@@ -189,7 +185,7 @@ def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
                 m2_std = mf.fits[tbin][chbin].m_std[2]
 
                 Temp[t,chbin] = m2*1e-6/m0 / w #(m2/(linesLam**2 *m0)) * m_kev *1e-6
-                Temp_unc[t,chbin] = (old_div(1e-6, w)) * np.sqrt((old_div(m2_std**2,m0**2))+(old_div((m1**2*m0_std**2),m0**4)))
+                Temp_unc[t,chbin] = (1e-6/w) * np.sqrt((m2_std**2/m0**2)+((m1**2*m0_std**2)/m0**4))
 
             else:
                 Temp[t,chbin] = np.nan
@@ -199,7 +195,7 @@ def get_temperature(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
     if plot:
         # plot time series of Hirex-Sr signals for all channels
         plt.figure()
-        for i in range(rot.shape[1]):
+        for i in np.arange(rot.shape[1]):
             plt.errorbar(time_sel, Temp[:,i], Temp_unc[:,i], fmt='-.', label='ch. %d'%i)
         leg=plt.legend(fontsize=8)
         leg.draggable()
@@ -222,9 +218,9 @@ def get_meas(mf, t_min=1.2, t_max=1.4, line=0, plot=False):
     moments_std[:] = None
 
 
-    for chbin in range(mf.maxChan):
+    for chbin in np.arange(mf.maxChan):
         t=0
-        for tbin in range(tidx_min, tidx_max):
+        for tbin in np.arange(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
                 chain = mf.fits[tbin][chbin].samples
                 moments_vals = np.apply_along_axis(mf.fits[tbin][chbin].lineModel.modelMeasurements, axis=1, arr=chain)
@@ -244,7 +240,7 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
     moments = [None] * mf.maxChan
     moments_std = [None] * mf.maxChan
 
-    for chbin in range(mf.maxChan):
+    for chbin in np.arange(mf.maxChan):
         if mf.fits[tbin][chbin].good:
             moments[chbin] = mf.fits[tbin][chbin].m_avg
             moments_std[chbin] = mf.fits[tbin][chbin].m_std
@@ -257,11 +253,11 @@ def plotOverChannels(mf, tbin=126, parallel=True, nproc=None, nsteps=1000):
 
     f, a = plt.subplots(3, 1, sharex=True)
 
-    a[0].errorbar(list(range(mf.maxChan)), moments[:,0], yerr=moments_std[:,0], fmt='.')
+    a[0].errorbar(list(np.arange(mf.maxChan)), moments[:,0], yerr=moments_std[:,0], fmt='.')
     a[0].set_ylabel('0th moment')
-    a[1].errorbar(list(range(mf.maxChan)), moments[:,1], yerr=moments_std[:,1], fmt='.')
+    a[1].errorbar(list(np.arange(mf.maxChan)), moments[:,1], yerr=moments_std[:,1], fmt='.')
     a[1].set_ylabel('1st moment')
-    a[2].errorbar(list(range(mf.maxChan)), moments[:,2], yerr=moments_std[:,2], fmt='.')
+    a[2].errorbar(list(np.arange(mf.maxChan)), moments[:,2], yerr=moments_std[:,2], fmt='.')
     a[2].set_ylabel('2nd moment')
     a[2].set_xlabel(r'channel')
 
@@ -273,9 +269,9 @@ def unpack_moments(mf, tidx_min, tidx_max):
     moments = np.empty((tidx_max-tidx_min,mf.maxChan,3))
     moments_std = np.empty((tidx_max-tidx_min,mf.maxChan,3))#[None] * (tidx_max - tidx_min)
 
-    for chbin in range(mf.maxChan):
+    for chbin in np.arange(mf.maxChan):
         t=0
-        for tbin in range(tidx_max-tidx_min): #range(tidx_min, tidx_max):
+        for tbin in np.arange(tidx_max-tidx_min): #np.arange(tidx_min, tidx_max):
             if mf.fits[tbin][chbin].good:
                 moments[t,chbin,:] = mf.fits[tbin][chbin].m_avg
                 moments_std[t,chbin,:] = mf.fits[tbin][chbin].m_std
