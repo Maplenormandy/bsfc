@@ -133,7 +133,7 @@ if rank==0:
     if not loaded:
         # if this wasn't run before, initialize the moment fitting class
         mf = MomentFitter(primary_impurity, primary_line, args.shot, tht=tht,
-                          nofit=['lyas1', 'lyas2', 'lyas3','m','s','t'])
+                          nofit=['lyas1', 'lyas2', 'lyas3']) #,'m','s','t'])
 
 else:
     mf=None
@@ -153,6 +153,7 @@ if loaded==False:
                     const_eff=True if args.const_eff else False,
                     sampling_efficiency=0.05 if args.const_eff else 0.3,
                     verbose=True,
+                    noiseParams=3,
                     dynamic=args.dynamic,  # used to choose between vanilla PolyChord and dyPolychord
                     n_hermite=n_hermite,
                     basename=basename)
@@ -272,7 +273,7 @@ if rank==0:
     print('Time to run: ' + str(elapsed_time) + " s")
 
 
-plt.show(block=True)
+#plt.show(block=True)
 
 
 #plt.subplots_adjust(hspace=0.1,right=0.99,left=0.15)

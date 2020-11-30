@@ -47,7 +47,7 @@ def momentsFromMeasurements(mf, measurement, j):
     moments = np.zeros(measurement.shape)
     moments[0,:] = measurement[0,:]
     moments[1,:] = measurement[1,:] * mf.lines.lam[j] / c * 1e3
-    w = old_div(mf.lines.lam[j]**2, mf.lines.m_kev[j])
+    w = mf.lines.lam[j]**2/mf.lines.m_kev[j]
     moments[2,:] = measurement[2,:] * w * 1e6
 
     return moments
@@ -70,12 +70,12 @@ def generateSyntheticSpectrum(mf, tbin, chbin, noise, g_lya1, g_lya2, g_mo10d):
     m_mo10d = moments(g_mo10d)
 
     true_moments = np.array([m_lya1, m_lya2, m_mo10d])
-    true_moments[:,1] = old_div(true_moments[:,1], true_moments[:,0])
-    true_moments[:,2] = old_div(true_moments[:,2], true_moments[:,0])
+    true_moments[:,1] = true_moments[:,1]/true_moments[:,0]
+    true_moments[:,2] = true_moments[:,2]/true_moments[:,0]
 
     lam = mf.lam_all[:,tbin,chbin]
     lamEdge = np.zeros(len(lam)+1)
-    lamEdge[1:-1] = old_div((lam[1:] + lam[:-1]), 2)
+    lamEdge[1:-1] = (lam[1:] + lam[:-1]/2.
     lamEdge[-1] = 2 * lamEdge[-2] - lamEdge[-3]
     lamEdge[0] = 2 * lamEdge[1] - lamEdge[2] 
 
@@ -85,9 +85,9 @@ def generateSyntheticSpectrum(mf, tbin, chbin, noise, g_lya1, g_lya2, g_mo10d):
     edge_lya2 = evalLine(g_lya2, lamEdge, 1)
     edge_mo10d = evalLine(g_mo10d, lamEdge, 2)
 
-    ev_lya1 = old_div((4*evalLine(g_lya1, lam, 0) + edge_lya1[1:] + edge_lya1[:-1]),6.0)
-    ev_lya2 = old_div((4*evalLine(g_lya2, lam, 1) + edge_lya2[1:] + edge_lya2[:-1]),6.0)
-    ev_mo10d = old_div((4*evalLine(g_mo10d, lam, 2) + edge_mo10d[1:] + edge_mo10d[:-1]),6.0)
+    ev_lya1 = 4*evalLine(g_lya1, lam, 0) + edge_lya1[1:] + edge_lya1[:-1])/6.0
+    ev_lya2 = (4*evalLine(g_lya2, lam, 1) + edge_lya2[1:] + edge_lya2[:-1])/6.0
+    ev_mo10d = (4*evalLine(g_mo10d, lam, 2) + edge_mo10d[1:] + edge_mo10d[:-1])/6.0
 
     mean = noise + np.sum(ev_lya1 + ev_lya2 + ev_mo10d, axis=1)
 
@@ -95,8 +95,8 @@ def generateSyntheticSpectrum(mf, tbin, chbin, noise, g_lya1, g_lya2, g_mo10d):
     specBr = mean
 
     # Normalized 3rd and 4th moments, for calculating cumulants
-    m3 = old_div(np.sum(g_lya1[0,:]*(g_lya1[1,:]*(g_lya1[1,:]**2+3*g_lya1[2,:]))), m_lya1[0])
-    m4 = old_div(np.sum(g_lya1[0,:]*(g_lya1[1,:]**4 + 6*g_lya1[1,:]**2*g_lya1[2,:] + 3*g_lya1[2,:]**2)), m_lya1[0])
+    m3 = np.sum(g_lya1[0,:]*(g_lya1[1,:]*(g_lya1[1,:]**2+3*g_lya1[2,:])))/m_lya1[0]
+    m4 = np.sum(g_lya1[0,:]*(g_lya1[1,:]**4 + 6*g_lya1[1,:]**2*g_lya1[2,:] + 3*g_lya1[2,:]**2))/m_lya1[0]
     # Calculate cumulants; formulas taken from wikipedia
     k3 = m3 - 3*m_lya1[2]*m_lya1[1] + 2*m_lya1[1]**3
     k4 = m4 - 4*m3*m_lya1[1] - 3*m_lya1[2]**2 + 12*m_lya1[2]*m_lya1[1]**2 - 6*m_lya1[1]**4
@@ -128,12 +128,12 @@ def modelMoments(mf, tbin, chbin):
     
 
     moments = np.array([g_lya1, g_mo10d, g_lya2])
-    moments[:,1] = old_div(moments[:,1], moments[:,0])
-    moments[:,2] = old_div(moments[:,2], moments[:,0])
+    moments[:,1] = moments[:,1]/moments[:,0]
+    moments[:,2] = moments[:,2]/moments[:,0]
     
-    moments[0,0] = old_div(moments[0,0], scale[0])
-    moments[1,0] = old_div(moments[1,0], scale[1])
-    moments[2,0] = old_div(moments[2,0], scale[2])
+    moments[0,0] = moments[0,0]/scale[0]
+    moments[1,0] = moments[1,0]/scale[1]
+    moments[2,0] = moments[2,0]/scale[2]
 
     return moments
 

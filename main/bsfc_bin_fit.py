@@ -27,13 +27,18 @@ class BinFit:
     """
     Performs a nonlinear fit and MCMC error estimate of given binned data
     """
-    def __init__(self, lam, amp, amp_unc, whitefield, lineData, linesFit, n_hermite):
+    def __init__(self, lam, amp, amp_unc, whitefield, lineData, linesFit, n_hermite, noiseParams=1):
         self.lam = lam
         self.amp = amp
         self.amp_unc = amp_unc  
         self.lineData = lineData
         self.linesFit = linesFit
+        self.noiseParams = noiseParams
 
+
+        print('noiseParams: ', noiseParams)
+        print('^^^^^^^^^^^^^^^^^^^^^^')
+        
         # Normalized lambda, for evaluating noise
         self.lamNorm = (lam-np.average(lam))/(np.max(lam)-np.min(lam))*2
 
@@ -48,10 +53,11 @@ class BinFit:
         self.good = False
 
         # number of Hermite polynomial terms:
-        hermFuncs = [3]*len(linesFit)
-        hermFuncs[0] = n_hermite
+        hermParams = [3]*len(linesFit)
+        hermParams[0] = n_hermite
 
-        self.lineModel = LineModel(lam, self.lamNorm, amp, amp_unc, whitefield, lineData, linesFit, hermFuncs)
+        self.lineModel = LineModel(lam, self.lamNorm, amp, amp_unc, whitefield, lineData, linesFit,
+                                   hermParams, noiseParams=1)
 
 
     def optimizeFit(self, theta0):

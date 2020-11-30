@@ -36,7 +36,7 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
     no_fit : list or array-like
         List of symbols for lines that should be excluded from a fit
     hirexsr_file : str
-        Path of file containing Hirex-Sr wavelengths database. 
+        Path of file cotaining Hirex-Sr wavelengths database. 
     plot : bool
         If True, plot spectrum for the chosen time and channel
     plot_time_s : float
@@ -69,7 +69,7 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
         atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
 
     if lam_bounds == None:
-        lam_bounds = get_hirexsr_lam_bounds(primary_impurity, primary_line)
+        lam_bounds,primary_line = get_hirexsr_lam_bounds(primary_impurity, primary_line)
 
     # Populate the line data
     lineInd = np.logical_and(lineLam>lam_bounds[0], lineLam<lam_bounds[1])
@@ -166,8 +166,8 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
         ax2.errorbar(lam_all[:,tidx,plot_ch-1], specBr_all[:,tidx,plot_ch-1], sig_all[:,tidx,plot_ch-1], fmt='.')
         ax2.set_xlabel(r'$\lambda$ [$A$]',fontsize=14)
         ax2.set_ylabel(r'Signal [A.U.]',fontsize=14)
-        ax2.axvline(lam_bounds[0], c='r', ls='--')
-        ax2.axvline(lam_bounds[1], c='r', ls='--')
+        #ax2.axvline(lam_bounds[0], c='r', ls='--')
+        #ax2.axvline(lam_bounds[1], c='r', ls='--')
         ax1.set_xlim([ax2.get_xlim()[0], ax2.get_xlim()[1]])
         for ii,_line in enumerate(lineLam):
             if _line>ax2.get_xlim()[0] and _line<ax2.get_xlim()[1]:
@@ -175,13 +175,13 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
                 ax1.axvline(_line, c='b', ls='--')
                 
                 ax1.text(_line, 0.5, lineName[ii], rotation=90, fontdict={'fontsize':14}) #, transform=ax1.transAxes)
-        ax1.axis('off')
+        #ax1.axis('off')
         
     return info, data
 
         
 def hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity,
-                plot_pos=False, plot_on_tokamak=False, check_with_tree=False):
+                plot_pos=False, plot_on_tokamak=False, check_with_tree=False, t0=1.25):
     '''
     Get the POS vector as defined in the THACO manual. 
     Unlike in THACO, here we use POS vectors averaged over the wavelength range of the line of interest, rather than over the wavelength range that is fit (including various satellite lines). This reduces the averaging quite significantly. 
@@ -218,10 +218,10 @@ def hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity,
     # mapping from pixels to chords (wavelength x space pixels, but wavelength axis is just padding)
     chmap = branchNode.getNode('BINNING:CHMAP').data()
     pixels_to_chords = chmap[0,:]
-    
+
     # find over which wavelengths the pos vector should be averaged at every time
     # get lambda bounds for specific BSFC line for accurate impurity forward modeling:
-    lam_bounds = get_hirexsr_lam_bounds(primary_impurity, primary_line, reduced=True)
+    lam_bounds,primary_line = get_hirexsr_lam_bounds(primary_impurity, primary_line, reduced=True)
 
     lam_all = branchNode.getNode('SPEC:LAM').data()
 
@@ -265,8 +265,6 @@ def hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity,
         # pos[:,3] indicate spacing between rays
         rays = [TRIPPy.beam.pos2Ray(p, tokamak) for p in pos_ave]   #pos_old]
         
-        t0=1.25
-        
         weights = TRIPPy.invert.fluxFourierSens(
             rays,
             efit_tree.rz2psinorm,
@@ -284,17 +282,23 @@ def hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity,
         plotTokamak(tokamak)
         
         for r in rays:
-            plotLine(r, pargs='r')
+            plotLine(r, pargs='r',lw=1.0)
             
             
         i_flux = np.searchsorted(efit_tree.getTimeBase(), t0)
 
-        a.contour(
+        # mask out coils, where flux is highest
+        flux = efit_tree.getFluxGrid()[i_flux, :, :]
+        #flux[flux>np.percentile(flux, 75)] = np.nan
+        #flux[:,efit_tree.getRGrid()>0.9] = np.nan
+        
+        cset = a.contour(
             efit_tree.getRGrid(),
             efit_tree.getZGrid(),
-            efit_tree.getFluxGrid()[i_flux, :, :],
+            flux,
             80
         )
+        #f.colorbar(cset,ax=a)
 
     if check_with_tree:
         try:
@@ -325,12 +329,12 @@ def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w', reduced=Fals
             lam_bounds = (3.175, 3.181) if reduced else (3.172, 3.188)
         elif primary_line == 'z':   # z-line at 3.211 mA
             lam_bounds = (3.208, 3.215) if reduced else (3.205, 3.215)
-        elif primary_line == 'lya1':
-            lam_bounds = (3.010, 3.027)
         elif primary_line == 'z':
             lam_bounds = (3.205, 3.215)
         elif primary_line == 'x':  # when indicating x, y-line is also fitted
             lam_bounds = (3.186, 3.1947)
+        elif primary_line == 'lya1':  # lya1 and lya2 (H-like), see Rice J.Phys. B 47 (2014) 075701
+            lam_bounds = (3.010, 3.030)
         elif primary_line == 'all':
             primary_line = 'w' # substitute to allow routine to recognize line name
             lam_bounds = (3.172, 3.215)
@@ -357,5 +361,5 @@ def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w', reduced=Fals
             raise NotImplementedError("Line is not yet implemented")
 
 
-    return lam_bounds
+    return lam_bounds,primary_line
 

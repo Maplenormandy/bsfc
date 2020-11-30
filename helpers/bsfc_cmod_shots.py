@@ -63,8 +63,9 @@ def get_shot_info(shot, imp_override=None):
         else:
            tht=0
            #tbin=128; chbin=31  # t=1.2695
-           #tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
-           tbin=116; chbin=8 # channel seems broken?
+           tbin=116; chbin=18  # t=1.2095, ~ peak Ca signal
+           #tbin=116; chbin=8 # unknown signal comes up near 3.196A only in this channel, motivated shorter lambda bounds
+           #tbin=135; chbin=8   # t=1.3115
            ####t_min=0.780; t_max = 1.5  # entire LBO interval
            
     elif shot==1100305019:

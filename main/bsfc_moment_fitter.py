@@ -82,6 +82,7 @@ class MomentFitter:
 
     def fitSingleBin(self, tbin, chbin, nsteps=1024, emcee_threads=1, PT=False,
                      method=2,n_hermite=3, n_live_points='auto', sampling_efficiency=0.3,
+                     noiseParams=1,
                      dynamic=True, # only used for PolyChord
                      INS=True, const_eff=True,
                      verbose=True, basename=None):
@@ -121,7 +122,8 @@ class MomentFitter:
             pass
 
         # create bin fit
-        bf = bsfc_bin_fit.BinFit(lam, amp, amp_unc, whitefield, self.lines, list(np.arange(len(self.lines.names))), n_hermite=n_hermite)
+        bf = bsfc_bin_fit.BinFit(lam, amp, amp_unc, whitefield, self.lines, list(np.arange(len(self.lines.names))),
+                                 n_hermite=n_hermite, noiseParams=noiseParams)
 
         self.fits[tbin][chbin] = bf
 
@@ -263,12 +265,11 @@ class MomentFitter:
 
         if bf.good:
             # color list, one color for each spectral line
-            #from matplotlib import cm 
+            from matplotlib import cm 
             #color=cm.rainbow(np.linspace(0,1,len(self.lines.names)))
-            from matplotlib import colors as mcolors
-            colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
-            
-            color =['b','g','c'] #['g','b','c'] # [colors['darkviolet'],colors['black'],colors['orange']] #['m','k','y']  #['b','g','c']
+            #from matplotlib import colors as mcolors
+            #colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
+            color =['b','g','c','m','o'] #['g','b','c'] # [colors['darkviolet'],colors['black'],colors['orange']] 
 
             # plot in red the overall reconstructed spectrum (sum of all spectral lines)
             pred = bf.lineModel.modelPredict(bf.theta_ml)
@@ -291,7 +292,8 @@ class MomentFitter:
 
                 noise = bf.lineModel.modelNoise(theta)
                 a0.plot(bf.lam, noise, c='k', alpha=0.04)
-
+                #from IPython import embed
+                #embed()
                 for i in np.arange(len(self.lines.names)):
                     line = bf.lineModel.modelLine(theta, i)
                     a0.plot(bf.lam, line+noise, c=color[i], alpha=0.04)
