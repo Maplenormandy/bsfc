@@ -4,9 +4,11 @@ Created on Wed Dec 12 14:58:43 2018
 
 @author: maple
 """
-import numpy as np
+import numpy as np, os
 
 # %%
+# location of local directory
+loc_dir = os.path.dirname(os.path.realpath(__file__))
 
 def hypercubeToSimplex(z, r):
     """
@@ -75,15 +77,20 @@ def hypercubeToHermiteSampleFunction(a0_max, a1_limit, a2_limit):
 
     return hypercubeToHermiteSample
 
-# TODO unhardcode these paths
-prior_bound_means = np.load(r'../data/prior_bound_means.npz')
-prior_bound_matrices = np.load(r'../data/prior_bound_matrices.npz')
-prior_bound_zeros = np.load(r'../data/prior_bound_zeros.npz')
-prior_bound_axes = np.load(r'../data/prior_bound_axes.npz')
-prior_bound_inv = {}
-for key in prior_bound_matrices:
-    transMatrix = prior_bound_matrices[key]
-    prior_bound_inv[key] = np.linalg.inv(transMatrix)
+def load_prior_simplex_data():
+    '''Load data used to form the simplex used to create priors.'''
+    
+    prior_bound_means = np.load(loc_dir+'/../data/prior_bound_means.npz')
+    prior_bound_matrices = np.load(loc_dir+'/../data/prior_bound_matrices.npz')
+    prior_bound_zeros = np.load(loc_dir+'/../data/prior_bound_zeros.npz')
+    prior_bound_axes = np.load(loc_dir+'/../data/prior_bound_axes.npz')
+    prior_bound_inv = {}
+    for key in prior_bound_matrices:
+        transMatrix = prior_bound_matrices[key]
+        prior_bound_inv[key] = np.linalg.inv(transMatrix)
+        
+    return prior_bound_means, prior_bound_matrices, prior_bound_zeros, prior_bound_axes,\
+        prior_bound_inv
 
 def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite, scaleFree=True, sqrtPrior=True):
     """
@@ -93,7 +100,9 @@ def generalizedHypercubeToHermiteSampleFunction(a0_max, n_hermite, scaleFree=Tru
     but constrains the values of an/a0 in a manner that I will explain more fully later.
     n_hermite is the number of hermite polynomials in the fit.
     """
-
+    prior_bound_means, prior_bound_matrices, prior_bound_zeros, prior_bound_axes,\
+        prior_bound_inv = load_prior_simplex_data()
+    
     if n_hermite < 3 or n_hermite > 9:
         raise NotImplementedError('Number of hermite polynomials must be between 3 and 9 inclusive')
 
@@ -132,6 +141,9 @@ def generalizedHypercubeConstraintFunction(cind, n_hermite, bound=1.0):
     """
     TODO: Documentation
     """
+    prior_bound_means, prior_bound_matrices, prior_bound_zeros, prior_bound_axes,\
+        prior_bound_inv = load_prior_simplex_data()
+
     if n_hermite < 3 or n_hermite > 9:
         raise NotImplementedError('Number of hermite polynomials must be between 3 and 9 inclusive')
 

@@ -27,4 +27,4 @@ from .helpers import *
 from .analysis import *
 from .syn_tests import *
 from .data import *
-
+from .main import *

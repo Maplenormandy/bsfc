@@ -4,18 +4,22 @@ by N. Cao & F. Sciortino
 This script contains functions used to load and process experimental data.
 
 '''
-import numpy as np
+import numpy as np, os
 import MDSplus   # to fetch tokamak data
 from collections import namedtuple
 import matplotlib.pyplot as plt
 plt.ion()
 from IPython import embed
+from matplotlib import cm
 
+
+        
 LineInfo = namedtuple('LineInfo', 'lam m_kev names symbol z sqrt_m_ratio'.split())
 
+# location of local directory
+loc_dir = os.path.dirname(os.path.realpath(__file__))
 
 def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None, nofit=[],
-                    hirexsr_file='../data/hirexsr_wavelengths.csv',
                     plot=False, plot_time_s=1.0, plot_ch=1):
     '''
     Function to load Hirex-Sr data for CMOD. Assumes that rest wavelengths, ionization stages and
@@ -35,8 +39,6 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
         lower and upper bounds to consider in spectrum
     no_fit : list or array-like
         List of symbols for lines that should be excluded from a fit
-    hirexsr_file : str
-        Path of file cotaining Hirex-Sr wavelengths database. 
     plot : bool
         If True, plot spectrum for the chosen time and channel
     plot_time_s : float
@@ -49,12 +51,15 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
     info : list
         List containing [maxChan,maxTime,whitefield,lam_bounds, hirex_branch, lines] fields
     data : list
-        List containg [time,lam_all,pos,specBr_all,sig_all,fits] fields
+        List containg [time,lam_all,pos,specBr_all,specBr_unc_all,fits] fields
     See bsfc_moment_fitter.py for usage of these output fields.
+    
+    MWE: 
+    info,data = load_hirex_data('Ca','w', 1101014006, tht=0,plot=True)
     '''
 
     # Load all wavelength data
-    with open(hirexsr_file, 'r') as f:
+    with open(loc_dir+'../data/hirexsr_wavelengths.csv', 'r') as f:
         lineData = [s.strip().split(',') for s in f.readlines()]
         lineLam = np.array([float(ld[1]) for ld in lineData[2:]])
         lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
@@ -63,7 +68,7 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
     amuToKeV = 931494.095 # amu in keV
 
     # Load atomic data, for calculating line widths, etc...
-    with open('../data/atomic_data.csv', 'r') as f:
+    with open(loc_dir+'../data/atomic_data.csv', 'r') as f:
         atomData = [s.strip().split(',') for s in f.readlines()]
         atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
         atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
@@ -126,10 +131,10 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
 
     # Indices are [lambda, time, channel]
     specBr_all = branchNode.getNode('SPEC:SPECBR').data()
-    sig_all = branchNode.getNode('SPEC:SIG').data()  # uncertainties
+    specBr_unc_all = branchNode.getNode('SPEC:SIG').data()  # uncertainties
     
     with np.errstate(divide='ignore', invalid='ignore'):  #temporarily ignore divide by 0 warnings
-        whitefield = specBr_all/sig_all**2
+        whitefield = specBr_all/specBr_unc_all**2
 
     # load pos vector:
     pos = hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity)
@@ -147,13 +152,13 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
     whitefield = whitefield[:,mask,:]
     lam_all = lam_all[:,mask,:]
     specBr_all = specBr_all[:,mask,:]
-    sig_all = sig_all[:,mask,:]
+    specBr_unc_all = specBr_unc_all[:,mask,:]
 
     #print('Available times for Hirex-Sr analysis:', time)
 
     # collect all useful outputs
     info = [maxChan,maxTime,whitefield,lam_bounds, hirex_branch, lines]
-    data = [time,lam_all,pos,specBr_all,sig_all]
+    data = [time,lam_all,pos,specBr_all,specBr_unc_all]
 
     if plot:
         # plot spectrum at chosen time and channel, displaying known lines in database
@@ -163,7 +168,7 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
         ax1 = plt.subplot2grid((10,1),(0,0),rowspan = 1, colspan = 1, fig=fig)
         ax2 = plt.subplot2grid((10,1),(1,0),rowspan = 9, colspan = 1, fig=fig, sharex=ax1)
         
-        ax2.errorbar(lam_all[:,tidx,plot_ch-1], specBr_all[:,tidx,plot_ch-1], sig_all[:,tidx,plot_ch-1], fmt='.')
+        ax2.errorbar(lam_all[:,tidx,plot_ch-1], specBr_all[:,tidx,plot_ch-1], specBr_unc_all[:,tidx,plot_ch-1], fmt='.')
         ax2.set_xlabel(r'$\lambda$ [$A$]',fontsize=14)
         ax2.set_ylabel(r'Signal [A.U.]',fontsize=14)
         #ax2.axvline(lam_bounds[0], c='r', ls='--')
@@ -171,15 +176,57 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
         ax1.set_xlim([ax2.get_xlim()[0], ax2.get_xlim()[1]])
         for ii,_line in enumerate(lineLam):
             if _line>ax2.get_xlim()[0] and _line<ax2.get_xlim()[1]:
-                ax2.axvline(_line, c='b', ls='--')
-                ax1.axvline(_line, c='b', ls='--')
+                ax2.axvline(_line, c='r', ls='--')
+                ax1.axvline(_line, c='r', ls='--')
                 
                 ax1.text(_line, 0.5, lineName[ii], rotation=90, fontdict={'fontsize':14}) #, transform=ax1.transAxes)
-        #ax1.axis('off')
+        ax1.axis('off')
         
     return info, data
 
+
+
+def plot_time_dept_spectrum(primary_impurity, primary_line, shot, tht=0, chbin=0, t0=1.0):
+    '''Plot spectrum after Bragg diffraction remapping to spectra over wavelength, time and channel number. 
+
+    MWE:
+    plot_time_dept_spectrum('Ca','lya1',1120914029,tht=0,chbin=10, t0=0.91)
+
+    '''
+    info,data = load_hirex_data(primary_impurity, primary_line, shot, tht=tht,
+                                plot=True, plot_time_s=t0, plot_ch=1)
+
+    time,lam_all,pos,specBr_all,sig_all = data
+    maxChan,maxTime,whitefield,lam_bounds, hirex_branch, lines = info
+
+    # take approx wavelength as mean over time bins
+    lams = np.mean(lam_all,axis=1)
         
+    #fig,ax = plt.subplots()
+    #ax.contourf(lams[:,chbin],time,specBr_all[:,:,chbin].T, levels=100, cmap=cm.grey)
+
+    fig,ax = plt.subplots()
+    dlam = np.mean(np.diff(lams[:,chbin]))   # NB: lams are actually not equally spaced; this is only for a quick view
+    dt = np.mean(np.diff(time))
+
+    img0 = ax.pcolorfast(np.r_[lams[:,chbin]-dlam/2.,lams[-1,chbin]+dlam/2.],
+                         np.r_[time-dt/2., time[-1]+dt],
+                         specBr_all[:,:,chbin].T,
+                         cmap=cm.inferno)
+
+    cbar0 = plt.colorbar(img0, format='%.2g', ax=ax)
+    try:
+        # if draggable colorbar is available
+        cbar0 = DraggableColorbar(cbar0,img0)
+        cid1 = cbar0.connect()
+    except:
+        print('Could not use draggable-colorbar')
+        pass
+    
+    ax.set_xlabel(r'$\lambda$ [nm]')
+    ax.set_ylabel(r'time [s]')
+
+                
 def hirexsr_pos(shot, hirex_branch, tht, primary_line, primary_impurity,
                 plot_pos=False, plot_on_tokamak=False, check_with_tree=False, t0=1.25):
     '''
