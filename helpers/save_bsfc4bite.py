@@ -3,8 +3,8 @@ This script creates an input file for BITE from Hirex-Sr analysis using BSFC res
 
 '''
 import os, sys, argparse
-import numpy as np
-import pickle as pkl  #python 3+
+import numpy as np, copy
+import pickle as pkl
 
 import bsfc_moment_fitter as bmf
 import bsfc_data
@@ -37,7 +37,14 @@ if args.line_name is None:
 else:
     line_name = args.line_name
 
-# new format from bsfc_ns_shot
+print('line_name: ', line_name)
+
+add_j=False
+if line_name=='k+j':
+    add_j=True
+    line_name='k'
+
+# Format from bsfc_ns_shot:
 with open(f'../bsfc_fits/moments_{args.shot:d}_tmin{t_min:.2f}_tmax{t_max:.2f}_{primary_line:s}_{primary_impurity:s}_{line_name:s}line.pkl','rb') as f:
     gathered_moments=pkl.load(f)
     
@@ -47,8 +54,39 @@ out = bsfc_clean_moments.clean_moments(mf.time,mf.maxChan,t_min,t_max,
                                        BR_STD_THRESH=2e8, normalize=False) # do not normalize at this stage
 
 moments_vals, moments_stds, time_sel = out
+    
+if add_j: # combine brightnesses from k and j lines
+    # Format from bsfc_ns_shot:
+    with open(f'../bsfc_fits/moments_{args.shot:d}_tmin{t_min:.2f}_tmax{t_max:.2f}_{primary_line:s}_{primary_impurity:s}_jline.pkl','rb') as f:
+        gathered_moments=pkl.load(f)
+        
+    # clean up Hirex-Sr signals -- BR_THRESH might need to be adjusted to eliminate outliers
+    out = bsfc_clean_moments.clean_moments(mf.time,mf.maxChan,t_min,t_max,
+                                           gathered_moments,BR_THRESH=1e8, #2e3,
+                                           BR_STD_THRESH=2e8, normalize=False) # do not normalize at this stage
+    
+    moments_vals_j, moments_stds_j, time_sel_j = out
 
+    moments_vals_k = copy.deepcopy(moments_vals)
+    moments_stds_k = copy.deepcopy(moments_stds)
+    time_sel_k = copy.deepcopy(time_sel_j)
+    
+    # combine moment estimates from k and j:
+    # brightness
+    moments_vals[:,:,0] = moments_vals_k[:,:,0] + moments_vals_j[:,:,0]
+    moments_stds[:,:,0] = np.hypot(moments_stds_k[:,:,0], moments_stds_j[:,:,0])
 
+    # velocity
+    moments_vals[:,:,1] = (moments_vals_k[:,:,1] + moments_vals_j[:,:,1])/2.
+    moments_stds[:,:,1] = 0.5*np.hypot(moments_stds_k[:,:,1], moments_stds_j[:,:,1])
+
+    # temperature
+    moments_vals[:,:,2] = (moments_vals_k[:,:,2] + moments_vals_j[:,:,2])/2.
+    moments_stds[:,:,2] = 0.5*np.hypot(moments_stds_k[:,:,2], moments_stds_j[:,:,2])
+
+    # reset line name to the origin "k+j"
+    line_name='k+j'
+    
 if args.plot:
     # BSFC slider visualization
     bsfc_slider.visualize_moments(moments_vals, moments_stds, time_sel, q='br')

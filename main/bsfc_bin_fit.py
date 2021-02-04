@@ -35,10 +35,6 @@ class BinFit:
         self.linesFit = linesFit
         self.noiseParams = noiseParams
 
-
-        print('noiseParams: ', noiseParams)
-        print('^^^^^^^^^^^^^^^^^^^^^^')
-        
         # Normalized lambda, for evaluating noise
         self.lamNorm = (lam-np.average(lam))/(np.max(lam)-np.min(lam))*2
 

@@ -6,7 +6,7 @@ This script can either be run on 1 CPU using
 python bsfc_run_ns.py <SHOT>
 
 or with MPI, using
-mpirun python bsfc_run_ns.py <SHOT>
+mpirun python bsfc_run_ns.py <SHOT> 2
 whereby the maximum number of workers will be automatically identified.
 
 After completion of a MultiNest execution, running again this script (without mpirun!) will pull up some useful plots.
@@ -149,11 +149,11 @@ if loaded==False:
     
     # Do a single spectral fit with MultiNest (nested sampling)
     mf.fitSingleBin(tbin=tbin, chbin=chbin, method=args.method,n_live_points='auto',
-                    INS=True if args.INS else False,
-                    const_eff=True if args.const_eff else False,
+                    INS=bool(args.INS),
+                    const_eff=bool(args.const_eff),
                     sampling_efficiency=0.05 if args.const_eff else 0.3,
                     verbose=True,
-                    noiseParams=3,
+                    noiseParams=1,
                     dynamic=args.dynamic,  # used to choose between vanilla PolyChord and dyPolychord
                     n_hermite=n_hermite,
                     basename=basename)

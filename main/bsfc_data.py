@@ -59,7 +59,7 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
     '''
 
     # Load all wavelength data
-    with open(loc_dir+'../data/hirexsr_wavelengths.csv', 'r') as f:
+    with open(loc_dir+'/../data/hirexsr_wavelengths.csv', 'r') as f:
         lineData = [s.strip().split(',') for s in f.readlines()]
         lineLam = np.array([float(ld[1]) for ld in lineData[2:]])
         lineZ = np.array([int(ld[2]) for ld in lineData[2:]])
@@ -68,7 +68,7 @@ def load_hirex_data(primary_impurity, primary_line, shot, tht=0, lam_bounds=None
     amuToKeV = 931494.095 # amu in keV
 
     # Load atomic data, for calculating line widths, etc...
-    with open(loc_dir+'../data/atomic_data.csv', 'r') as f:
+    with open(loc_dir+'/../data/atomic_data.csv', 'r') as f:
         atomData = [s.strip().split(',') for s in f.readlines()]
         atomSymbol = np.array([ad[1].strip() for ad in atomData[1:84]])
         atomMass = np.array([float(ad[3]) for ad in atomData[1:84]]) * amuToKeV
@@ -382,6 +382,8 @@ def get_hirexsr_lam_bounds(primary_impurity='Ca', primary_line='w', reduced=Fals
             lam_bounds = (3.186, 3.1947)
         elif primary_line == 'lya1':  # lya1 and lya2 (H-like), see Rice J.Phys. B 47 (2014) 075701
             lam_bounds = (3.010, 3.030)
+        elif primary_line == 'q': # q, r, a (exclude w4n)
+            lam_bounds = (3.197, 3.205)
         elif primary_line == 'all':
             primary_line = 'w' # substitute to allow routine to recognize line name
             lam_bounds = (3.172, 3.215)

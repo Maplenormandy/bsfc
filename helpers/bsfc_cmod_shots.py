@@ -32,7 +32,7 @@ def get_shot_info(shot, imp_override=None):
         tht=5
     elif shot==1101014019:       # EDA H-mode FS
         primary_impurity = 'Ca' if imp_override is None else imp_override
-        primary_line = 'x' #'z' #'z' # 'w'
+        primary_line = 'z' #'z' #'z' # 'w'
         #t_min = 0.83; t_max = 1.4 # entire LBO interval
         t_min=1.24; t_max=1.4
         #t_min=1.26; t_max=1.27
@@ -54,7 +54,7 @@ def get_shot_info(shot, imp_override=None):
         tht=0
     elif shot==1101014030:    # I-mode FS
         primary_impurity = 'Ca' if imp_override is None else imp_override  
-        primary_line = 'x' #'w' #'all' #'z' # 'w'
+        primary_line = 'q' #'z' #'x' #'w' #'all' #'z' # 'w'
         #t_min = 1.2; t_max = 1.3
         t_min=1.185; t_max=1.3
         if primary_impurity=='Ar':   # for Ca: THT=0; for Ar: THT=1
@@ -97,7 +97,7 @@ def get_shot_info(shot, imp_override=None):
     elif shot==1101014006:     # L-mode FS
         # for Ca: THT=0; for Ar: THT=1
         primary_impurity = 'Ca' if imp_override is None else imp_override
-        primary_line = 'x' #'w' #'all' #'z' #'w'
+        primary_line = 'z' #'w' #'all' #'z' #'w'
         if primary_impurity=='Ar':
             tbin=14; chbin=20   # for Ar
             tht=2

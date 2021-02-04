@@ -13,6 +13,10 @@ If results are stored and found, this will try to plot them.
 
 This is a simpler script than bsfc_run_mpi.py, which offers more options to also run emcee and parallelize in high-throughput fashion. 
 
+To save data from multiple lines that were within the same fit, run something like
+%run -i bsfc_ns_shot.py 1101014019 -l j
+for each line, changing "j" with the line of interest.
+
 @author: sciortino, Nov 2019
 """
 import numpy as np
